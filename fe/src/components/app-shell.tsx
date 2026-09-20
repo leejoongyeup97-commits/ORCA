@@ -14,6 +14,9 @@ const NAV_ITEMS = [
 ] as const;
 
 function isActive(pathname: string, href: string, exact?: boolean) {
+  if (href === "/matches") {
+    return pathname === "/matches" || (pathname.startsWith("/matches/") && !pathname.startsWith("/matches/new"));
+  }
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -28,7 +31,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--orange)] text-sm font-black text-black">OI</span>
           <span>
             <span className="block text-sm font-black tracking-wide">OVERWATCH INSIGHT</span>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">승패 요인 분석기 · v0.6</span>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">승패 요인 분석기 · v0.7</span>
           </span>
         </Link>
 
