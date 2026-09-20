@@ -391,3 +391,16 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - 처리시간 7.5초
 - 결론: Team 숫자 OCR과 내 행 자동 식별 모두 production 기준 통과
 - 현재 Team 처리: RapidOCR + blue/red 분리 행 탐지 + row highlight is_me 판정
+
+
+### 2026-09-20 · 다음 작업: Team 영웅 초상화 매칭 실험 시작
+- 상태: IN_PROGRESS
+- 배경: PRD의 다음 캡처 자동 인식 항목은 양 팀 10명 영웅 이미지 매칭
+- 내용:
+  - production OCR과 분리된 영웅 초상화 crop/matching 실험기 추가
+  - 검증된 Team 행 좌표를 재사용해 10개 영웅 초상화를 자동 crop
+  - perceptual hash 기반 reference matching 뼈대 추가
+  - 10장 benchmark용 hero crop 개별 이미지 / montage / manifest 생성 runner 추가
+- 관련 파일: `be/ocr_benchmark/hero_matching_experiment.py`, `be/ocr_benchmark/prepare_hero_crops.py`
+- 관련 커밋: `5813ae69deff7b62e850dfec946f369afeacfed1`, `55518671f870eab8f67546ecd36047343f40a52e`
+- TODO: 로컬 10장으로 crop montage 생성 후 초상화 잘림/오프셋 확인. crop이 안정적이면 hero ground truth + reference library를 붙여 실제 정확도 측정
