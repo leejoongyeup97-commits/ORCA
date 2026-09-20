@@ -6,6 +6,7 @@ import type {
   MatchBackendAdapter,
   MatchImportStatus,
   MatchImportView,
+  MatchListItem,
   UploadTarget,
 } from "./contracts";
 
@@ -13,6 +14,7 @@ type StoredMockMatch = {
   matchId: string;
   localMatchKey: string;
   status: MatchImportStatus;
+  detectedAt?: string;
   files: CreateMatchDraftInput["files"];
   uploads: UploadTarget[];
 };
@@ -51,6 +53,25 @@ function updateStored(matchId: string, patch: Partial<StoredMockMatch>) {
   return matches[index];
 }
 
+function fallbackDetectedAt(match: StoredMockMatch) {
+  if (match.detectedAt) return match.detectedAt;
+  const timestamps = match.files
+    .map((file) => Number(file.last_modified_ms))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const ms = timestamps.length > 0 ? Math.min(...timestamps) : Date.now();
+  return new Date(ms).toISOString();
+}
+
+function toView(match: StoredMockMatch): MatchImportView {
+  return {
+    match_id: match.matchId,
+    local_match_key: match.localMatchKey,
+    status: match.status,
+    detected_at: fallbackDetectedAt(match),
+    files: match.files,
+  };
+}
+
 export class MockMatchBackendAdapter implements MatchBackendAdapter {
   async createMatchDraft(input: CreateMatchDraftInput): Promise<CreateMatchDraftResult> {
     await sleep(250);
@@ -58,6 +79,10 @@ export class MockMatchBackendAdapter implements MatchBackendAdapter {
     const matches = loadAll();
     const existing = matches.find((item) => item.localMatchKey === input.local_match_key);
     if (existing) {
+      if (!existing.detectedAt) {
+        existing.detectedAt = input.detected_at;
+        saveAll(matches);
+      }
       return {
         contract_version: "0.1",
         match_id: existing.matchId,
@@ -79,6 +104,7 @@ export class MockMatchBackendAdapter implements MatchBackendAdapter {
       matchId,
       localMatchKey: input.local_match_key,
       status: "awaiting_upload",
+      detectedAt: input.detected_at,
       files: input.files,
       uploads,
     });
@@ -110,12 +136,14 @@ export class MockMatchBackendAdapter implements MatchBackendAdapter {
     await sleep(120);
     const match = loadAll().find((item) => item.matchId === matchId);
     if (!match) throw new Error("MOCK_MATCH_NOT_FOUND");
-    return {
-      match_id: match.matchId,
-      local_match_key: match.localMatchKey,
-      status: match.status,
-      files: match.files,
-    };
+    return toView(match);
+  }
+
+  async listMatchImports(): Promise<MatchListItem[]> {
+    await sleep(120);
+    return loadAll()
+      .map(toView)
+      .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime());
   }
 
   async confirmMatch(
