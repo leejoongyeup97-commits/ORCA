@@ -49,7 +49,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--orange)] text-xs font-black text-black">OR</span>
           <span>
             <span className="block text-sm font-black tracking-[0.08em]">ORCA</span>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Overwatch Analytics · FE v0.11</span>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Overwatch Analytics · FE v0.12</span>
           </span>
         </Link>
 
