@@ -55,8 +55,11 @@ export type MatchImportView = {
   match_id: string;
   local_match_key: string;
   status: MatchImportStatus;
+  detected_at: string;
   files: CreateMatchDraftFile[];
 };
+
+export type MatchListItem = MatchImportView;
 
 export type ConfirmMatchInput = {
   contract_version: "0.1";
@@ -74,6 +77,7 @@ export interface MatchBackendAdapter {
     input: CompleteMatchUploadInput,
   ): Promise<{ matchId: string; status: "pending_ocr" }>;
   getMatchImport(matchId: string): Promise<MatchImportView>;
+  listMatchImports(): Promise<MatchListItem[]>;
   confirmMatch(
     input: ConfirmMatchInput,
   ): Promise<{ matchId: string; status: "confirmed" }>;
