@@ -70,3 +70,11 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 - 관련: `fe/src/lib/backend/supabase-adapter.ts`
 - BE 연동 커밋: `80b1f2a6612b56406cd7e77fcb9b43b34333cf63`
 - 참고: 현재 FE 화면 구조 변경은 요구하지 않음. review draft의 기존 `is_me` 필드를 그대로 사용
+
+
+### 2026-09-20 · FE/BE develop 통합 시 주의
+- 상태: NOTE
+- `develop`과 `fe-dev`는 현재 동일 상태
+- `be-dev`는 오래 분기되어 FE 파일 일부가 develop과 다르므로 branch 전체 merge 금지 권장
+- 통합 시 develop의 FE 화면/컴포넌트/contracts를 기준으로 유지하고, BE 쪽에서 필요한 FE 변경은 adapter 수준으로 최소 반영
+- 현재 필요한 최신 연동: Team OCR의 `player.is_me=true`를 review draft의 실제 '나' 행으로 반영하는 `fe/src/lib/backend/supabase-adapter.ts` 변경
