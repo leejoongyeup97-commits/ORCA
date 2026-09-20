@@ -6,13 +6,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getStoredSession, getSupabaseConfig, signOut, type OrcaSession } from "@/lib/auth";
 
 const NAV_ITEMS = [
-  { href: "/", label: "대시보드", icon: "⌂", exact: true },
-  { href: "/matches/new", label: "경기 등록", icon: "＋", exact: false },
-  { href: "/matches", label: "경기 목록", icon: "▤", exact: true },
-  { href: "/analysis", label: "분석", icon: "◔", exact: false },
-  { href: "/insights", label: "인사이트", icon: "✦", exact: false },
-  { href: "/hypotheses", label: "가설", icon: "◇", exact: false },
-  { href: "/settings", label: "설정", icon: "⚙", exact: false },
+  { href: "/", label: "대시보드", exact: true },
+  { href: "/matches/new", label: "경기 등록", exact: false },
+  { href: "/matches", label: "경기 목록", exact: true },
+  { href: "/analysis", label: "분석", exact: false },
+  { href: "/insights", label: "인사이트", exact: false },
+  { href: "/hypotheses", label: "가설", exact: false },
+  { href: "/settings", label: "설정", exact: false },
 ] as const;
 
 function isActive(pathname: string, href: string, exact?: boolean) {
@@ -43,76 +43,74 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen md:pl-64">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-[var(--line)] bg-[#0b0f16]/95 px-4 py-5 backdrop-blur md:flex md:flex-col">
-        <Link href="/" className="mb-7 flex items-center gap-3 rounded-xl px-2 py-1 text-white no-underline">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--orange)] text-xs font-black text-black">OR</span>
-          <span>
-            <span className="block text-sm font-black tracking-[0.08em]">ORCA</span>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Overwatch Result Correlation Analysis · FE v0.12</span>
-          </span>
-        </Link>
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 bg-white/80 text-[#171A20] backdrop-blur-xl">
+        <div className="mx-auto flex min-h-16 max-w-[1440px] items-center gap-4 px-4 md:px-8">
+          <Link href="/" className="shrink-0 text-[#171A20] no-underline">
+            <span className="block text-[17px] font-medium">ORCA</span>
+            <span className="hidden text-[10px] font-normal text-[#5C5E62] lg:block">
+              Overwatch Result Correlation Analysis
+            </span>
+          </Link>
 
-        <nav className="space-y-1">
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
+            {NAV_ITEMS.map((item) => {
+              const active = isActive(pathname, item.href, item.exact);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-[4px] px-3 py-2 text-[13px] font-medium no-underline ${
+                    active
+                      ? "bg-[#F4F4F4] text-[#171A20]"
+                      : "text-[#393C41] hover:bg-[#F4F4F4] hover:text-[#171A20]"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="hidden max-w-44 truncate text-[11px] text-[#5C5E62] xl:block">
+              {session?.user.email || (config.configured ? "로그인 필요" : "Mock mode")}
+            </span>
+            {session ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="cursor-pointer rounded-[4px] bg-[#F4F4F4] px-3 py-2 text-[12px] font-medium text-[#393C41] hover:bg-[#EEEEEE]"
+              >
+                로그아웃
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-[4px] bg-[#F4F4F4] px-3 py-2 text-[12px] font-medium text-[#393C41] no-underline hover:bg-[#EEEEEE]"
+              >
+                {config.configured ? "로그인" : "계정"}
+              </Link>
+            )}
+          </div>
+        </div>
+
+        <nav className="flex gap-1 overflow-x-auto px-4 pb-3 md:hidden">
           {NAV_ITEMS.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold no-underline transition ${
-                  active
-                    ? "bg-[var(--orange-soft)] text-[var(--orange)]"
-                    : "text-[#aab3c2] hover:bg-[#151b27] hover:text-white"
+                className={`shrink-0 rounded-[4px] px-3 py-2 text-[12px] font-medium no-underline ${
+                  active ? "bg-[#F4F4F4] text-[#171A20]" : "text-[#5C5E62]"
                 }`}
               >
-                <span className="flex h-7 w-7 items-center justify-center text-base">{item.icon}</span>
-                <span>{item.label}</span>
+                {item.label}
               </Link>
             );
           })}
         </nav>
-
-        <div className="mt-auto rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-3">
-          <div className="flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${session ? "bg-[#8ee9aa]" : config.configured ? "bg-[#ffc779]" : "bg-[#667085]"}`} />
-            <p className="m-0 min-w-0 flex-1 truncate text-xs font-bold text-white">
-              {session?.user.email || (config.configured ? "로그인 필요" : "Mock mode")}
-            </p>
-          </div>
-          <p className="mb-0 mt-1 text-[10px] text-[var(--muted)]">
-            {session ? "Supabase auth session" : config.configured ? "Supabase 연결 준비됨" : "Local mock backend"}
-          </p>
-          {session ? (
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="mt-3 w-full cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white hover:border-[#4b5668]"
-            >
-              로그아웃
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="mt-3 block rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-center text-[10px] font-bold text-white no-underline hover:border-[#4b5668]"
-            >
-              {config.configured ? "로그인" : "로그인 화면 보기"}
-            </Link>
-          )}
-        </div>
-      </aside>
-
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--line)] bg-[#090c12]/90 px-4 py-3 backdrop-blur md:hidden">
-        <Link href="/" className="flex items-center gap-2 text-white no-underline">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--orange)] text-[10px] font-black text-black">OR</span>
-          <span className="text-xs font-black tracking-[0.08em]">ORCA</span>
-        </Link>
-        <div className="flex gap-1">
-          <Link href="/matches/new" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">등록</Link>
-          <Link href="/matches" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">목록</Link>
-          <Link href="/insights" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">인사이트</Link>
-          <Link href="/login" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">계정</Link>
-        </div>
       </header>
 
       <div className="min-h-screen">{children}</div>
