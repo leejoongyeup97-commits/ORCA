@@ -52,6 +52,8 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
+  const [seasonFilter, setSeasonFilter] = useState("all");
+  const [patchFilter, setPatchFilter] = useState("all");
 
   useEffect(() => {
     let mounted = true;
@@ -70,6 +72,15 @@ export default function MatchesPage() {
 
   const actionCount = matches.filter((match) => match.status === "needs_review" || match.status === "failed").length;
 
+  const seasonOptions = useMemo(
+    () => Array.from(new Set(matches.map((match) => match.editable.season).filter(Boolean))).sort(),
+    [matches],
+  );
+  const patchOptions = useMemo(
+    () => Array.from(new Set(matches.map((match) => match.editable.patch_label).filter(Boolean))).sort().reverse(),
+    [matches],
+  );
+
   const visible = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return matches.filter((match) => {
@@ -81,6 +92,8 @@ export default function MatchesPage() {
             : match.status === filter;
 
       if (!filterOk) return false;
+      if (seasonFilter !== "all" && match.editable.season !== seasonFilter) return false;
+      if (patchFilter !== "all" && match.editable.patch_label !== patchFilter) return false;
       if (!normalized) return true;
 
       return [
@@ -88,13 +101,15 @@ export default function MatchesPage() {
         match.editable.map_name,
         match.editable.game_mode,
         match.editable.my_hero,
+        match.editable.season,
+        match.editable.patch_label,
         RESULT_META[match.editable.result].label,
       ]
         .join(" ")
         .toLowerCase()
         .includes(normalized);
     });
-  }, [filter, matches, query]);
+  }, [filter, matches, patchFilter, query, seasonFilter]);
 
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
@@ -123,20 +138,54 @@ export default function MatchesPage() {
         </section>
 
         <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
-          <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
+          <div className="border-b border-[var(--line)] p-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap gap-2">
               <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>전체 {matches.length}</FilterButton>
               <FilterButton active={filter === "action"} onClick={() => setFilter("action")}>확인 필요 {actionCount}</FilterButton>
               <FilterButton active={filter === "pending_ocr"} onClick={() => setFilter("pending_ocr")}>OCR 대기</FilterButton>
               <FilterButton active={filter === "needs_review"} onClick={() => setFilter("needs_review")}>검수 필요</FilterButton>
               <FilterButton active={filter === "confirmed"} onClick={() => setFilter("confirmed")}>완료</FilterButton>
+              </div>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="맵 · 영웅 · 시즌 · 패치 · 경기 ID 검색"
+                className="w-full rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-xs text-white outline-none placeholder:text-[#657083] focus:border-[var(--orange)] xl:w-[300px]"
+              />
             </div>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="맵 · 영웅 · 모드 · 경기 ID 검색"
-              className="w-full rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-xs text-white outline-none placeholder:text-[#657083] focus:border-[var(--orange)] lg:w-[260px]"
-            />
+
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3">
+              <select
+                value={seasonFilter}
+                onChange={(event) => setSeasonFilter(event.target.value)}
+                className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white outline-none"
+              >
+                <option value="all">시즌 전체</option>
+                {seasonOptions.map((season) => <option key={season} value={season}>{season}</option>)}
+              </select>
+              <select
+                value={patchFilter}
+                onChange={(event) => setPatchFilter(event.target.value)}
+                className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white outline-none"
+              >
+                <option value="all">패치 전체</option>
+                {patchOptions.map((patch) => <option key={patch} value={patch}>{patch}</option>)}
+              </select>
+              {(seasonFilter !== "all" || patchFilter !== "all" || query) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSeasonFilter("all");
+                    setPatchFilter("all");
+                    setQuery("");
+                  }}
+                  className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#121823] px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
+                >
+                  필터 초기화
+                </button>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -177,6 +226,12 @@ export default function MatchesPage() {
                       <p className="mb-0 mt-1 truncate text-[10px] text-[var(--muted)]">
                         {match.editable.game_mode || "게임 모드 미확인"} · 이미지 {match.files.length}장
                       </p>
+                      {(match.editable.season || match.editable.patch_label) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {match.editable.season && <span className="rounded-md bg-[#171e2a] px-2 py-1 text-[9px] font-bold text-[#b8c0cf]">{match.editable.season}</span>}
+                          {match.editable.patch_label && <span className="rounded-md bg-[rgba(102,169,255,0.10)] px-2 py-1 text-[9px] font-bold text-[#9bc6ff]">{match.editable.patch_label}</span>}
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-4 gap-1.5 text-xs">
