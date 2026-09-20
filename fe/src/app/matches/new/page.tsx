@@ -2,6 +2,14 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BACKEND_MODE, getMatchBackendAdapter } from "@/lib/backend";
+import {
+  ensureScreenshotFolderPermission,
+  getSavedScreenshotFolder,
+  getScreenshotAutoScanEnabled,
+  pickAndSaveScreenshotFolder,
+  queryScreenshotFolderPermission,
+  supportsDirectoryPicker,
+} from "@/lib/screenshot-folder";
 
 type ScreenType = "summary" | "team" | "personal" | "replay" | "unknown";
 type ReviewStatus = "unreviewed" | "ready_to_upload" | "uploading" | "pending_ocr";
@@ -13,23 +21,6 @@ type UploadUiState = {
   message: string;
   matchId?: string;
 };
-
-type DirectoryEntryLike = {
-  kind: "file" | "directory";
-  name: string;
-  getFile?: () => Promise<File>;
-};
-
-type DirectoryHandleLike = {
-  name: string;
-  values: () => AsyncIterableIterator<DirectoryEntryLike>;
-};
-
-declare global {
-  interface Window {
-    showDirectoryPicker?: () => Promise<DirectoryHandleLike>;
-  }
-}
 
 type Classification = {
   id: string;
@@ -266,6 +257,49 @@ export default function NewMatchPage() {
     total: 0,
     message: "",
   });
+  const autoScanStartedRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getSavedScreenshotFolder()
+      .then(async (handle) => {
+        if (!mounted || !handle) {
+          if (mounted) setMessage("설정에서 스크린샷 폴더를 지정하면 이후에는 폴더를 다시 고를 필요가 없습니다.");
+          return;
+        }
+
+        setFolderName(handle.name);
+        const previous = loadFolderState(handle.name);
+        setLastProcessed(previous?.lastFileName ?? "");
+
+        const permission = await queryScreenshotFolderPermission(handle);
+        if (!mounted) return;
+
+        if (
+          getScreenshotAutoScanEnabled() &&
+          permission === "granted" &&
+          !autoScanStartedRef.current
+        ) {
+          autoScanStartedRef.current = true;
+          void autoClassify("auto");
+          return;
+        }
+
+        setMessage(
+          permission === "granted"
+            ? `고정 폴더 '${handle.name}'가 연결되어 있습니다. 자동 분류하기를 누르면 새 파일만 확인합니다.`
+            : `고정 폴더 '${handle.name}'가 저장되어 있습니다. 자동 분류하기를 누르면 브라우저 권한만 확인합니다.`,
+        );
+      })
+      .catch(() => {
+        if (mounted) setMessage("저장된 폴더 설정을 읽지 못했습니다. 설정에서 폴더를 다시 지정해 주세요.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const all = matches.flatMap((match) => match.files).filter((item) => !item.excluded);
@@ -283,19 +317,40 @@ export default function NewMatchPage() {
     [matches, reviewingMatchId],
   );
 
-  async function autoClassify() {
-    if (!window.showDirectoryPicker) {
+  async function autoClassify(source: "manual" | "auto" = "manual") {
+    if (!supportsDirectoryPicker()) {
       setStatus("error");
       setMessage("현재 브라우저는 폴더 자동 읽기를 지원하지 않습니다. Windows의 Chrome 또는 Edge에서 localhost로 실행해 주세요.");
       return;
     }
 
     try {
-      setStatus("scanning");
-      setMessage("폴더를 선택한 뒤 새 스크린샷을 찾고 있습니다...");
+      let handle = await getSavedScreenshotFolder();
 
-      const handle = await window.showDirectoryPicker();
+      if (!handle) {
+        if (source === "auto") {
+          setStatus("idle");
+          setMessage("설정에서 스크린샷 폴더를 먼저 지정해 주세요.");
+          return;
+        }
+        handle = await pickAndSaveScreenshotFolder();
+      } else {
+        const allowed = await ensureScreenshotFolderPermission(handle, source === "manual");
+        if (!allowed) {
+          setStatus("idle");
+          setFolderName(handle.name);
+          setMessage(
+            source === "auto"
+              ? `고정 폴더 '${handle.name}'의 읽기 권한을 다시 확인해야 합니다. 자동 분류하기를 한 번 눌러 주세요.`
+              : `고정 폴더 '${handle.name}'의 읽기 권한이 필요합니다. 브라우저 권한 요청을 허용해 주세요.`,
+          );
+          return;
+        }
+      }
+
+      setStatus("scanning");
       setFolderName(handle.name);
+      setMessage(`고정 폴더 '${handle.name}'에서 새 스크린샷을 찾고 있습니다...`);
 
       const files: File[] = [];
       for await (const entry of handle.values()) {
@@ -663,7 +718,7 @@ export default function NewMatchPage() {
           <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 등록</p>
           <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">스크린샷 폴더에서 경기를 자동으로 찾습니다</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            파일을 한 장씩 업로드할 필요가 없습니다. 자동 분류하기를 누르고 오버워치 스크린샷 폴더만 선택하면 새 파일만 찾아서 요약 화면을 기준으로 경기별로 묶습니다.
+            설정에서 오버워치 스크린샷 폴더를 한 번 지정해두면 됩니다. 이후에는 같은 폴더에서 새 파일만 찾아 요약 화면을 기준으로 경기별로 묶습니다.
           </p>
         </section>
 
@@ -674,7 +729,7 @@ export default function NewMatchPage() {
                 <div>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-[var(--orange-soft)] px-2.5 py-1 text-[10px] font-black text-[var(--orange)]">LOCAL AUTO IMPORT</span>
-                    {folderName && <span className="text-xs text-[var(--muted)]">선택 폴더 · {folderName}</span>}
+                    {folderName && <span className="text-xs text-[var(--muted)]">고정 폴더 · {folderName}</span>}
                   </div>
                   <h2 className="m-0 text-xl font-bold">새 경기 자동 분류</h2>
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">요약 → 팀 → 개인 상세 → 리플레이 순서가 섞여 있어도 화면 모양으로 구분합니다.</p>
@@ -682,7 +737,7 @@ export default function NewMatchPage() {
                 <button
                   type="button"
                   disabled={status === "scanning"}
-                  onClick={autoClassify}
+                  onClick={() => void autoClassify("manual")}
                   className="min-w-[180px] rounded-xl bg-[var(--orange)] px-6 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
                   {status === "scanning" ? "분류 중..." : "자동 분류하기"}
@@ -800,7 +855,7 @@ export default function NewMatchPage() {
               <section className="rounded-2xl border border-dashed border-[#364052] bg-[#0d1118] px-6 py-12 text-center">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#364052] bg-[var(--panel)] text-xl">⌕</div>
                 <p className="m-0 text-sm font-bold">아직 분류된 경기가 없습니다</p>
-                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">자동 분류하기를 누른 뒤 스크린샷이 저장되는 폴더를 선택하세요.</p>
+                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">설정에서 고정한 스크린샷 폴더의 새 이미지를 확인하면 여기에 경기별로 나타납니다.</p>
               </section>
             )}
           </section>
@@ -828,7 +883,7 @@ export default function NewMatchPage() {
             </section>
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
-              <p className="m-0 text-sm font-bold text-[#8ee9aa]">v0.7 연결 흐름</p>
+              <p className="m-0 text-sm font-bold text-[#8ee9aa]">고정 폴더 연결 흐름</p>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">검수 완료 후 Mock Draft 생성 → 파일 업로드 → pending_ocr까지 진행합니다. 이후 경기 목록의 상세 화면에서 Mock OCR, 값 수정, 확정, 삭제까지 테스트할 수 있습니다.</p>
             </section>
 
