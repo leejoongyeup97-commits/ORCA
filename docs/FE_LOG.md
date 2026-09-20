@@ -95,3 +95,10 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 - 조치: `fe/src/lib/ocr-integration.ts`의 Team 결과 적용 단계에서 OCR `is_me=true` 행을 '나'로 지정하고 기존 기본 '나' 표시 제거
 - PR: #4
 - develop merge commit: `46192af3450e38b0ce879a343325ea692edbff8a`
+
+
+### 2026-09-21 · OCR 재실행 legacy upload type fallback
+- 상태: DONE
+- `screen_type`이 비어 있는 기존 Supabase upload도 `upload_type` 기준으로 summary/team/personal/replay를 복원하도록 수정
+- 처리 파일 0개인 경우 명시적 오류 처리
+- PR #6 / develop merge `d6cb2bf794628b3864c5f0ea20b994928b729410`
