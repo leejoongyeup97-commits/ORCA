@@ -959,27 +959,41 @@ export default function NewMatchPage() {
 
 function ReviewScreen({
   match,
+  queue,
+  currentIndex,
+  reviewedCount,
   selectedFileId,
   notice,
   onSelectFile,
   onBack,
+  onSelectMatch,
+  onPrevious,
+  onNext,
   onChangeType,
   onToggleExcluded,
   onMove,
   onAddFiles,
   onReady,
+  onReadyAndNext,
   uploadState,
 }: {
   match: DetectedMatch;
+  queue: DetectedMatch[];
+  currentIndex: number;
+  reviewedCount: number;
   selectedFileId: string | null;
   notice: string;
   onSelectFile: (id: string) => void;
   onBack: () => void;
+  onSelectMatch: (matchId: string) => void;
+  onPrevious: () => void;
+  onNext: () => void;
   onChangeType: (fileId: string, type: ScreenType) => void;
   onToggleExcluded: (fileId: string) => void;
   onMove: (fileId: string, direction: -1 | 1) => void;
   onAddFiles: (event: ChangeEvent<HTMLInputElement>) => void;
   onReady: () => void;
+  onReadyAndNext: () => void;
   uploadState: UploadUiState;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1001,9 +1015,76 @@ function ReviewScreen({
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[1320px]">
 
+        <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[var(--orange-soft)] px-2.5 py-1 text-[9px] font-black text-[var(--orange)]">BATCH REVIEW</span>
+                <span className="text-xs font-bold text-white">{currentIndex + 1} / {queue.length}</span>
+                <span className="text-[10px] text-[var(--muted)]">완료 {reviewedCount}건</span>
+              </div>
+              <div className="mt-3 h-1.5 w-full max-w-[360px] overflow-hidden rounded-full bg-[#171e2a]">
+                <div
+                  className="h-full rounded-full bg-[var(--orange)] transition-all"
+                  style={{ width: `${queue.length > 0 ? Math.round(((currentIndex + 1) / queue.length) * 100) : 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={currentIndex <= 0}
+                onClick={onPrevious}
+                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ← 이전 경기
+              </button>
+              <button
+                type="button"
+                disabled={currentIndex >= queue.length - 1}
+                onClick={onNext}
+                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                다음 경기 →
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {queue.map((item, index) => {
+              const valid = validateMatch(item).valid;
+              const done = item.reviewStatus === "pending_ocr";
+              const active = item.id === match.id;
+
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => onSelectMatch(item.id)}
+                  className={`min-w-[116px] cursor-pointer rounded-xl border px-3 py-2 text-left transition ${
+                    active
+                      ? "border-[var(--orange)] bg-[var(--orange-soft)]"
+                      : done
+                        ? "border-[rgba(121,227,156,0.25)] bg-[rgba(121,227,156,0.05)]"
+                        : "border-[var(--line)] bg-[#0d1118] hover:border-[#4b5668]"
+                  }`}
+                >
+                  <span className={`block text-[9px] font-black ${active ? "text-[var(--orange)]" : done ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
+                    경기 {index + 1}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-bold text-white">
+                    {done ? "완료" : valid ? "검수 가능" : "확인 필요"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 분류 결과로</button>
+            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 전체 검수 종료</button>
             <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 검수</p>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.03em]">{match.id}</h1>
             <p className="mt-2 text-xs text-[var(--muted)]">자동 분류가 틀린 이미지는 직접 바꾸고, 필요 없는 이미지는 제외한 뒤 업로드 준비 완료로 표시하세요.</p>
@@ -1149,16 +1230,39 @@ function ReviewScreen({
 
               <button
                 type="button"
-                disabled={!validation.valid || uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"}
-                onClick={onReady}
+                disabled={
+                  (match.reviewStatus !== "pending_ocr" && !validation.valid) ||
+                  uploadState.phase === "creating" ||
+                  uploadState.phase === "uploading" ||
+                  uploadState.phase === "completing"
+                }
+                onClick={onReadyAndNext}
                 className="mt-4 w-full rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
               >
-                {match.reviewStatus === "pending_ocr"
-                  ? "Mock 업로드 완료"
-                  : uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
-                    ? "업로드 중..."
-                    : "검수 완료 · Mock 업로드"}
+                {uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
+                  ? "업로드 중..."
+                  : match.reviewStatus === "pending_ocr"
+                    ? currentIndex < queue.length - 1
+                      ? "다음 경기 검수 →"
+                      : "전체 검수 완료"
+                    : currentIndex < queue.length - 1
+                      ? "검수 완료 · 다음 경기 →"
+                      : "검수 완료 · 전체 검수 끝"}
               </button>
+              {match.reviewStatus !== "pending_ocr" && validation.valid && (
+                <button
+                  type="button"
+                  onClick={onReady}
+                  disabled={
+                    uploadState.phase === "creating" ||
+                    uploadState.phase === "uploading" ||
+                    uploadState.phase === "completing"
+                  }
+                  className="mt-2 w-full cursor-pointer rounded-xl border border-[var(--line)] bg-[#0d1118] px-5 py-3 text-[10px] font-bold text-[var(--muted)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  이 경기만 저장하고 계속 보기
+                </button>
+              )}
               <p className="mb-0 mt-3 text-[10px] leading-4 text-[var(--muted)]">현재 백엔드 모드: <strong className="text-white">{BACKEND_MODE}</strong>. 실제 Supabase 연결 전까지 연결규격 v0.1과 동일한 Mock Adapter로 업로드 흐름을 검증합니다.</p>
             </section>
           </aside>
