@@ -178,6 +178,24 @@ export default function MatchDetailPage() {
     }
   }
 
+  async function rerunOcr() {
+    if (!match) return;
+    setBusy("ocr");
+    setNotice("");
+    try {
+      const updated = await getMatchBackendAdapter().runMockOcr(match.match_id);
+      setMatch(updated);
+      setForm(updated.editable);
+      setPlayedAtLocal(toLocalDateTime(updated.editable.played_at));
+      setOcrBundle(getStoredOcrBundle(match.match_id));
+      setNotice("OCR을 다시 실행했습니다.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "OCR 재실행에 실패했습니다.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function deleteMatch() {
     if (!match) return;
     const ok = window.confirm("이 경기를 삭제할까요? Mock 데이터에서 완전히 제거됩니다.");
@@ -212,6 +230,7 @@ export default function MatchDetailPage() {
   const statusMeta = STATUS_META[match.status];
   const canConfirm = match.status === "needs_review";
   const isConfirmed = match.status === "confirmed";
+  const canRerunOcr = ["pending_ocr", "needs_review", "failed"].includes(match.status);
 
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
@@ -229,6 +248,11 @@ export default function MatchDetailPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {canRerunOcr && (
+                <button type="button" disabled={busy !== null} onClick={rerunOcr} className="cursor-pointer rounded-xl border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-4 py-2.5 text-xs font-bold text-[#9bc6ff] disabled:opacity-40">
+                  {busy === "ocr" ? "OCR 실행 중..." : "OCR 다시 실행"}
+                </button>
+              )}
               {canConfirm && (
                 <button type="button" disabled={busy !== null} onClick={confirmMatch} className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black disabled:opacity-40">
                   {busy === "confirm" ? "확정 중..." : "검수 확정"}
@@ -319,6 +343,7 @@ export default function MatchDetailPage() {
             </form>
 
             <MatchReviewEditor
+              key={match.ocr.generated_at ?? match.match_id}
               matchId={match.match_id}
               defaultHero={match.editable.my_hero}
               onChange={setReviewDraft}
