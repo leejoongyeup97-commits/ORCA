@@ -346,3 +346,17 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 현재 production Team OCR: RapidOCR + blue/red 분리 행 탐지
 - 관련 production 커밋: `9c3d0f0acfebfb393cfc33c6c9b2cd064ee37472`, `3164382c29523261393b48e700f7acddfb43e594`, `3ceb6878ab683ae81013e4b926a1d1fc5dc21eae`
 - NOTE: 남은 오답은 deaths 1셀. 현재 99.8% 기준에서는 production 차단 사유로 보지 않고 추후 추가 샘플이 쌓일 때 재검토
+
+
+### 2026-09-20 · Team 내 행(is_me) 하이라이트 분석기 추가
+- 상태: IN_PROGRESS
+- 내용:
+  - Team 숫자 OCR 완료 후 다음 작업으로 내 행 자동 식별 실험 시작
+  - 닉네임 OCR/저장 없이 아군 5개 행의 배경 명도 차이를 비교
+  - 영웅 초상화/밝은 숫자 텍스트 영향을 줄이기 위해 stats 쪽 넓은 배경에서 밝은 텍스트를 마스킹한 뒤 median/p70 명도 점수 계산
+  - 가장 밝은 행과 2위 행의 margin 및 robust z-score로 confident 여부 판단
+  - production `is_me`는 아직 변경하지 않음
+- 관련 파일: `be/ocr_benchmark/analyze_team_highlight.py`
+- 출력: `last_highlight_analysis.json`, `highlight_montage.jpg`, `highlight_debug/*.jpg`
+- 완료 커밋: `aa37fe2d1f71839436cd089e8ca020b7e0530f75`
+- TODO: 고정 10개 Team 이미지에서 candidate/confidence와 debug montage를 확인. 일관되면 production `is_me` 판정으로 승격
