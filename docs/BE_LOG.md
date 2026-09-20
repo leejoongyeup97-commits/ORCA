@@ -298,3 +298,19 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 파일: `be/ocr_benchmark/analyze_rapidocr_failures.py`
 - 완료 커밋: `5bc95b4229fbf504eda6be45990616c6fcbd3a42`
 - TODO: 로컬에서 분석기 실행 후 결과에 따라 다음 실험을 결정. 구조적 문제면 crop/layout을 수정하고, 구조적 편향이 없으면 다른 OCR 계열로 이동
+
+
+### 2026-09-20 · RapidOCR 구조적 원인 확인 / 적군 행 탐지 수정
+- 상태: IN_PROGRESS
+- 분석 결과:
+  - blue 300/300 = 100.0%
+  - red 17/300 = 5.7%
+  - row 1~5는 모두 60/60, row 6~10은 0~10% 수준
+- 결론: OCR 엔진 자체가 아니라 Team scoreboard의 하단 5개 행 좌표 탐지가 핵심 병목으로 확인됨
+- 조치:
+  - 기존처럼 10개 행을 한 번에 찾지 않고, 정확한 blue 5개 행을 기준으로 row spacing을 계산
+  - team separator 아래에서 동일 spacing의 red 5개 행 시퀀스를 별도로 탐색하도록 RapidOCR 실험기 수정
+  - production OCR은 아직 변경하지 않음
+- 관련 파일: `be/ocr_benchmark/rapidocr_experiment.py`
+- 완료 커밋: `03ea3bbd49159851a164fc0bb2d8e6ad2a246674`
+- TODO: 동일 600셀 benchmark 재실행. red 정확도가 크게 회복되면 해당 row detector를 production 후보로 승격
