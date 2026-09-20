@@ -265,3 +265,19 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 파일: `be/ocr_benchmark/compare_team_candidates.py`
 - 완료 커밋: `068d241c15bb98669914025f8edfc9f581a7ea70`
 - TODO: 로컬에서 분석기 실행. oracle 상한이 충분히 높으면 confidence-based hybrid 실험, 낮으면 Tesseract 계열 조합을 중단하고 다른 OCR 계열로 이동
+
+
+### 2026-09-20 · Tesseract Hybrid 가능성 판정
+- 상태: DONE
+- 결과: baseline 49.0%, grid 52.5%, oracle 52.8%
+- 겹침: both correct 292, baseline only 2, grid only 23, both wrong 283
+- 결론: 두 Tesseract 방식의 이론적 결합 상한도 52.8%라서 hybrid 구현 가치는 거의 없음. Tesseract 계열 조합 실험 종료
+
+### 2026-09-20 · RapidOCR 독립 후보 추가
+- 상태: IN_PROGRESS
+- 내용: Tesseract 계열을 종료하고 다른 인식 모델 계열로 이동. RapidOCR + ONNX Runtime을 production과 분리된 benchmark 후보로 추가
+- 방식: 기존 scoreboard 행/열 좌표로 60개 숫자 셀을 crop하고, RapidOCR recognition-only 모드로 숫자를 읽어 600셀 자동 채점
+- 관련 파일: `be/ocr_benchmark/rapidocr_experiment.py`, `be/ocr_benchmark/run_rapidocr_benchmark.py`, `be/ocr_benchmark/requirements_rapidocr.txt`
+- 관련 커밋: `1f88309b9b7c7b0c2a8b87503b73797a92b843ba`, `d344d33bd79fa2319a564b51f3f509aeae0030e9`, `2761eb44aac2c7450f76e1a527c63ba8e39e1f97`
+- NOTE: 공식 RapidOCR 최신 문서 기준 `rapidocr` + `onnxruntime` 조합을 사용. production requirements에는 아직 추가하지 않음
+- TODO: 별도 benchmark dependency 설치 후 10장 / 600셀 정확도와 전체 처리시간 측정. 기준선 52.5%를 유의미하게 넘지 못하면 채택하지 않음
