@@ -37,7 +37,7 @@ export default function LoginPage() {
           <div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--orange)] text-sm font-black text-black">OR</div>
             <p className="mb-0 mt-6 text-xs font-black tracking-[0.22em] text-[var(--orange)]">ORCA</p>
-            <h1 className="mt-3 text-3xl font-black tracking-[-0.04em] text-white">Overwatch Research & Competitive Analytics</h1>
+            <h1 className="mt-3 text-3xl font-black tracking-[-0.04em] text-white">Overwatch Result Correlation Analysis</h1>
             <p className="mt-4 max-w-sm text-sm leading-6 text-[var(--muted)]">
               경기 캡처부터 OCR 검수, 승패 요인 분석까지 한 흐름으로 관리합니다.
             </p>
