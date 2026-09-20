@@ -40,11 +40,18 @@ function countAvailable(matches: MatchListItem[], key: HypothesisDataKey) {
       return confirmed.filter((match) => match.editable.game_mode.trim()).length;
     case "hero":
       return confirmed.filter((match) => match.editable.my_hero.trim()).length;
+    case "manual_context":
+      return confirmed.filter(
+        (match) =>
+          match.editable.side !== "unknown" ||
+          match.editable.control_submap.trim() ||
+          match.editable.round_sequence.trim(),
+      ).length;
+    case "patch":
+      return confirmed.filter((match) => match.editable.patch_label.trim()).length;
     case "player_stats":
     case "hero_detail":
     case "team_comp":
-    case "manual_context":
-    case "patch":
     case "meta_snapshot":
     case "profile_snapshot":
     case "duo_link":
