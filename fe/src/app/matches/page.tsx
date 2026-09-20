@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getMatchBackendAdapter, type MatchImportStatus, type MatchListItem } from "@/lib/backend";
+import {
+  getMatchBackendAdapter,
+  type MatchImportStatus,
+  type MatchListItem,
+  type MatchResult,
+} from "@/lib/backend";
 
 const STATUS_META: Record<MatchImportStatus, { label: string; className: string }> = {
   awaiting_upload: { label: "업로드 대기", className: "bg-[rgba(249,158,26,0.12)] text-[var(--orange)]" },
@@ -11,6 +16,13 @@ const STATUS_META: Record<MatchImportStatus, { label: string; className: string 
   needs_review: { label: "검수 필요", className: "bg-[rgba(255,184,92,0.14)] text-[#ffc779]" },
   confirmed: { label: "완료", className: "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" },
   failed: { label: "오류", className: "bg-[rgba(255,113,113,0.12)] text-[#ff9b9b]" },
+};
+
+const RESULT_META: Record<MatchResult, { label: string; className: string }> = {
+  win: { label: "승리", className: "text-[#8ee9aa]" },
+  loss: { label: "패배", className: "text-[#ff9b9b]" },
+  draw: { label: "무승부", className: "text-[#d0a9ff]" },
+  unknown: { label: "미확인", className: "text-[var(--muted)]" },
 };
 
 type FilterKey = "all" | "action" | MatchImportStatus;
@@ -39,6 +51,7 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -55,13 +68,33 @@ export default function MatchesPage() {
     };
   }, []);
 
-  const visible = useMemo(() => {
-    if (filter === "all") return matches;
-    if (filter === "action") return matches.filter((match) => match.status === "needs_review" || match.status === "failed");
-    return matches.filter((match) => match.status === filter);
-  }, [filter, matches]);
-
   const actionCount = matches.filter((match) => match.status === "needs_review" || match.status === "failed").length;
+
+  const visible = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return matches.filter((match) => {
+      const filterOk =
+        filter === "all"
+          ? true
+          : filter === "action"
+            ? match.status === "needs_review" || match.status === "failed"
+            : match.status === filter;
+
+      if (!filterOk) return false;
+      if (!normalized) return true;
+
+      return [
+        match.match_id,
+        match.editable.map_name,
+        match.editable.game_mode,
+        match.editable.my_hero,
+        RESULT_META[match.editable.result].label,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized);
+    });
+  }, [filter, matches, query]);
 
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
@@ -71,7 +104,7 @@ export default function MatchesPage() {
             <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 데이터</p>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">경기 목록</h1>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              등록한 경기의 업로드, OCR, 검수 상태를 한곳에서 확인합니다.
+              등록한 경기의 업로드, OCR, 검수 상태와 확정 데이터를 한곳에서 관리합니다.
             </p>
           </div>
           <Link
@@ -90,14 +123,20 @@ export default function MatchesPage() {
         </section>
 
         <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
-          <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>전체 {matches.length}</FilterButton>
               <FilterButton active={filter === "action"} onClick={() => setFilter("action")}>확인 필요 {actionCount}</FilterButton>
               <FilterButton active={filter === "pending_ocr"} onClick={() => setFilter("pending_ocr")}>OCR 대기</FilterButton>
+              <FilterButton active={filter === "needs_review"} onClick={() => setFilter("needs_review")}>검수 필요</FilterButton>
               <FilterButton active={filter === "confirmed"} onClick={() => setFilter("confirmed")}>완료</FilterButton>
             </div>
-            <span className="text-xs text-[var(--muted)]">Mock 데이터 기준</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="맵 · 영웅 · 모드 · 경기 ID 검색"
+              className="w-full rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-xs text-white outline-none placeholder:text-[#657083] focus:border-[var(--orange)] lg:w-[260px]"
+            />
           </div>
 
           {loading ? (
@@ -116,32 +155,43 @@ export default function MatchesPage() {
                 const team = countType(match, "team");
                 const personal = countType(match, "personal");
                 const replay = countType(match, "replay");
+                const result = RESULT_META[match.editable.result];
+
                 return (
-                  <article key={match.match_id} className="grid gap-4 px-5 py-4 transition hover:bg-[#141a25] lg:grid-cols-[170px_120px_1fr_210px] lg:items-center">
+                  <article key={match.match_id} className="grid gap-4 px-5 py-4 transition hover:bg-[#141a25] xl:grid-cols-[150px_110px_1fr_200px_auto] xl:items-center">
                     <div>
-                      <p className="m-0 text-sm font-bold text-white">{formatDate(match.detected_at)}</p>
-                      <p className="mt-1 truncate text-[10px] text-[var(--muted)]">{match.match_id.slice(0, 18)}...</p>
+                      <p className="m-0 text-sm font-bold text-white">{formatDate(match.editable.played_at || match.detected_at)}</p>
+                      <p className="mt-1 truncate text-[10px] text-[var(--muted)]">{match.match_id.slice(0, 16)}...</p>
                     </div>
 
                     <div>
                       <MatchStatus status={match.status} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <strong className="truncate text-sm text-white">{match.editable.map_name || "맵 미확인"}</strong>
+                        <span className={`text-xs font-black ${result.className}`}>{result.label}</span>
+                        {match.editable.my_hero && <span className="text-xs text-[#9bc6ff]">{match.editable.my_hero}</span>}
+                      </div>
+                      <p className="mb-0 mt-1 truncate text-[10px] text-[var(--muted)]">
+                        {match.editable.game_mode || "게임 모드 미확인"} · 이미지 {match.files.length}장
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 text-xs">
                       <DataChip label="요약" value={summary} />
                       <DataChip label="팀" value={team} />
                       <DataChip label="개인" value={personal} />
-                      <DataChip label="리플레이" value={replay} />
+                      <DataChip label="리플" value={replay} />
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 lg:justify-end">
-                      <div className="text-right">
-                        <p className="m-0 text-xs font-bold text-white">{match.files.length}장</p>
-                        <p className="mt-1 text-[10px] text-[var(--muted)]">
-                          {match.status === "confirmed" ? "분석 데이터 사용 가능" : "맵 · 승패 · 영웅은 OCR 후 표시"}
-                        </p>
-                      </div>
-                    </div>
+                    <Link
+                      href={`/matches/${match.match_id}`}
+                      className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-center text-xs font-bold text-white no-underline transition hover:border-[#4b5668] hover:bg-[#19202d]"
+                    >
+                      상세 / 수정
+                    </Link>
                   </article>
                 );
               })}
@@ -181,9 +231,9 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 
 function DataChip({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-2.5 py-2">
-      <span className="text-[10px] text-[var(--muted)]">{label}</span>
-      <strong className="ml-2 text-white">{value}</strong>
+    <div className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-2 py-1.5 text-center">
+      <span className="block text-[9px] text-[var(--muted)]">{label}</span>
+      <strong className="mt-0.5 block text-[11px] text-white">{value}</strong>
     </div>
   );
 }
