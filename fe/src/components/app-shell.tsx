@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/matches/new", label: "경기 등록", icon: "＋", exact: false },
   { href: "/matches", label: "경기 목록", icon: "▤", exact: true },
   { href: "/analysis", label: "분석", icon: "◔", exact: false },
+  { href: "/insights", label: "인사이트", icon: "✦", exact: false },
   { href: "/hypotheses", label: "가설", icon: "◇", exact: false },
   { href: "/settings", label: "설정", icon: "⚙", exact: false },
 ] as const;
@@ -48,7 +49,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--orange)] text-xs font-black text-black">OR</span>
           <span>
             <span className="block text-sm font-black tracking-[0.08em]">ORCA</span>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Overwatch Analytics · FE v0.8</span>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Overwatch Analytics · FE v0.9</span>
           </span>
         </Link>
 
@@ -109,6 +110,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <div className="flex gap-1">
           <Link href="/matches/new" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">등록</Link>
           <Link href="/matches" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">목록</Link>
+          <Link href="/insights" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">인사이트</Link>
           <Link href="/login" className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[10px] font-bold text-white no-underline">계정</Link>
         </div>
       </header>
