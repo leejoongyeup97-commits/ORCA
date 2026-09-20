@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 import { BACKEND_MODE } from "@/lib/backend";
+import { getSupabaseConfig } from "@/lib/auth";
 
 type ExportPayload = {
   exported_at: string;
@@ -24,6 +25,7 @@ function collectAppStorage() {
 export default function SettingsPage() {
   const [storageCount, setStorageCount] = useState(0);
   const [notice, setNotice] = useState("");
+  const supabaseConfig = getSupabaseConfig();
 
   function refreshCount() {
     setStorageCount(Object.keys(collectAppStorage()).length);
@@ -107,6 +109,7 @@ export default function SettingsPage() {
             <dl className="mt-4 space-y-3 text-xs">
               <Row label="Frontend" value="v0.7" />
               <Row label="Backend mode" value={BACKEND_MODE} />
+              <Row label="Auth" value={supabaseConfig.configured ? "Supabase 준비됨" : "Mock / 미설정"} />
               <Row label="Contract" value="v0.1" />
               <Row label="저장 위치" value="브라우저 localStorage" />
               <Row label="Mock 저장 항목" value={String(storageCount)} />
