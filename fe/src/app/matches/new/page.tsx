@@ -257,6 +257,7 @@ export default function NewMatchPage() {
     total: 0,
     message: "",
   });
+  const [bulkReviewState, setBulkReviewState] = useState({ running: false, current: 0, total: 0 });
   const autoScanStartedRef = useRef(false);
 
   useEffect(() => {
@@ -598,9 +599,9 @@ export default function NewMatchPage() {
     setReviewNotice(`${additions.length}장을 추가했습니다. 화면 종류를 직접 지정해 주세요.`);
   }
 
-  async function markReady(match: DetectedMatch): Promise<boolean> {
+  async function markReady(match: DetectedMatch, skipValidation = false): Promise<boolean> {
     const validation = validateMatch(match);
-    if (!validation.valid) {
+    if (!skipValidation && !validation.valid) {
       setReviewNotice(validation.messages.join(" · "));
       return false;
     }
@@ -729,7 +730,40 @@ export default function NewMatchPage() {
       return;
     }
 
-    setReviewNotice("이번에 발견된 모든 경기 검수가 끝났습니다.");
+    setMessage("이번에 발견된 모든 경기 검수가 끝났습니다.");
+    closeReview();
+  }
+
+  async function approveAllWithoutReview() {
+    const targets = matches.filter((item) => item.reviewStatus !== "pending_ocr");
+    if (targets.length === 0) {
+      setMessage("이번에 발견된 경기는 이미 모두 검수 완료 상태입니다.");
+      closeReview();
+      return;
+    }
+
+    const ok = window.confirm(
+      `자동 분류 결과를 그대로 믿고 남은 ${targets.length}개 경기를 한 번에 검수 완료 처리할까요?\n\n미분류나 잘못된 분류가 있어도 그대로 저장됩니다.`,
+    );
+    if (!ok) return;
+
+    setBulkReviewState({ running: true, current: 0, total: targets.length });
+    let succeeded = 0;
+
+    for (let index = 0; index < targets.length; index += 1) {
+      setBulkReviewState({ running: true, current: index + 1, total: targets.length });
+      const completed = await markReady(targets[index], true);
+      if (completed) succeeded += 1;
+    }
+
+    setBulkReviewState({ running: false, current: targets.length, total: targets.length });
+
+    if (succeeded === targets.length) {
+      setMessage(`${succeeded}개 경기를 검수 건너뛰기로 모두 완료 처리했습니다.`);
+      closeReview();
+    } else {
+      setReviewNotice(`${targets.length}개 중 ${succeeded}개 완료. 실패한 경기는 다시 시도해 주세요.`);
+    }
   }
 
   if (reviewingMatch) {
@@ -755,6 +789,8 @@ export default function NewMatchPage() {
         onAddFiles={(event) => addManualFiles(reviewingMatch.id, event)}
         onReady={() => markReady(reviewingMatch)}
         onReadyAndNext={() => completeReviewAndNext(reviewingMatch)}
+        onApproveAll={() => approveAllWithoutReview()}
+        bulkReviewState={bulkReviewState}
         uploadState={uploadState}
       />
     );
@@ -831,6 +867,14 @@ export default function NewMatchPage() {
                       className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black hover:brightness-110"
                     >
                       전체 검수 시작
+                    </button>
+                    <button
+                      type="button"
+                      disabled={bulkReviewState.running}
+                      onClick={() => void approveAllWithoutReview()}
+                      className="cursor-pointer rounded-xl border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-4 py-2.5 text-xs font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
+                    >
+                      {bulkReviewState.running ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}` : "검수 건너뛰고 전체 완료"}
                     </button>
                   </div>
                 </div>
@@ -975,6 +1019,8 @@ function ReviewScreen({
   onAddFiles,
   onReady,
   onReadyAndNext,
+  onApproveAll,
+  bulkReviewState,
   uploadState,
 }: {
   match: DetectedMatch;
@@ -994,6 +1040,8 @@ function ReviewScreen({
   onAddFiles: (event: ChangeEvent<HTMLInputElement>) => void;
   onReady: () => void;
   onReadyAndNext: () => void;
+  onApproveAll: () => void;
+  bulkReviewState: { running: boolean; current: number; total: number };
   uploadState: UploadUiState;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1034,7 +1082,17 @@ function ReviewScreen({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={currentIndex <= 0}
+                disabled={bulkReviewState.running}
+                onClick={onApproveAll}
+                className="cursor-pointer rounded-lg border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-3 py-2 text-[10px] font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
+              >
+                {bulkReviewState.running
+                  ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}`
+                  : "검수 건너뛰고 전체 완료"}
+              </button>
+              <button
+                type="button"
+                disabled={currentIndex <= 0 || bulkReviewState.running}
                 onClick={onPrevious}
                 className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
               >
@@ -1042,7 +1100,7 @@ function ReviewScreen({
               </button>
               <button
                 type="button"
-                disabled={currentIndex >= queue.length - 1}
+                disabled={currentIndex >= queue.length - 1 || bulkReviewState.running}
                 onClick={onNext}
                 className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
               >
@@ -1231,6 +1289,7 @@ function ReviewScreen({
               <button
                 type="button"
                 disabled={
+                  bulkReviewState.running ||
                   (match.reviewStatus !== "pending_ocr" && !validation.valid) ||
                   uploadState.phase === "creating" ||
                   uploadState.phase === "uploading" ||
