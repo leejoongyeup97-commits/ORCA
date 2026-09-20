@@ -15,6 +15,16 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-20 · 데스크톱 앱 스타일 전환
+- 상태: DONE
+- 내용:
+  - 웹사이트처럼 보이던 라이트 테마를 제거
+  - ORCA를 다크 데스크톱 분석 앱 스타일로 전환
+  - 상단 앱 바, 오렌지 액센트, 밀도 높은 카드/패널 구조 적용
+  - 대시보드와 설정 화면을 우선 통일
+- 관련: `fe/src/app/globals.css`, `fe/src/components/app-shell.tsx`, `fe/src/app/page.tsx`, `fe/src/app/settings/page.tsx`
+- 완료 커밋: ad3038cd8fbd1cc5fb4fb2c28df5ca02dc1d48ff
+
 ### 2026-09-20 · Tesla-inspired 1차 디자인 / 내 닉네임 Pool
 - 상태: DONE
 - 내용:
