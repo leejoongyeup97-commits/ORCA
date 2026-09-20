@@ -93,6 +93,17 @@ function uploadType(screenType: string) {
   return "summary";
 }
 
+function screenTypeFromUpload(row: UploadRow) {
+  if (row.screen_type && ["summary", "team", "personal", "replay"].includes(row.screen_type)) {
+    return row.screen_type;
+  }
+  if (row.upload_type === "team_stats") return "team";
+  if (row.upload_type === "hero_detail") return "personal";
+  if (row.upload_type === "replay") return "replay";
+  if (row.upload_type === "summary") return "summary";
+  return "unknown";
+}
+
 function defaultEditable(row: MatchRow): EditableMatchFields {
   const e = row.editable ?? {};
   return {
@@ -121,7 +132,7 @@ async function uploadsFor(matchId: string): Promise<UploadRow[]> {
 function fileFromUpload(u: UploadRow) {
   return {
     client_file_id: u.client_file_id ?? u.id,
-    screen_type: (u.screen_type ?? "unknown") as MatchImportView["files"][number]["screen_type"],
+    screen_type: screenTypeFromUpload(u) as MatchImportView["files"][number]["screen_type"],
     original_name: u.original_name ?? "",
     mime_type: u.mime_type ?? "application/octet-stream",
     size_bytes: Number(u.size_bytes ?? 0),
@@ -318,7 +329,7 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       const results: Array<{ upload_id: string; screen_type: string; result: unknown }> = [];
 
       for (const row of rows) {
-        const screenType = row.screen_type ?? "unknown";
+        const screenType = screenTypeFromUpload(row);
         if (!["summary", "team", "personal", "replay"].includes(screenType)) continue;
 
         const { config, session } = await configAndSession();
@@ -363,6 +374,10 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
             ocr_version: "local-api",
           }),
         });
+      }
+
+      if (results.length === 0) {
+        throw new Error("OCR_RERUN_NO_PROCESSABLE_UPLOADS");
       }
 
       const current = await this.getMatchImport(matchId);
