@@ -11,6 +11,7 @@ import {
   type MatchImportStatus,
   type MatchImportView,
   type MatchResult,
+  type MatchSide,
 } from "@/lib/backend";
 
 const STATUS_META: Record<MatchImportStatus, { label: string; className: string }> = {
@@ -304,6 +305,29 @@ export default function MatchDetailPage() {
                 <Field label="내 주 영웅">
                   <input value={form.my_hero} onChange={(e) => setForm({ ...form, my_hero: e.target.value })} placeholder="예: 리퍼" className="field-input" />
                 </Field>
+                <Field label="시즌">
+                  <input value={form.season} onChange={(e) => setForm({ ...form, season: e.target.value })} placeholder="예: Season 20" className="field-input" />
+                </Field>
+                <Field label="패치">
+                  <input value={form.patch_label} onChange={(e) => setForm({ ...form, patch_label: e.target.value })} placeholder="예: 2026-09-15" className="field-input" />
+                </Field>
+                <Field label="공격 / 수비">
+                  <select value={form.side} onChange={(e) => setForm({ ...form, side: e.target.value as MatchSide })} className="field-input">
+                    <option value="unknown">미확인</option>
+                    <option value="attack">선공</option>
+                    <option value="defense">선수비</option>
+                    <option value="neutral">해당 없음</option>
+                  </select>
+                </Field>
+                <Field label="쟁탈 세부 맵">
+                  <input value={form.control_submap} onChange={(e) => setForm({ ...form, control_submap: e.target.value })} placeholder="예: 부산 · 시내" className="field-input" />
+                </Field>
+                <Field label="세트 진행 순서">
+                  <input value={form.round_sequence} onChange={(e) => setForm({ ...form, round_sequence: e.target.value })} placeholder="예: 승 → 패 → 승" className="field-input" />
+                </Field>
+                <Field label="경기 시간">
+                  <input value={form.match_duration} onChange={(e) => setForm({ ...form, match_duration: e.target.value })} placeholder="예: 14:32" className="field-input" />
+                </Field>
                 <Field label="메모" wide>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="특이사항이나 수동 메모" rows={4} className="field-input resize-y" />
                 </Field>
@@ -366,6 +390,9 @@ export default function MatchDetailPage() {
                 <InfoRow label="모드" value={form.game_mode || "미확인"} />
                 <InfoRow label="결과" value={RESULT_LABELS[form.result]} />
                 <InfoRow label="영웅" value={form.my_hero || "미확인"} />
+                <InfoRow label="시즌" value={form.season || "미확인"} />
+                <InfoRow label="패치" value={form.patch_label || "미확인"} />
+                <InfoRow label="공수" value={form.side === "attack" ? "선공" : form.side === "defense" ? "선수비" : form.side === "neutral" ? "해당 없음" : "미확인"} />
               </dl>
             </section>
           </aside>
