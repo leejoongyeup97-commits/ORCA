@@ -175,3 +175,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 조치: START_OCR에서 oneDNN/MKLDNN 관련 플래그를 비활성화하여 기본 CPU 실행 경로로 우회
 - 완료 커밋: `521713cdbbb0c49bddd561b74d9bd681a95b3dee`
 - TODO: Pull 후 START_OCR 재실행, 동일 Team OCR 테스트
+
+
+### 2026-09-20 · PaddleOCR Predictor MKLDNN 강제 비활성화
+- 상태: IN_PROGRESS
+- 원인: 환경변수 수준의 oneDNN 비활성화만으로는 PaddleOCR 내부 Predictor가 여전히 oneDNN 경로를 사용해 `OneDnnContext does not have the input Filter` 오류 지속
+- 조치: PaddleOCR 생성 시 `enable_mkldnn=False`, `cpu_threads=1`을 명시해 Predictor 수준에서 MKLDNN을 강제로 끔
+- 작업 커밋: `b20f5abe41e64b81827313aa6fe56f59f2d4578a`
+- TODO: Pull 후 START_OCR 재실행, 동일 Team OCR 테스트
