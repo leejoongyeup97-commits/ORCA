@@ -1,261 +1,333 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  getMatchBackendAdapter,
+  type MatchListItem,
+} from "@/lib/backend";
+import {
+  HYPOTHESIS_CATEGORY_META,
+  HYPOTHESIS_DATA_LABELS,
+  PREDEFINED_HYPOTHESES,
+  type HypothesisCategory,
+  type HypothesisDataKey,
+  type HypothesisPriority,
+} from "@/lib/hypothesis-library";
 
-type HypothesisStatus = "draft" | "active" | "archived";
+type FilterKey = "all" | HypothesisCategory;
+type Readiness = "insufficient_data" | "candidate";
 
-type Hypothesis = {
-  id: string;
-  title: string;
-  statement: string;
-  status: HypothesisStatus;
-  created_at: string;
-  updated_at: string;
+const PRIORITY_META: Record<HypothesisPriority, { label: string; className: string }> = {
+  high: { label: "우선 검증", className: "bg-[rgba(249,158,26,0.14)] text-[var(--orange)]" },
+  medium: { label: "중간", className: "bg-[rgba(102,169,255,0.12)] text-[#9bc6ff]" },
+  explore: { label: "탐색", className: "bg-[#171e2a] text-[var(--muted)]" },
 };
 
-const STORAGE_KEY = "ow-insight-hypotheses:v1";
-
-const STATUS_META: Record<HypothesisStatus, { label: string; className: string }> = {
-  draft: { label: "초안", className: "bg-[#171e2a] text-[var(--muted)]" },
-  active: { label: "검증 중", className: "bg-[rgba(102,169,255,0.14)] text-[#8fc1ff]" },
-  archived: { label: "보관", className: "bg-[rgba(121,227,156,0.10)] text-[#8ee9aa]" },
+const READINESS_META: Record<Readiness, { label: string; className: string }> = {
+  insufficient_data: { label: "데이터 부족", className: "bg-[#171e2a] text-[var(--muted)]" },
+  candidate: { label: "검증 대기", className: "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" },
 };
 
-function loadHypotheses() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Hypothesis[]) : [];
-  } catch {
-    return [];
+function countAvailable(matches: MatchListItem[], key: HypothesisDataKey) {
+  const confirmed = matches.filter((match) => match.status === "confirmed");
+
+  switch (key) {
+    case "result":
+      return confirmed.filter((match) => match.editable.result === "win" || match.editable.result === "loss").length;
+    case "map":
+      return confirmed.filter((match) => match.editable.map_name.trim()).length;
+    case "mode":
+      return confirmed.filter((match) => match.editable.game_mode.trim()).length;
+    case "hero":
+      return confirmed.filter((match) => match.editable.my_hero.trim()).length;
+    case "player_stats":
+    case "hero_detail":
+    case "team_comp":
+    case "manual_context":
+    case "patch":
+    case "meta_snapshot":
+    case "profile_snapshot":
+    case "duo_link":
+      return 0;
   }
 }
 
-function saveHypotheses(items: Hypothesis[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(value));
+function formatRequiredData(keys: HypothesisDataKey[]) {
+  return keys.map((key) => HYPOTHESIS_DATA_LABELS[key]).join(" · ");
 }
 
 export default function HypothesesPage() {
-  const [items, setItems] = useState<Hypothesis[]>([]);
-  const [title, setTitle] = useState("");
-  const [statement, setStatement] = useState("");
-  const [filter, setFilter] = useState<"all" | HypothesisStatus>("all");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [matches, setMatches] = useState<MatchListItem[]>([]);
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [query, setQuery] = useState("");
+  const [priority, setPriority] = useState<"all" | HypothesisPriority>("all");
+  const [readiness, setReadiness] = useState<"all" | Readiness>("all");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setItems(loadHypotheses());
+    let mounted = true;
+    getMatchBackendAdapter()
+      .listMatchImports()
+      .then((items) => {
+        if (mounted) setMatches(items);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const visible = useMemo(
-    () => (filter === "all" ? items : items.filter((item) => item.status === filter)),
-    [filter, items],
-  );
+  const rows = useMemo(() => {
+    return PREDEFINED_HYPOTHESES.map((item) => {
+      const available = Math.min(...item.requiredData.map((key) => countAvailable(matches, key)));
+      const state: Readiness = available >= item.minSamples ? "candidate" : "insufficient_data";
+      return {
+        ...item,
+        available,
+        state,
+        progress: Math.min(100, Math.round((available / item.minSamples) * 100)),
+      };
+    });
+  }, [matches]);
 
-  function commit(next: Hypothesis[]) {
-    setItems(next);
-    saveHypotheses(next);
-  }
+  const visible = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const cleanTitle = title.trim();
-    const cleanStatement = statement.trim();
-    if (!cleanTitle || !cleanStatement) return;
+    return rows.filter((item) => {
+      if (filter !== "all" && item.category !== filter) return false;
+      if (priority !== "all" && item.priority !== priority) return false;
+      if (readiness !== "all" && item.state !== readiness) return false;
+      if (!normalized) return true;
 
-    const now = new Date().toISOString();
+      return [
+        item.title,
+        item.question,
+        item.rule,
+        HYPOTHESIS_CATEGORY_META[item.category].label,
+        formatRequiredData(item.requiredData),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized);
+    });
+  }, [filter, priority, query, readiness, rows]);
 
-    if (editingId) {
-      commit(
-        items.map((item) =>
-          item.id === editingId
-            ? { ...item, title: cleanTitle, statement: cleanStatement, updated_at: now }
-            : item,
-        ),
-      );
-      setEditingId(null);
-    } else {
-      commit([
-        {
-          id: crypto.randomUUID(),
-          title: cleanTitle,
-          statement: cleanStatement,
-          status: "draft",
-          created_at: now,
-          updated_at: now,
-        },
-        ...items,
-      ]);
-    }
-
-    setTitle("");
-    setStatement("");
-  }
-
-  function edit(item: Hypothesis) {
-    setEditingId(item.id);
-    setTitle(item.title);
-    setStatement(item.statement);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setTitle("");
-    setStatement("");
-  }
-
-  function changeStatus(id: string, status: HypothesisStatus) {
-    const now = new Date().toISOString();
-    commit(items.map((item) => (item.id === id ? { ...item, status, updated_at: now } : item)));
-  }
-
-  function remove(id: string) {
-    const item = items.find((candidate) => candidate.id === id);
-    if (!item) return;
-    if (!window.confirm(`'${item.title}' 가설을 삭제할까요?`)) return;
-    commit(items.filter((candidate) => candidate.id !== id));
-    if (editingId === id) cancelEdit();
-  }
+  const candidateCount = rows.filter((item) => item.state === "candidate").length;
+  const highCount = rows.filter((item) => item.priority === "high").length;
+  const confirmedCount = matches.filter((match) => match.status === "confirmed").length;
 
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-[1240px]">
-        <section className="mb-7">
-          <p className="mb-2 text-sm font-semibold text-[var(--orange)]">가설</p>
-          <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">검증할 가설을 관리합니다</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            지금은 브라우저에 초안과 상태를 저장합니다. 이후 실제 분석 결과와 hypothesis_runs를 연결할 예정입니다.
-          </p>
+      <div className="mx-auto max-w-[1280px]">
+        <section className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="mb-2 text-sm font-semibold text-[var(--orange)]">가설 Registry</p>
+            <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">미리 준비된 가설 Library</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+              사용자가 가설을 직접 쓰는 화면이 아닙니다. ORCA가 처음부터 검증할 질문을 등록해두고,
+              데이터가 쌓이면 자동으로 검증 가능한 가설부터 올립니다.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[rgba(249,158,26,0.25)] bg-[rgba(249,158,26,0.05)] px-4 py-3">
+            <p className="m-0 text-[10px] font-bold text-[var(--orange)]">현재 규칙</p>
+            <p className="mb-0 mt-1 text-xs text-[var(--muted)]">
+              발견과 검증을 분리하고, 표본이 부족하면 결론을 내리지 않습니다.
+            </p>
+          </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
-          <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-            <div className="mb-4">
-              <p className="m-0 text-sm font-bold">{editingId ? "가설 수정" : "새 가설"}</p>
-              <p className="mt-1 text-[10px] text-[var(--muted)]">검증하고 싶은 문장을 간단히 적어두세요.</p>
+        <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Metric label="사전 가설" value={String(rows.length)} />
+          <Metric label="우선 검증" value={String(highCount)} accent />
+          <Metric label="검증 대기" value={String(candidateCount)} success />
+          <Metric label="확정 경기" value={String(confirmedCount)} />
+        </section>
+
+        <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+          <div className="grid gap-3 xl:grid-cols-[1fr_auto_auto] xl:items-center">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="가설 검색 · 예: 데스, 맵, 패치, 아군 영웅"
+              className="field-input"
+            />
+
+            <div className="flex flex-wrap gap-2">
+              <SelectButton active={priority === "all"} onClick={() => setPriority("all")}>우선순위 전체</SelectButton>
+              <SelectButton active={priority === "high"} onClick={() => setPriority("high")}>우선 검증</SelectButton>
+              <SelectButton active={priority === "medium"} onClick={() => setPriority("medium")}>중간</SelectButton>
+              <SelectButton active={priority === "explore"} onClick={() => setPriority("explore")}>탐색</SelectButton>
             </div>
 
-            <form onSubmit={submit} className="space-y-4">
-              <label>
-                <span className="mb-2 block text-[11px] font-bold text-[var(--muted)]">제목</span>
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="예: 아나가 있을 때 승률이 높은가?"
-                  className="field-input"
-                />
-              </label>
-              <label>
-                <span className="mb-2 block text-[11px] font-bold text-[var(--muted)]">가설 문장</span>
-                <textarea
-                  value={statement}
-                  onChange={(event) => setStatement(event.target.value)}
-                  placeholder="예: 우리 팀에 아나가 포함된 경기의 승률이 그렇지 않은 경기보다 높을 것이다."
-                  rows={7}
-                  className="field-input resize-y"
-                />
-              </label>
-
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={!title.trim() || !statement.trim()}
-                  className="flex-1 cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-3 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  {editingId ? "수정 저장" : "가설 추가"}
-                </button>
-                {editingId && (
-                  <button type="button" onClick={cancelEdit} className="cursor-pointer rounded-xl border border-[var(--line)] px-4 py-3 text-xs font-bold text-white">
-                    취소
-                  </button>
-                )}
-              </div>
-            </form>
-
-            <div className="mt-5 rounded-xl border border-[rgba(102,169,255,0.25)] bg-[rgba(102,169,255,0.06)] p-4">
-              <p className="m-0 text-xs font-bold text-[#9bc6ff]">좋은 가설 형태</p>
-              <p className="mt-2 text-[10px] leading-5 text-[var(--muted)]">조건과 비교 대상을 함께 적으면 나중에 자동 분석 규칙으로 바꾸기 쉽습니다.</p>
+            <div className="flex flex-wrap gap-2">
+              <SelectButton active={readiness === "all"} onClick={() => setReadiness("all")}>상태 전체</SelectButton>
+              <SelectButton active={readiness === "candidate"} onClick={() => setReadiness("candidate")}>검증 대기</SelectButton>
+              <SelectButton active={readiness === "insufficient_data"} onClick={() => setReadiness("insufficient_data")}>데이터 부족</SelectButton>
             </div>
-          </section>
+          </div>
 
-          <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
-            <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-2">
-                <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>전체 {items.length}</FilterButton>
-                <FilterButton active={filter === "draft"} onClick={() => setFilter("draft")}>초안 {items.filter((i) => i.status === "draft").length}</FilterButton>
-                <FilterButton active={filter === "active"} onClick={() => setFilter("active")}>검증 중 {items.filter((i) => i.status === "active").length}</FilterButton>
-                <FilterButton active={filter === "archived"} onClick={() => setFilter("archived")}>보관 {items.filter((i) => i.status === "archived").length}</FilterButton>
-              </div>
-              <span className="text-[10px] text-[var(--muted)]">브라우저 Mock 저장</span>
-            </div>
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
+            <CategoryButton active={filter === "all"} onClick={() => setFilter("all")} label="전체" count={rows.length} />
+            {(Object.keys(HYPOTHESIS_CATEGORY_META) as HypothesisCategory[]).map((category) => (
+              <CategoryButton
+                key={category}
+                active={filter === category}
+                onClick={() => setFilter(category)}
+                label={HYPOTHESIS_CATEGORY_META[category].label}
+                count={rows.filter((item) => item.category === category).length}
+              />
+            ))}
+          </div>
+        </section>
 
-            {visible.length === 0 ? (
-              <div className="px-6 py-16 text-center">
-                <p className="m-0 text-sm font-bold">가설이 없습니다</p>
-                <p className="mt-2 text-xs text-[var(--muted)]">왼쪽에서 첫 가설을 만들어 보세요.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[var(--line)]">
-                {visible.map((item) => {
-                  const meta = STATUS_META[item.status];
-                  return (
-                    <article key={item.id} className="px-5 py-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="m-0 text-sm font-bold text-white">{item.title}</h2>
-                            <span className={`rounded-full px-2 py-1 text-[9px] font-black ${meta.className}`}>{meta.label}</span>
-                          </div>
-                          <p className="mt-2 text-xs leading-5 text-[#c8d0dc]">{item.statement}</p>
-                          <p className="mb-0 mt-2 text-[9px] text-[var(--muted)]">수정 {formatDate(item.updated_at)}</p>
-                        </div>
-                        <div className="flex shrink-0 flex-wrap gap-2">
-                          <select
-                            value={item.status}
-                            onChange={(event) => changeStatus(item.id, event.target.value as HypothesisStatus)}
-                            className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-2.5 py-2 text-[10px] font-bold text-white outline-none"
+        {loading ? (
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-6 py-16 text-center text-sm text-[var(--muted)]">
+            가설 준비 상태를 계산하는 중...
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-6 py-16 text-center text-sm text-[var(--muted)]">
+            조건에 맞는 가설이 없습니다.
+          </div>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {visible.map((item) => {
+              const category = HYPOTHESIS_CATEGORY_META[item.category];
+              const priorityMeta = PRIORITY_META[item.priority];
+              const readinessMeta = READINESS_META[item.state];
+
+              return (
+                <article key={item.id} className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[#171e2a] px-2.5 py-1 text-[9px] font-black text-[#b8c0cf]">
+                      {category.label}
+                    </span>
+                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${priorityMeta.className}`}>
+                      {priorityMeta.label}
+                    </span>
+                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${readinessMeta.className}`}>
+                      {readinessMeta.label}
+                    </span>
+                  </div>
+
+                  <h2 className="mb-0 mt-4 text-base font-black text-white">{item.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-[#c9d0dc]">{item.question}</p>
+
+                  <div className="mt-4 rounded-xl border border-[var(--line)] bg-[#0d1118] p-3">
+                    <p className="m-0 text-[9px] font-black tracking-[0.08em] text-[var(--muted)]">RULE</p>
+                    <p className="mb-0 mt-1 break-words font-mono text-[10px] leading-5 text-[#9bc6ff]">{item.rule}</p>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between gap-4 text-[10px]">
+                      <span className="text-[var(--muted)]">최소 표본 {item.minSamples}경기</span>
+                      <span className="font-bold text-white">{item.available} / {item.minSamples}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#171e2a]">
+                      <div className="h-full rounded-full bg-[var(--orange)] transition-all" style={{ width: `${item.progress}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 border-t border-[var(--line)] pt-3">
+                    <p className="m-0 text-[9px] font-black text-[var(--muted)]">필요 데이터</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {item.requiredData.map((key) => {
+                        const count = countAvailable(matches, key);
+                        const ready = count > 0;
+                        return (
+                          <span
+                            key={key}
+                            className={`rounded-md border px-2 py-1 text-[9px] font-bold ${
+                              ready
+                                ? "border-[rgba(121,227,156,0.18)] bg-[rgba(121,227,156,0.06)] text-[#8ee9aa]"
+                                : "border-[var(--line)] bg-[#0a0d12] text-[var(--muted)]"
+                            }`}
                           >
-                            <option value="draft">초안</option>
-                            <option value="active">검증 중</option>
-                            <option value="archived">보관</option>
-                          </select>
-                          <button type="button" onClick={() => edit(item)} className="cursor-pointer rounded-lg border border-[var(--line)] px-3 py-2 text-[10px] font-bold text-white">수정</button>
-                          <button type="button" onClick={() => remove(item.id)} className="cursor-pointer rounded-lg border border-[#503336] px-3 py-2 text-[10px] font-bold text-[#ff9b9b]">삭제</button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
+                            {HYPOTHESIS_DATA_LABELS[key]}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        <section className="mt-5 rounded-2xl border border-[rgba(102,169,255,0.25)] bg-[rgba(102,169,255,0.05)] p-5">
+          <p className="m-0 text-sm font-bold text-[#9bc6ff]">자동 생성 가설은 따로 들어옵니다</p>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+            이 화면의 항목은 사람이 미리 생각할 수 있는 사전 Library입니다. 나중에 ML이 특이 패턴을 발견하면
+            별도의 candidate 가설로 추가하고, 새 경기에서 다시 검증하는 구조로 연결합니다.
+          </p>
+        </section>
       </div>
     </main>
   );
 }
 
-function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Metric({
+  label,
+  value,
+  accent = false,
+  success = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  success?: boolean;
+}) {
+  const valueClass = success ? "text-[#8ee9aa]" : accent ? "text-[var(--orange)]" : "text-white";
+
+  return (
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+      <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
+      <p className={`mb-0 mt-2 text-2xl font-black ${valueClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function SelectButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-bold transition ${
+      className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
         active
-          ? "border-[rgba(249,158,26,0.45)] bg-[var(--orange-soft)] text-[var(--orange)]"
+          ? "border-[rgba(249,158,26,0.42)] bg-[var(--orange-soft)] text-[var(--orange)]"
           : "border-[var(--line)] bg-[#0d1118] text-[var(--muted)] hover:text-white"
       }`}
     >
       {children}
+    </button>
+  );
+}
+
+function CategoryButton({
+  active,
+  onClick,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
+        active
+          ? "border-[#4e5e76] bg-[#192230] text-white"
+          : "border-[var(--line)] bg-[#0d1118] text-[var(--muted)] hover:text-white"
+      }`}
+    >
+      {label} <span className="ml-1 opacity-60">{count}</span>
     </button>
   );
 }
