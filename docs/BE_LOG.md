@@ -404,3 +404,22 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 파일: `be/ocr_benchmark/hero_matching_experiment.py`, `be/ocr_benchmark/prepare_hero_crops.py`
 - 관련 커밋: `5813ae69deff7b62e850dfec946f369afeacfed1`, `55518671f870eab8f67546ecd36047343f40a52e`
 - TODO: 로컬 10장으로 crop montage 생성 후 초상화 잘림/오프셋 확인. crop이 안정적이면 hero ground truth + reference library를 붙여 실제 정확도 측정
+
+
+### 2026-09-20 · FE/BE develop 통합 준비
+- 상태: NOTE
+- 현재 GitHub 상태 확인:
+  - `develop`과 `fe-dev`는 동일 커밋 상태
+  - `be-dev`는 `develop`과 크게 diverged되어 있어 전체 branch merge는 위험
+  - `fe/src/lib/auth.ts`, `fe/src/lib/review-draft.ts`, `fe/package.json`은 develop/be-dev 동일
+  - `fe/src/lib/backend/supabase-adapter.ts`, `fe/src/lib/backend/contracts.ts`, `fe/src/app/matches/[id]/page.tsx`는 develop/be-dev 내용이 다름
+- 통합 원칙:
+  - `develop`을 기준으로 유지
+  - `be-dev`를 통째로 merge하지 않고, 검증된 `be/**` 변경만 선택적으로 반영
+  - FE 영역은 필요한 연동 변경만 수동 반영. 현재 확정된 추가 연동은 Team OCR `is_me` 처리
+  - `fe/src/app/**`, `fe/src/components/**`, 최신 FE contracts 등은 develop 버전을 우선 유지
+- 최근 검증 상태:
+  - Team 숫자 OCR 599/600 = 99.8%
+  - is_me 10/10 = 100%
+  - Team OCR 처리시간 7.5초
+- 다음: develop에서 안전 통합용 체크리스트대로 BE 파일 + 필요한 FE adapter 변경만 반영 후 통합 테스트
