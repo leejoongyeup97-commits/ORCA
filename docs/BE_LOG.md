@@ -230,3 +230,20 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - 일부 digit template가 부족해도 즉시 종료하지 않고 coverage 경고 후 전체 벤치마크를 끝까지 실행하도록 변경
 - 관련 커밋: `1bdbde73476a2d3ff1924d47255cb8cc2d5c2081`, `2dbfff2379025e1916d2d02cfb99da2103f6da3f`
 - TODO: Pull 후 동일 명령 재실행하여 전체 600셀 정확도/속도와 training coverage 확인
+
+
+### 2026-09-20 · 숫자 템플릿 실험 결과
+- 상태: DONE
+- 결과: 10장 / 600셀 기준 3/600 = 0.5%
+- 필드별: elims 0%, assists 3%, deaths 0%, damage 0%, healing 0%, mitigation 0%
+- 처리시간: 0.8초
+- 진단: 학습 셀 540개 중 평균 fallback이 531.9개로 거의 모든 셀이 강제 분리에 의존. 테스트 시 자릿수 경계를 안정적으로 추론하지 못해 방식 자체가 부적합
+- 결론: 숫자 템플릿 방식은 더 이상 미세조정하지 않고 폐기. production OCR에는 반영하지 않음
+
+### 2026-09-20 · Grid-level Tesseract 대체 실험
+- 상태: IN_PROGRESS
+- 내용: 기존의 셀별 다중 Tesseract 호출 대신 전체 10x6 숫자 grid를 소수의 OCR 호출로 읽고, OCR bounding box를 기존 scoreboard 행/열 좌표에 매핑하는 독립 실험기 추가
+- 목적: 셀 crop 경계 문제를 줄이고 처리시간을 크게 낮추면서 49.0% 기준선을 넘는지 확인
+- 관련 파일: `be/ocr_benchmark/grid_tesseract_experiment.py`, `be/ocr_benchmark/run_grid_tesseract_benchmark.py`
+- 관련 커밋: `c45d144a1a0571b4be4570bd8b71903edae17508`, `22f0a037ac20f6600e71d1b8dfd972703490d0c5`
+- TODO: 로컬 10장 benchmark로 전체 정확도/속도 측정. 49.0%를 유의미하게 넘지 못하면 채택하지 않음
