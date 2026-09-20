@@ -312,7 +312,7 @@ export default function MatchDetailPage() {
 
             <MatchReviewEditor
               matchId={match.match_id}
-              defaultHero={form.my_hero}
+              defaultHero={match.editable.my_hero}
               onChange={setReviewDraft}
             />
 
