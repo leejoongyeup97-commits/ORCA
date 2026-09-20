@@ -287,7 +287,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={addNickname}
-              className="min-h-10 cursor-pointer rounded-[4px] bg-[#3E6AE1] px-5 text-[13px] font-medium text-[#171A20] hover:bg-[#345BC2]"
+              className="min-h-10 cursor-pointer rounded-[4px] bg-[#3E6AE1] px-5 text-[13px] font-medium text-white hover:bg-[#345BC2]"
             >
               추가
             </button>
@@ -317,7 +317,7 @@ export default function SettingsPage() {
         </section>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <section className="rounded-[12px] border border-[#EEEEEE] bg-[#F4F4F4] p-5">
+          <section className="rounded-[12px] bg-[#F4F4F4] p-5">
             <p className="m-0 text-sm font-medium">연결 상태</p>
             <dl className="mt-4 space-y-3 text-xs">
               <Row label="Frontend" value="v0.12" />
@@ -327,14 +327,14 @@ export default function SettingsPage() {
               <Row label="저장 위치" value="브라우저 localStorage" />
               <Row label="Mock 저장 항목" value={String(storageCount)} />
             </dl>
-            <div className="mt-4 rounded-[4px] border border-[rgba(102,169,255,0.25)] bg-[rgba(102,169,255,0.06)] p-4">
+            <div className="mt-4 rounded-[4px] bg-white p-4">
               <p className="m-0 text-[10px] leading-5 text-[#5C5E62]">
                 실제 Supabase 연결 후에는 경기 원본과 상태가 서버에 저장되고, 이 Mock 저장소는 개발용으로만 남깁니다.
               </p>
             </div>
           </section>
 
-          <section className="rounded-[12px] border border-[#EEEEEE] bg-[#F4F4F4] p-5">
+          <section className="rounded-[12px] bg-[#F4F4F4] p-5">
             <p className="m-0 text-sm font-medium">Mock 데이터 백업</p>
             <p className="mt-2 text-xs leading-5 text-[#5C5E62]">
               브라우저를 바꾸거나 테스트 데이터를 보관할 때 JSON 파일로 내보내고 다시 가져올 수 있습니다.
@@ -352,12 +352,12 @@ export default function SettingsPage() {
           </section>
         </div>
 
-        <section className="mt-5 rounded-[12px] border border-[#503336] bg-[#1b1013] p-5">
-          <p className="m-0 text-sm font-medium text-[#ff9b9b]">개발 데이터 초기화</p>
+        <section className="mt-8 rounded-[12px] bg-[#F4F4F4] p-5">
+          <p className="m-0 text-sm font-medium text-[#393C41]">개발 데이터 초기화</p>
           <p className="mt-2 text-xs leading-5 text-[#5C5E62]">
             경기 목록, 가설, 폴더 처리 기록, 업로드 대기 manifest를 브라우저에서 모두 삭제합니다.
           </p>
-          <button type="button" onClick={resetData} className="mt-4 cursor-pointer rounded-[4px] border border-[#6a3a40] bg-[#281419] px-4 py-3 text-xs font-medium text-[#ff9b9b]">
+          <button type="button" onClick={resetData} className="mt-4 cursor-pointer rounded-[4px] bg-white px-4 py-3 text-xs font-medium text-[#393C41] hover:bg-[#EEEEEE]">
             모든 Mock 데이터 초기화
           </button>
         </section>
