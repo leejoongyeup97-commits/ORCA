@@ -360,3 +360,24 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 출력: `last_highlight_analysis.json`, `highlight_montage.jpg`, `highlight_debug/*.jpg`
 - 완료 커밋: `aa37fe2d1f71839436cd089e8ca020b7e0530f75`
 - TODO: 고정 10개 Team 이미지에서 candidate/confidence와 debug montage를 확인. 일관되면 production `is_me` 판정으로 승격
+
+
+### 2026-09-20 · Team 내 행 하이라이트 검증 및 production 승격
+- 상태: IN_PROGRESS
+- 검증 결과:
+  - 고정 10개 Team 이미지 모두 실제 강조된 내 행과 candidate가 일치
+  - confident detections 10/10
+  - 1위/2위 명도 margin 22.6% ~ 24.3%로 충분히 분리됨
+  - candidate는 이미지에 따라 ally slot 4 또는 5였고, debug 이미지에서 실제 강조 행과 일치
+- production 조치:
+  - `be/orca_ocr/engine.py`에 row highlight 기반 `is_me` 판정 추가
+  - 확실한 경우 해당 ally 1명만 `is_me=true`, 다른 ally는 false
+  - 애매한 경우 ally 행은 `is_me=null`; enemy는 false
+  - 응답에 `me_detection_method=row_highlight`, `me_detection_slot`, `me_detection_confidence`, `me_detection_margin_pct` 추가
+  - Team OCR 버전 `0.9.11-dev`, API 버전 `0.2.10`
+  - benchmark ground truth에 10장 `me_slots`를 추가하고 production benchmark가 `is_me` 정확도도 함께 출력하도록 확장
+- FE/Supabase 연동:
+  - review draft의 기존 고정값 `ally slot 1 = 나`를 제거
+  - OCR `player.is_me=true`인 ally 행을 실제 '나' 행으로 반영
+- 관련 커밋: `ac5ab7b7b425269806bbed1d8f5e69cbc7ca7676`, `907fd5c8e410933e0bd3778e156801cae01f7f5b`, `5efa37dbc7f5b89b2c19a1c0acf24c23e71fa36a`, `e613d734bd49035ebefe4c0b0f1484668865c0a7`, `80b1f2a6612b56406cd7e77fcb9b43b34333cf63`
+- TODO: Pull 후 production `run_team_benchmark.py` 재실행하여 숫자 599/600 유지 + `is_me 10/10` 확인 후 DONE 처리
