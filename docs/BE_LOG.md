@@ -335,3 +335,14 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - API 버전 0.2.9로 갱신
 - 관련 커밋: `9c3d0f0acfebfb393cfc33c6c9b2cd064ee37472`, `3164382c29523261393b48e700f7acddfb43e594`, `3ceb6878ab683ae81013e4b926a1d1fc5dc21eae`
 - TODO: Pull 후 START_OCR로 runtime dependency 동기화, production `run_team_benchmark.py` 재실행하여 599/600 수준 유지 확인 후 DONE 처리
+
+
+### 2026-09-20 · RapidOCR Team reader production 검증 완료
+- 상태: DONE
+- production benchmark: 10장 / 600셀 기준 599/600 = 99.8%
+- 필드별: elims 100%, assists 100%, deaths 99%, damage 100%, healing 100%, mitigation 100%
+- 전체 처리시간: 7.4초
+- 결론: 실험기와 production 코드에서 동일한 99.8% 정확도를 재현했으며 Team 숫자 OCR 교체 완료
+- 현재 production Team OCR: RapidOCR + blue/red 분리 행 탐지
+- 관련 production 커밋: `9c3d0f0acfebfb393cfc33c6c9b2cd064ee37472`, `3164382c29523261393b48e700f7acddfb43e594`, `3ceb6878ab683ae81013e4b926a1d1fc5dc21eae`
+- NOTE: 남은 오답은 deaths 1셀. 현재 99.8% 기준에서는 production 차단 사유로 보지 않고 추후 추가 샘플이 쌓일 때 재검토
