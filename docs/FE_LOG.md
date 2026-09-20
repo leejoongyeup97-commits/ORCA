@@ -59,3 +59,14 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 - 완료 커밋: b652eab4f578f65d0c5ab2ba146e7c148bac3c93
 
 현재 별도 요청 없음.
+
+
+### 2026-09-20 · Team OCR 내 행 자동 식별 연동
+- 상태: NOTE
+- 내용:
+  - BE Team OCR이 row highlight 기반으로 `player.is_me`를 반환하도록 변경됨
+  - Supabase adapter가 더 이상 `ally slot 1`을 고정으로 '나' 처리하지 않고, OCR의 `is_me=true` 행을 review draft의 실제 내 행으로 반영
+  - OCR 판정이 확실하지 않은 경우 ally `is_me`는 null로 남을 수 있음
+- 관련: `fe/src/lib/backend/supabase-adapter.ts`
+- BE 연동 커밋: `80b1f2a6612b56406cd7e77fcb9b43b34333cf63`
+- 참고: 현재 FE 화면 구조 변경은 요구하지 않음. review draft의 기존 `is_me` 필드를 그대로 사용
