@@ -15,6 +15,15 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-20 · 내 닉네임 Pool 제거
+- 상태: DONE
+- 내용:
+  - 설정 화면의 내 닉네임 Pool UI 제거
+  - 브라우저 localStorage 기반 닉네임 Pool helper 제거
+  - 내 플레이어 식별은 닉네임이 아니라 Team 스코어보드 행 하이라이트 방식 제안을 우선 검토
+- 관련: `fe/src/app/settings/page.tsx`, 삭제된 `fe/src/lib/player-identity.ts`
+- 완료 커밋: ea63ae36a87cf86f8dd1c2a9ed88cbf7affc32a9
+
 ### 2026-09-20 · 데스크톱 앱 스타일 전환
 - 상태: DONE
 - 내용:
