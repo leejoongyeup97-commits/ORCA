@@ -458,3 +458,9 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - `ceee67e4d04b93166a905532d1dbb085bf0da586`
   - `da60fadc159771a77eefe31884553c7b45560089`
 - TODO: 로컬에서 reference sync 후 hero matching benchmark 실행. prediction montage/결과를 확인해 crop 정합성과 matching 정확도를 검증한 뒤 production `hero_id` 승격 여부 결정
+
+
+### 2026-09-20 · 영웅 매칭 원클릭 실행기
+- 상태: DONE
+- 내용: 비개발자 테스트를 위해 reference sync + 10장 hero matching benchmark를 한 번에 실행하는 `be/RUN_HERO_BENCHMARK.bat` 추가
+- 완료 커밋: `bf114aa93041bb590210c0d40bfc55c8e33efd1a`
