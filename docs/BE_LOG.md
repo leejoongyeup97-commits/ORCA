@@ -151,3 +151,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 조치: 만료 임박/만료 access token을 refresh_token으로 자동 갱신하고 Supabase Adapter가 항상 유효 세션을 사용하도록 변경
 - 완료 커밋: `1d64202283723e51ce7525f47707eb3d904c734a`, `2c44acb4eb0272a6fd80f37ad027004590ae2a55`
 - TODO: Pull 후 프론트 재시작/재로그인하여 경기 목록 로드 및 Paddle Team 테스트 재개
+
+
+### 2026-09-20 · Supabase async 세션 호출 누락 수정
+- 상태: DONE
+- 원인: configAndSession을 async로 변경한 뒤 Storage 업로드/삭제/OCR 다운로드 경로 3곳이 await 없이 호출하고 있었음. 이 때문에 OCR 요청이 로컬 서버에 도달하기 전에 프론트에서 실패 가능
+- 조치: 해당 경로 모두 `await configAndSession()`으로 수정
+- 완료 커밋: `eedbe8f46655aba74269585091b0f293cb177cd5`
+- TODO: Pull 후 프론트 재시작, 동일 경기 OCR 실행. START_OCR 창에서 POST /extract 및 /extract-team-paddle 확인
