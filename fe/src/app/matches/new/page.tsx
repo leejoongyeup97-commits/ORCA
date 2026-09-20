@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BACKEND_MODE, getMatchBackendAdapter } from "@/lib/backend";
+import { runRealOcrForMatch } from "@/lib/ocr-integration";
 import {
   ensureScreenshotFolderPermission,
   getSavedScreenshotFolder,
@@ -693,16 +694,37 @@ export default function NewMatchPage() {
         uploaded_files: uploadedFiles,
       });
 
-      patchMatch(match.id, (current) => ({ ...current, reviewStatus: "pending_ocr" }));
       setUploadState({
-        phase: "done",
+        phase: "completing",
         current: activeFiles.length,
         total: activeFiles.length,
-        message: "업로드 완료 · OCR 대기 상태로 전환했습니다.",
+        message: "업로드 완료 · 실제 OCR 서버로 이미지를 보내고 있습니다...",
         matchId: completed.matchId,
       });
-      setReviewNotice(`Mock 백엔드 연결 완료 · match_id ${completed.matchId}`);
-      return true;
+
+      const ocrView = await runRealOcrForMatch(
+        adapter,
+        completed.matchId,
+        activeFiles.map((item) => ({
+          screen_type: item.type,
+          file: item.file,
+        })),
+      );
+
+      patchMatch(match.id, (current) => ({ ...current, reviewStatus: "pending_ocr" }));
+      setUploadState({
+        phase: ocrView.status === "failed" ? "error" : "done",
+        current: activeFiles.length,
+        total: activeFiles.length,
+        message: ocrView.ocr.message,
+        matchId: completed.matchId,
+      });
+      setReviewNotice(
+        ocrView.status === "failed"
+          ? "업로드는 끝났지만 OCR 처리에 실패했습니다. OCR 서버를 확인해 주세요."
+          : `실제 OCR 연결 완료 · match_id ${completed.matchId}`,
+      );
+      return ocrView.status !== "failed";
     } catch (error) {
       patchMatch(match.id, (current) => ({ ...current, reviewStatus: "ready_to_upload" }));
       setUploadState({
@@ -933,7 +955,7 @@ export default function NewMatchPage() {
                       <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-[#0d1118] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <span className={`text-xs ${validation.valid ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
                           {match.reviewStatus === "pending_ocr"
-                            ? "Mock 업로드 완료 · OCR 대기"
+                            ? "업로드/OCR 완료 · 상세 검수 대기"
                             : match.reviewStatus === "uploading"
                               ? "업로드 진행 중"
                               : match.reviewStatus === "ready_to_upload"
@@ -987,12 +1009,12 @@ export default function NewMatchPage() {
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
               <p className="m-0 text-sm font-bold text-[#8ee9aa]">고정 폴더 연결 흐름</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">검수 완료 후 Mock Draft 생성 → 파일 업로드 → pending_ocr까지 진행합니다. 이후 경기 목록의 상세 화면에서 Mock OCR, 값 수정, 확정, 삭제까지 테스트할 수 있습니다.</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">검수 완료 후 Draft 생성 → 이미지 처리 → 로컬 OCR 서버 호출 → OCR 결과를 경기 상세 검수 화면에 자동으로 채웁니다.</p>
             </section>
 
             <section className="rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.06)] p-5">
               <p className="m-0 text-sm font-bold text-[#9bc6ff]">현재 단계</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Supabase와 OCR은 아직 실제 연결하지 않습니다. 현재는 Mock Adapter로 연동 계약을 먼저 검증하고, 백엔드 완성 후 Adapter 구현만 교체합니다.</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">경기 저장은 아직 Mock Adapter이지만 OCR은 localhost:8001의 실제 Python OCR 서버를 호출합니다. Supabase 저장은 다음 연결 단계입니다.</p>
             </section>
           </aside>
         </div>
