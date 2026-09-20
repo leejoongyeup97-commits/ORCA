@@ -501,12 +501,33 @@ export default function NewMatchPage() {
     setStatus("idle");
   }
 
-  function openReview(match: DetectedMatch) {
+  function selectReviewMatch(match: DetectedMatch) {
     setReviewingMatchId(match.id);
     setSelectedFileId(match.files.find((file) => !file.excluded)?.id ?? match.files[0]?.id ?? null);
     setReviewNotice("");
     setUploadState({ phase: "idle", current: 0, total: 0, message: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openReview(match: DetectedMatch) {
+    selectReviewMatch(match);
+  }
+
+  function openBatchReview() {
+    const first = matches.find((match) => match.reviewStatus !== "pending_ocr") ?? matches[0];
+    if (first) selectReviewMatch(first);
+  }
+
+  function moveReviewMatch(direction: -1 | 1) {
+    if (!reviewingMatchId) return;
+    const index = matches.findIndex((match) => match.id === reviewingMatchId);
+    const next = matches[index + direction];
+    if (next) selectReviewMatch(next);
+  }
+
+  function selectReviewMatchById(matchId: string) {
+    const target = matches.find((match) => match.id === matchId);
+    if (target) selectReviewMatch(target);
   }
 
   function closeReview() {
@@ -577,11 +598,11 @@ export default function NewMatchPage() {
     setReviewNotice(`${additions.length}장을 추가했습니다. 화면 종류를 직접 지정해 주세요.`);
   }
 
-  async function markReady(match: DetectedMatch) {
+  async function markReady(match: DetectedMatch): Promise<boolean> {
     const validation = validateMatch(match);
     if (!validation.valid) {
       setReviewNotice(validation.messages.join(" · "));
-      return;
+      return false;
     }
 
     const activeFiles = match.files.filter((file) => !file.excluded);
@@ -680,6 +701,7 @@ export default function NewMatchPage() {
         matchId: completed.matchId,
       });
       setReviewNotice(`Mock 백엔드 연결 완료 · match_id ${completed.matchId}`);
+      return true;
     } catch (error) {
       patchMatch(match.id, (current) => ({ ...current, reviewStatus: "ready_to_upload" }));
       setUploadState({
@@ -689,22 +711,50 @@ export default function NewMatchPage() {
         message: error instanceof Error ? error.message : "업로드 중 오류가 발생했습니다.",
       });
       setReviewNotice("업로드에 실패했습니다. 다시 시도할 수 있습니다.");
+      return false;
     }
   }
 
+  async function completeReviewAndNext(match: DetectedMatch) {
+    const currentIndex = matches.findIndex((item) => item.id === match.id);
+
+    if (match.reviewStatus !== "pending_ocr") {
+      const completed = await markReady(match);
+      if (!completed) return;
+    }
+
+    const next = matches[currentIndex + 1];
+    if (next) {
+      selectReviewMatch(next);
+      return;
+    }
+
+    setReviewNotice("이번에 발견된 모든 경기 검수가 끝났습니다.");
+  }
+
   if (reviewingMatch) {
+    const reviewIndex = matches.findIndex((match) => match.id === reviewingMatch.id);
+    const reviewedCount = matches.filter((match) => match.reviewStatus === "pending_ocr").length;
+
     return (
       <ReviewScreen
         match={reviewingMatch}
+        queue={matches}
+        currentIndex={reviewIndex}
+        reviewedCount={reviewedCount}
         selectedFileId={selectedFileId}
         notice={reviewNotice}
         onSelectFile={setSelectedFileId}
         onBack={closeReview}
+        onSelectMatch={selectReviewMatchById}
+        onPrevious={() => moveReviewMatch(-1)}
+        onNext={() => moveReviewMatch(1)}
         onChangeType={(fileId, type) => changeFileType(reviewingMatch.id, fileId, type)}
         onToggleExcluded={(fileId) => toggleExcluded(reviewingMatch.id, fileId)}
         onMove={(fileId, direction) => moveFile(reviewingMatch.id, fileId, direction)}
         onAddFiles={(event) => addManualFiles(reviewingMatch.id, event)}
         onReady={() => markReady(reviewingMatch)}
+        onReadyAndNext={() => completeReviewAndNext(reviewingMatch)}
         uploadState={uploadState}
       />
     );
@@ -768,12 +818,21 @@ export default function NewMatchPage() {
 
             {matches.length > 0 ? (
               <section className="space-y-3">
-                <div className="flex items-end justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="m-0 text-sm font-bold">이번에 발견된 경기</p>
-                    <p className="mt-1 text-xs text-[var(--muted)]">검수하기에서 자동 분류를 수정하고, 잘못 찍은 이미지는 제외할 수 있습니다.</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">이제 경기마다 뒤로 갈 필요 없이 전체 검수에서 순서대로 확인할 수 있습니다.</p>
                   </div>
-                  <span className="text-xs text-[var(--muted)]">{matches.length}건</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--muted)]">{matches.length}건</span>
+                    <button
+                      type="button"
+                      onClick={openBatchReview}
+                      className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black hover:brightness-110"
+                    >
+                      전체 검수 시작
+                    </button>
+                  </div>
                 </div>
 
                 {matches.map((match, matchIndex) => {
