@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title ORCA v0.11
+title ORCA v0.12
 
 where node.exe >nul 2>nul
 if errorlevel 1 goto NO_NODE
@@ -16,10 +16,10 @@ call npm.cmd install
 if errorlevel 1 goto INSTALL_FAIL
 
 :RUN_APP
-echo [2/2] Starting ORCA v0.11 on port 3040...
+echo [2/2] Starting ORCA v0.12 on port 3040...
 echo Keep this window open while using the app.
 echo.
-start "ORCA v0.11 Server" cmd.exe /k npm.cmd run dev -- -p 3040
+start "ORCA v0.12 Server" cmd.exe /k npm.cmd run dev -- -p 3040
 timeout /t 6 /nobreak >nul
 start "" http://localhost:3040/
 exit /b 0
