@@ -199,3 +199,20 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 내용: `be/ocr_benchmark/run_team_benchmark.py` 추가. 이미지 폴더를 입력하면 현재 `extract_team`을 실행해 전체/필드별 정확도와 오답 JSON을 자동 생성
 - 완료 커밋: `1983a350dcfc9e80ef95b0e73579dd647bdf3764`, `50525e96df898edca4324c24f8cff5dfec75e094`
 - TODO: 10개 원본 이미지를 로컬 benchmark 폴더에 두고 기준 정확도 1회 측정. 이후 대체 숫자 인식기는 이 점수를 이길 때만 서비스 코드에 반영
+
+
+### 2026-09-20 · Team OCR 기준선 측정
+- 상태: DONE
+- 결과: 현재 Tesseract Team OCR은 10장 / 600셀 기준 294/600 = 49.0%
+- 필드별: elims 53%, assists 52%, deaths 56%, damage 41%, healing 41%, mitigation 51%
+- 전체 처리시간: 411.6초
+- 결론: 기존 UI confidence와 실제 정답률 차이가 커서, Team OCR은 더 이상 소규모 Tesseract 튜닝을 반복하지 않고 별도 벤치마크에서 대체 인식기를 검증한 뒤 교체
+- 산출물: `be/ocr_benchmark/last_failures.json` (로컬 실행 결과)
+
+### 2026-09-20 · ORCA 숫자 전용 템플릿 인식 실험기
+- 상태: DONE
+- 내용: production OCR과 분리된 숫자 전용 실험기 추가. 고정 scoreboard 셀에서 숫자 component를 분리하고, benchmark 정답값을 이용해 digit template를 자동 학습
+- 검증 방식: 각 테스트 이미지를 학습에서 제외하는 leave-one-image-out 방식으로 10장을 순환 평가하여 자기 이미지 정답 누설 방지
+- 관련 파일: `be/ocr_benchmark/digit_template_experiment.py`, `be/ocr_benchmark/run_digit_template_benchmark.py`
+- 완료 커밋: `c70e8ab77ec28430bfa9b47cfe178def3d5b3074`, `b6f73b116acbfa740f0e8310f2352bf2c25ab3e0`
+- TODO: 로컬의 10개 benchmark 원본 이미지로 새 runner 실행 후 49.0% Tesseract 기준선과 비교. 기준선을 유의미하게 이길 때만 service OCR 후보로 승격
