@@ -3,6 +3,16 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { BACKEND_MODE } from "@/lib/backend";
 import { getSupabaseConfig } from "@/lib/auth";
+import {
+  forgetScreenshotFolder,
+  getSavedScreenshotFolder,
+  getScreenshotAutoScanEnabled,
+  pickAndSaveScreenshotFolder,
+  queryScreenshotFolderPermission,
+  setScreenshotAutoScanEnabled,
+  supportsDirectoryPicker,
+  type DirectoryPermissionState,
+} from "@/lib/screenshot-folder";
 
 type ExportPayload = {
   exported_at: string;
@@ -25,6 +35,10 @@ function collectAppStorage() {
 export default function SettingsPage() {
   const [storageCount, setStorageCount] = useState(0);
   const [notice, setNotice] = useState("");
+  const [folderName, setFolderName] = useState("");
+  const [folderPermission, setFolderPermission] = useState<DirectoryPermissionState | "none">("none");
+  const [autoScanFolder, setAutoScanFolder] = useState(false);
+  const [folderBusy, setFolderBusy] = useState(false);
   const supabaseConfig = getSupabaseConfig();
 
   function refreshCount() {
@@ -33,7 +47,65 @@ export default function SettingsPage() {
 
   useEffect(() => {
     refreshCount();
+    setAutoScanFolder(getScreenshotAutoScanEnabled());
+
+    getSavedScreenshotFolder()
+      .then(async (handle) => {
+        if (!handle) return;
+        setFolderName(handle.name);
+        setFolderPermission(await queryScreenshotFolderPermission(handle));
+      })
+      .catch(() => {
+        setFolderName("");
+        setFolderPermission("none");
+      });
   }, []);
+
+  async function chooseScreenshotFolder() {
+    if (!supportsDirectoryPicker()) {
+      setNotice("현재 브라우저는 폴더 고정을 지원하지 않습니다. Windows Chrome 또는 Edge에서 localhost로 실행해 주세요.");
+      return;
+    }
+
+    setFolderBusy(true);
+    setNotice("");
+
+    try {
+      const handle = await pickAndSaveScreenshotFolder();
+      setFolderName(handle.name);
+      setFolderPermission(await queryScreenshotFolderPermission(handle));
+      setNotice(`스크린샷 폴더 '${handle.name}'를 저장했습니다. 이제 경기 등록에서 폴더를 다시 고를 필요가 없습니다.`);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setNotice("폴더 지정을 취소했습니다.");
+      } else {
+        setNotice(error instanceof Error ? error.message : "스크린샷 폴더 지정에 실패했습니다.");
+      }
+    } finally {
+      setFolderBusy(false);
+    }
+  }
+
+  async function clearScreenshotFolder() {
+    if (!folderName) return;
+    const ok = window.confirm(`저장된 스크린샷 폴더 '${folderName}' 연결을 해제할까요?`);
+    if (!ok) return;
+
+    await forgetScreenshotFolder();
+    setFolderName("");
+    setFolderPermission("none");
+    setNotice("스크린샷 폴더 연결을 해제했습니다.");
+  }
+
+  function changeAutoScan(enabled: boolean) {
+    setAutoScanFolder(enabled);
+    setScreenshotAutoScanEnabled(enabled);
+    setNotice(
+      enabled
+        ? "경기 등록 화면 진입 시 권한이 유지되어 있으면 자동으로 새 스크린샷을 확인합니다."
+        : "자동 확인을 끄고 경기 등록 화면의 버튼으로만 스캔합니다.",
+    );
+  }
 
   function exportData() {
     const payload: ExportPayload = {
@@ -103,6 +175,72 @@ export default function SettingsPage() {
           <div className="mb-5 rounded-xl border border-[#303847] bg-[#0d1118] px-4 py-3 text-xs text-[#c8d0dc]">{notice}</div>
         )}
 
+        <section className="mb-5 rounded-2xl border border-[rgba(249,158,26,0.28)] bg-[rgba(249,158,26,0.04)] p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="m-0 text-sm font-bold text-white">스크린샷 폴더</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                한 번 지정하면 브라우저가 폴더 권한을 기억합니다. 경기 등록 때마다 폴더를 다시 선택하지 않아도 됩니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={folderBusy}
+                onClick={chooseScreenshotFolder}
+                className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-3 text-xs font-black text-black disabled:cursor-wait disabled:opacity-50"
+              >
+                {folderBusy ? "폴더 연결 중..." : folderName ? "폴더 변경" : "폴더 지정"}
+              </button>
+              {folderName && (
+                <button
+                  type="button"
+                  onClick={clearScreenshotFolder}
+                  className="cursor-pointer rounded-xl border border-[var(--line)] bg-[#0d1118] px-4 py-3 text-xs font-bold text-white hover:border-[#4b5668]"
+                >
+                  연결 해제
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <FolderStatus label="저장된 폴더" value={folderName || "없음"} />
+            <FolderStatus
+              label="권한"
+              value={
+                folderPermission === "granted"
+                  ? "허용됨"
+                  : folderPermission === "prompt"
+                    ? "다시 확인 필요"
+                    : folderPermission === "denied"
+                      ? "거부됨"
+                      : "미연결"
+              }
+            />
+            <FolderStatus label="브라우저" value={supportsDirectoryPicker() ? "지원" : "미지원"} />
+          </div>
+
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--line)] bg-[#0d1118] p-4">
+            <input
+              type="checkbox"
+              checked={autoScanFolder}
+              onChange={(event) => changeAutoScan(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[var(--orange)]"
+            />
+            <span>
+              <span className="block text-xs font-bold text-white">경기 등록 화면에서 자동으로 새 파일 확인</span>
+              <span className="mt-1 block text-[10px] leading-5 text-[var(--muted)]">
+                폴더 읽기 권한이 유지된 경우에만 자동 실행합니다. 브라우저가 권한 재확인을 요구하면 버튼 한 번만 누르면 됩니다.
+              </span>
+            </span>
+          </label>
+
+          <p className="mb-0 mt-3 text-[9px] leading-4 text-[var(--muted)]">
+            브라우저 보안상 Windows 전체 경로 문자열은 표시하지 않고, 선택한 폴더 자체의 접근 권한을 안전하게 저장합니다.
+          </p>
+        </section>
+
         <div className="grid gap-5 md:grid-cols-2">
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
             <p className="m-0 text-sm font-bold">연결 상태</p>
@@ -150,6 +288,15 @@ export default function SettingsPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function FolderStatus({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[#0d1118] p-3">
+      <p className="m-0 text-[9px] font-bold text-[var(--muted)]">{label}</p>
+      <p className="mb-0 mt-1 truncate text-xs font-black text-white">{value}</p>
+    </div>
   );
 }
 
