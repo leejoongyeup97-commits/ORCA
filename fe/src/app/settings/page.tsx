@@ -7,7 +7,7 @@ import { getSupabaseConfig } from "@/lib/auth";
 type ExportPayload = {
   exported_at: string;
   app: "overwatch-insight";
-  version: "0.7";
+  version: "0.9";
   storage: Record<string, string>;
 };
 
@@ -39,7 +39,7 @@ export default function SettingsPage() {
     const payload: ExportPayload = {
       exported_at: new Date().toISOString(),
       app: "overwatch-insight",
-      version: "0.7",
+      version: "0.9",
       storage: collectAppStorage(),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -107,7 +107,7 @@ export default function SettingsPage() {
           <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
             <p className="m-0 text-sm font-bold">연결 상태</p>
             <dl className="mt-4 space-y-3 text-xs">
-              <Row label="Frontend" value="v0.7" />
+              <Row label="Frontend" value="v0.9" />
               <Row label="Backend mode" value={BACKEND_MODE} />
               <Row label="Auth" value={supabaseConfig.configured ? "Supabase 준비됨" : "Mock / 미설정"} />
               <Row label="Contract" value="v0.1" />
