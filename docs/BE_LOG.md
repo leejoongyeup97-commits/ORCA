@@ -439,3 +439,22 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - PR: #3 `Integrate validated backend OCR into develop`
 - merge commit: `db6b8e3d5306a58f909818b4174c4119313f0628`
 - 다음: develop을 로컬에서 Pull 후 전체 FE + OCR 통합 실행 테스트
+
+
+### 2026-09-20 · Team 영웅 초상화 매칭 실험 확장
+- 상태: IN_PROGRESS
+- 내용:
+  - 기존 crop/matcher 실험에 hero reference 자동 동기화 스크립트 추가
+  - 2026-08 기준 53명 영웅 아이콘을 제공하는 공개 GitHub reference 저장소의 `normal` 아이콘 세트를 로컬 cache로 내려받도록 구성
+  - 10장 Team benchmark 전체에서 100개 portrait를 자동 crop → hero 후보/신뢰도/distance를 출력하고 prediction montage를 생성하는 runner 추가
+  - reference/cache/crop/montage/last_*.json은 Git 추적 대상에서 제외하여 GitHub Desktop에 불필요한 변경이 쌓이지 않도록 처리
+- 관련 파일:
+  - `be/ocr_benchmark/sync_hero_references.py`
+  - `be/ocr_benchmark/run_hero_matching_benchmark.py`
+  - `.gitignore`
+- 관련 커밋:
+  - `407bef8d88b09ea2bb52b8c314ad5841397f896a`
+  - `f9c9a86fdbca211f56ee1086e2caa4bd87272780`
+  - `ceee67e4d04b93166a905532d1dbb085bf0da586`
+  - `da60fadc159771a77eefe31884553c7b45560089`
+- TODO: 로컬에서 reference sync 후 hero matching benchmark 실행. prediction montage/결과를 확인해 crop 정합성과 matching 정확도를 검증한 뒤 production `hero_id` 승격 여부 결정
