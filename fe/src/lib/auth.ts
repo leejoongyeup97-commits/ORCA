@@ -33,6 +33,43 @@ export function getStoredSession(): OrcaSession | null {
   }
 }
 
+async function refreshStoredSession(session: OrcaSession): Promise<OrcaSession | null> {
+  const config = getSupabaseConfig();
+  if (!config.configured || !session.refresh_token) return null;
+
+  const response = await fetch(`${config.url}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      apikey: config.publishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refresh_token: session.refresh_token }),
+  });
+  const data = (await response.json().catch(() => ({}))) as Partial<OrcaSession>;
+  if (!response.ok || !data.access_token || !data.user) return null;
+
+  const refreshed = data as OrcaSession;
+  localStorage.setItem(SESSION_KEY, JSON.stringify(refreshed));
+  return refreshed;
+}
+
+export async function getValidSession(): Promise<OrcaSession | null> {
+  const session = getStoredSession();
+  if (!session) return null;
+
+  // Supabase access tokens are JWTs. Refresh shortly before/after expiry instead
+  // of leaving the UI with a stale token until the user manually logs in again.
+  try {
+    const payload = JSON.parse(atob(session.access_token.split(".")[1] ?? ""));
+    const exp = Number(payload?.exp ?? 0);
+    if (exp && exp * 1000 > Date.now() + 60_000) return session;
+  } catch {
+    // If decoding fails, try refresh below.
+  }
+
+  return (await refreshStoredSession(session)) ?? session;
+}
+
 export async function signInWithPassword(email: string, password: string) {
   const config = getSupabaseConfig();
   if (!config.configured) {
