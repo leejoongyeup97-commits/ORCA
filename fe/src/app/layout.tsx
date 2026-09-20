@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ORCA",
-  description: "Overwatch Research & Competitive Analytics",
+  description: "Overwatch Result Correlation Analysis",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
