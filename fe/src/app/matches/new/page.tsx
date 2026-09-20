@@ -658,7 +658,6 @@ export default function NewMatchPage() {
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[1240px]">
-        <AppHeader />
 
         <section className="mb-7">
           <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 등록</p>
@@ -887,11 +886,10 @@ function ReviewScreen({
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[1320px]">
-        <AppHeader />
 
         <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 경기 목록으로</button>
+            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 분류 결과로</button>
             <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 검수</p>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.03em]">{match.id}</h1>
             <p className="mt-2 text-xs text-[var(--muted)]">자동 분류가 틀린 이미지는 직접 바꾸고, 필요 없는 이미지는 제외한 뒤 업로드 준비 완료로 표시하세요.</p>
@@ -1066,24 +1064,6 @@ function validateMatch(match: DetectedMatch) {
   if (teamCount !== 1) messages.push(`팀 화면이 ${teamCount}장입니다. 1장으로 맞춰 주세요.`);
   if (unknownCount > 0) messages.push(`미분류 이미지 ${unknownCount}장의 종류를 정해 주세요.`);
   return { valid: messages.length === 0, messages };
-}
-
-function AppHeader() {
-  return (
-    <header className="mb-8 flex items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--orange)] font-black text-black">OI</div>
-        <div>
-          <p className="m-0 text-[15px] font-bold tracking-wide">OVERWATCH INSIGHT</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            승패 요인 분석기
-            <span className="ml-2 rounded-md border border-[var(--line)] px-1.5 py-0.5 text-[10px] text-[var(--orange)]">v0.5</span>
-          </p>
-        </div>
-      </div>
-      <div className="rounded-full border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-xs text-[var(--muted)]">사용자 A</div>
-    </header>
-  );
 }
 
 function FilePreview({ file, className }: { file: File; className?: string }) {
