@@ -9,7 +9,7 @@ from datetime import datetime
 from orca_ocr.engine import extract, get_tesseract_status
 from orca_ocr.paddle_experiment import extract_team_paddle
 
-app = FastAPI(title="ORCA OCR API", version="0.2.8")
+app = FastAPI(title="ORCA OCR API", version="0.2.10")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3040", "http://127.0.0.1:3040"],
@@ -23,9 +23,9 @@ def health():
     try:
         status = get_tesseract_status()
         ok = status["has_eng"] and status["has_kor"]
-        return {"ok": ok, "service": "orca-ocr", "version": "0.2.8", "tesseract": status}
+        return {"ok": ok, "service": "orca-ocr", "version": "0.2.10", "tesseract": status}
     except Exception as exc:
-        return {"ok": False, "service": "orca-ocr", "version": "0.2.8", "tesseract_error": str(exc)}
+        return {"ok": False, "service": "orca-ocr", "version": "0.2.10", "tesseract_error": str(exc)}
 
 @app.post("/extract-team-paddle")
 async def extract_team_paddle_image(file: UploadFile = File(...)):
