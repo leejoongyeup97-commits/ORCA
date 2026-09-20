@@ -251,29 +251,194 @@ def _read_number_fast(board, cx, y, half_h, base_half_w, key):
         return wide_val,min(wide_conf,0.45)
     return val,min(conf,0.45)
 
+_RAPIDOCR_ENGINE=None
+
+def _get_rapidocr_engine():
+    global _RAPIDOCR_ENGINE
+    if _RAPIDOCR_ENGINE is None:
+        try:
+            from rapidocr import RapidOCR
+        except ImportError as exc:
+            raise RuntimeError(
+                'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
+            ) from exc
+        _RAPIDOCR_ENGINE=RapidOCR()
+    return _RAPIDOCR_ENGINE
+
+def _find_split_team_rows(board):
+    """Find blue and red scoreboard rows as two separate five-row sequences."""
+    detected,_=_find_row_centers(board)
+    blue=[float(y) for y in detected[:5]]
+    h,w=board.shape[:2]
+    if len(blue)<5:
+        return detected[:10],'legacy_fallback'
+
+    gap=float(np.median(np.diff(blue)))
+    if gap<=1:
+        return detected[:10],'legacy_fallback'
+
+    gray=cv2.cvtColor(board,cv2.COLOR_BGR2GRAY)
+    x1=int(w*0.42); x2=int(w*0.99)
+    bright=(gray[:,x1:x2]>175).astype(np.float32)
+    score=bright.mean(axis=1)
+    score=np.convolve(score,np.ones(7,dtype=np.float32)/7.0,mode='same')
+    radius=max(3,int(gap*0.28))
+
+    def local_peak(target):
+        center=int(round(target))
+        lo=max(0,center-radius); hi=min(h,center+radius+1)
+        if lo>=hi:return float(center),-1.0
+        idx=lo+int(np.argmax(score[lo:hi]))
+        return float(idx),float(score[idx])
+
+    start_lo=int(max(blue[-1]+gap*0.55,h*0.45))
+    start_hi=int(min(blue[-1]+gap*2.40,h-gap*3.8))
+    if start_hi<=start_lo:
+        return detected[:10],'legacy_fallback'
+
+    best_score=-1.0
+    best_rows=None
+    for red_start in range(start_lo,start_hi+1):
+        rows=[]; strength=0.0; valid=True
+        for k in range(5):
+            y,s=local_peak(red_start+k*gap)
+            if rows and y-rows[-1]<gap*0.55:
+                valid=False; break
+            rows.append(y); strength+=s
+        if valid and strength>best_score:
+            best_score=strength; best_rows=rows
+
+    if not best_rows:
+        return detected[:10],'legacy_fallback'
+    return blue+best_rows,'split_team_sequence'
+
+def _rapid_read_one(engine,image):
+    result=engine(image,use_det=False,use_cls=False,use_rec=True)
+    txts=getattr(result,'txts',None) or ()
+    scores=getattr(result,'scores',None) or ()
+    if not txts:return None,0.0
+    digits=re.sub(r'\D','',str(txts[0]))
+    if not digits:return None,0.0
+    try:value=int(digits)
+    except ValueError:return None,0.0
+    score=float(scores[0]) if scores else 0.0
+    return value,score
+
+def _rapid_read_cell(engine,cell,key):
+    gray=cv2.cvtColor(cell,cv2.COLOR_BGR2GRAY) if len(cell.shape)==3 else cell
+    up=cv2.resize(gray,None,fx=3.0,fy=3.0,interpolation=cv2.INTER_CUBIC)
+    _,bright=cv2.threshold(up,150,255,cv2.THRESH_BINARY)
+    reads=[]
+    max_value=99 if key in ('elims','assists','deaths') else 99999
+    for image in (up,bright):
+        value,score=_rapid_read_one(engine,image)
+        if value is not None and value<=max_value:
+            reads.append((value,score))
+    if not reads:return None,0.0
+
+    grouped={}
+    for value,score in reads:
+        grouped.setdefault(value,[]).append(score)
+    best=max(grouped,key=lambda v:(len(grouped[v]),max(grouped[v])))
+    return best,max(grouped[best])
+
+def _highlight_row_score(board,y,gap):
+    """Measure friendly-row background brightness while suppressing bright text."""
+    h,w=board.shape[:2]
+    y1=max(0,int(round(y-gap*0.30))); y2=min(h,int(round(y+gap*0.30)))
+    x1=int(w*0.36); x2=int(w*0.985)
+    crop=board[y1:y2,x1:x2]
+    hsv=cv2.cvtColor(crop,cv2.COLOR_BGR2HSV)
+    value=hsv[:,:,2].astype(np.float32)
+    sat=hsv[:,:,1].astype(np.float32)
+    mask=(value>=28)&(value<=205)&(sat>=18)
+    samples=value[mask]
+    if samples.size<max(40,crop.shape[0]*4):
+        mask=(value>=28)&(value<=205)
+        samples=value[mask]
+    if samples.size==0:return 0.0
+    median_v=float(np.median(samples))
+    p70_v=float(np.percentile(samples,70))
+    return median_v*0.70+p70_v*0.30
+
+def _detect_me_slot(board,y_px):
+    """Detect the highlighted friendly row. Return None when separation is ambiguous."""
+    blue=[float(y) for y in y_px[:5]]
+    if len(blue)<5:
+        return None,0.0,0.0
+    gap=float(np.median(np.diff(blue)))
+    if gap<=1:
+        return None,0.0,0.0
+
+    scores=[_highlight_row_score(board,y,gap) for y in blue]
+    order=np.argsort(scores)[::-1]
+    best_idx=int(order[0]); second_idx=int(order[1])
+    best=float(scores[best_idx]); second=float(scores[second_idx])
+    margin_pct=(best-second)/max(abs(second),1.0)*100.0
+
+    arr=np.array(scores,dtype=np.float32)
+    median=float(np.median(arr))
+    mad=float(np.median(np.abs(arr-median)))
+    robust_z=(best-median)/max(mad,1.0)
+
+    confident=margin_pct>=4.0 and robust_z>=1.0
+    if not confident:
+        return None,round(margin_pct,2),0.0
+
+    confidence=min(0.99,0.50+0.50*min(1.0,max(0.0,(margin_pct-4.0)/16.0)))
+    return best_idx+1,round(margin_pct,2),round(confidence,3)
+
 def extract_team(img):
+    """Read Team scoreboard stats with RapidOCR and split blue/red row detection."""
     board=_crop(img,ROI['team_board']); h,w=board.shape[:2]
-    y_px,row_detection=_find_row_centers(board)
+    y_px,row_detection=_find_split_team_rows(board)
+    if len(y_px)<10:
+        return {
+            'screen_type':'team','ocr_version':'0.9.11-dev','players':[],
+            'layout_detection':row_detection,'stat_reading':'rapidocr_split_rows_v1',
+            'me_detection_method':'row_highlight','me_detection_confidence':0.0,
+            'me_detection_margin_pct':0.0,
+            'hero_matching_status':'pending_reference_library'
+        }
+
     x_cols=_find_stat_columns(board)
+    gap=float(np.median(np.diff(y_px[:5]))) if len(y_px)>=5 else h*0.085
+    half_h=max(8,int(gap*0.36))
+    engine=_get_rapidocr_engine()
+    me_slot,me_margin,me_confidence=_detect_me_slot(board,y_px)
     rows=[]
-    med_gap=float(np.median(np.diff(y_px))) if len(y_px)>1 else h*0.085
-    half_h=max(8,int(med_gap*0.34))
+
     for idx,y in enumerate(y_px[:10]):
-        row={'team':'blue' if idx<5 else 'red','slot':idx%5+1,'hero_id':None,'is_me':None,'confidence':{}}
+        row={
+            'team':'blue' if idx<5 else 'red',
+            'slot':idx%5+1,
+            'hero_id':None,
+            'is_me':((idx+1)==me_slot) if (idx<5 and me_slot is not None) else (None if idx<5 else False),
+            'confidence':{}
+        }
         for key,xc in x_cols.items():
-            half_w=int(w*(0.032 if key in ('elims','assists','deaths') else 0.050))
+            half_w=int(w*(0.034 if key in ('elims','assists','deaths') else 0.054))
             cx=int(xc*w)
-            value,confidence=_read_number_fast(board,cx,y,half_h,half_w,key)
-            # Overwatch scoreboard sanity bounds: K/A/D are small counts; aggregate
-            # stats can be larger. Only reject clearly impossible OCR concatenations.
-            max_value=99 if key in ('elims','assists','deaths') else 99999
-            if value is not None and value>max_value:
-                value,confidence=None,0.0
-            row[key],row['confidence'][key]=value,confidence
+            x1=max(0,cx-half_w); x2=min(w,cx+half_w)
+            y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
+            value,confidence=_rapid_read_cell(engine,board[y1:y2,x1:x2],key)
+            row[key]=value
+            row['confidence'][key]=round(float(confidence),3)
         rows.append(row)
-    return {'screen_type':'team','ocr_version':'0.9.9.1-dev','players':rows,
-            'layout_detection':row_detection,'stat_reading':'v2_conflict_with_sanity_bounds',
-            'hero_matching_status':'pending_reference_library'}
+
+    return {
+        'screen_type':'team',
+        'ocr_version':'0.9.11-dev',
+        'players':rows,
+        'layout_detection':row_detection,
+        'stat_reading':'rapidocr_split_rows_v1',
+        'row_centers':[round(float(y),2) for y in y_px[:10]],
+        'me_detection_method':'row_highlight',
+        'me_detection_slot':me_slot,
+        'me_detection_confidence':me_confidence,
+        'me_detection_margin_pct':me_margin,
+        'hero_matching_status':'pending_reference_library'
+    }
 
 def _detect_personal_cards(img):
     """Detect Overwatch personal-stat cards from their orange left accent bars."""

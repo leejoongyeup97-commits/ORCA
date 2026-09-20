@@ -383,6 +383,16 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       const draft = createDefaultReviewDraft(editable.my_hero);
       const team = results.find((item) => item.screen_type === "team");
       if (team) {
+        // Team OCR identifies the user's highlighted friendly row.
+        // Clear the legacy "ally slot 1 = me" default before applying OCR.
+        for (const p of draft.players) {
+          if (p.team === "ally") {
+            p.is_me = false;
+            if (p.player_name === "나") p.player_name = "";
+            if (p.hero === editable.my_hero) p.hero = "";
+          }
+        }
+
         const raw = asRecord(team.result);
         const players = Array.isArray(raw.players) ? raw.players : [];
         for (const value of players) {
@@ -392,6 +402,13 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
           if (!teamName || !Number.isInteger(slot)) continue;
           const target = draft.players.find((p) => p.team === teamName && p.slot === slot);
           if (!target) continue;
+
+          if (teamName === "ally" && player.is_me === true) {
+            target.is_me = true;
+            target.player_name = "나";
+            target.hero = editable.my_hero;
+          }
+
           target.eliminations = player.elims == null ? "" : String(player.elims);
           target.assists = player.assists == null ? "" : String(player.assists);
           target.deaths = player.deaths == null ? "" : String(player.deaths);
