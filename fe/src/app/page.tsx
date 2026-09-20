@@ -68,7 +68,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/matches/new"
-            className="w-fit rounded-[4px] bg-[#3E6AE1] px-6 py-3 text-[14px] font-medium text-[#171A20] no-underline hover:bg-[#345BC2]"
+            className="w-fit rounded-[4px] bg-[#3E6AE1] px-6 py-3 text-[14px] font-medium text-white no-underline hover:bg-[#345BC2]"
           >
             + 새 경기 등록
           </Link>
@@ -100,7 +100,7 @@ export default function DashboardPage() {
                 <p className="mt-2 text-xs text-[#5C5E62]">첫 경기를 등록하면 최근 경기와 상태가 여기에 표시됩니다.</p>
               </div>
             ) : (
-              <div className="divide-y divide-[var(--line)]">
+              <div className="divide-y divide-[#EEEEEE]">
                 {recent.map((match) => (
                   <Link
                     key={match.match_id}
@@ -132,7 +132,7 @@ export default function DashboardPage() {
           </section>
 
           <aside className="space-y-5">
-            <section className="rounded-[12px] border border-[#EEEEEE] bg-[#F4F4F4] p-5">
+            <section className="rounded-[12px] bg-[#F4F4F4] p-5">
               <p className="m-0 text-sm font-medium">빠른 이동</p>
               <div className="mt-4 space-y-2">
                 <QuickLink href="/matches/new" title="경기 등록" text="새 스크린샷 자동 분류" />
