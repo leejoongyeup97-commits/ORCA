@@ -10,12 +10,20 @@ export type MatchImportStatus =
 
 export type MatchResult = "win" | "loss" | "draw" | "unknown";
 
+export type MatchSide = "attack" | "defense" | "neutral" | "unknown";
+
 export type EditableMatchFields = {
   played_at: string;
   map_name: string;
   game_mode: string;
   result: MatchResult;
   my_hero: string;
+  season: string;
+  patch_label: string;
+  side: MatchSide;
+  control_submap: string;
+  round_sequence: string;
+  match_duration: string;
   notes: string;
 };
 
