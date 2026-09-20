@@ -191,3 +191,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - NOTE: Paddle 실험 코드는 비교 기록용으로 남겨두되 기본 실행 경로에서는 사용하지 않음. 현재 Windows + Python 3.13 환경에서 Paddle 런타임 oneDNN 오류가 반복되어 기본 경로 채택 보류
 - 완료 커밋: `b7a25e612e4451c721bb2e3d36249ff9c67f56b1`, `d7212594d3fada8343545141d789749e25d7cc88`, `6d2bfdb7c48f539bda351d2105603b2e2ed23a3f`
 - TODO: 안정판 동작 확인 후 OCR 엔진 독립 벤치마크 구조에서 대체 엔진 비교
+
+
+### 2026-09-20 · Team OCR 자동 벤치마크 기반 구축
+- 상태: DONE
+- 내용: 제공된 Team 스크린샷 10장의 10명×6개 스탯, 총 600개 숫자 셀 정답 데이터 작성
+- 내용: `be/ocr_benchmark/run_team_benchmark.py` 추가. 이미지 폴더를 입력하면 현재 `extract_team`을 실행해 전체/필드별 정확도와 오답 JSON을 자동 생성
+- 완료 커밋: `1983a350dcfc9e80ef95b0e73579dd647bdf3764`, `50525e96df898edca4324c24f8cff5dfec75e094`
+- TODO: 10개 원본 이미지를 로컬 benchmark 폴더에 두고 기준 정확도 1회 측정. 이후 대체 숫자 인식기는 이 점수를 이길 때만 서비스 코드에 반영
