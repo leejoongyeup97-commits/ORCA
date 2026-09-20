@@ -73,6 +73,12 @@ function defaultEditable(match: StoredMockMatch): EditableMatchFields {
     game_mode: match.editable?.game_mode ?? "",
     result: match.editable?.result ?? "unknown",
     my_hero: match.editable?.my_hero ?? "",
+    season: match.editable?.season ?? "",
+    patch_label: match.editable?.patch_label ?? "",
+    side: match.editable?.side ?? "unknown",
+    control_submap: match.editable?.control_submap ?? "",
+    round_sequence: match.editable?.round_sequence ?? "",
+    match_duration: match.editable?.match_duration ?? "",
     notes: match.editable?.notes ?? "",
   };
 }
@@ -138,6 +144,12 @@ export class MockMatchBackendAdapter implements MatchManagementAdapter {
         game_mode: "",
         result: "unknown",
         my_hero: "",
+        season: "",
+        patch_label: "",
+        side: "unknown",
+        control_submap: "",
+        round_sequence: "",
+        match_duration: "",
         notes: "",
       },
       ocr: {
