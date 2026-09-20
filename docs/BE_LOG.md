@@ -143,3 +143,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 조치: 실행할 때마다 requirements.txt 동기화 후 PaddleOCR/Paddle import 검증. 설치/검증 실패 시 서버를 시작하지 않고 오류 표시
 - 완료 커밋: `8cd556d7ebb9a392e9c1d4dedfdb3cfd614838f5`
 - TODO: Pull 후 START_OCR 재실행하여 `PaddleOCR dependencies OK` 확인, 이후 Team A/B 테스트 재개
+
+
+### 2026-09-20 · Supabase 세션 자동 갱신
+- 상태: DONE
+- 원인: 로그인 시 받은 access_token을 localStorage에 저장만 하고 만료 후 refresh_token으로 갱신하지 않아 SUPABASE_NOT_AUTHENTICATED/JWT expired가 반복될 수 있었음
+- 조치: 만료 임박/만료 access token을 refresh_token으로 자동 갱신하고 Supabase Adapter가 항상 유효 세션을 사용하도록 변경
+- 완료 커밋: `1d64202283723e51ce7525f47707eb3d904c734a`, `2c44acb4eb0272a6fd80f37ad027004590ae2a55`
+- TODO: Pull 후 프론트 재시작/재로그인하여 경기 목록 로드 및 Paddle Team 테스트 재개
