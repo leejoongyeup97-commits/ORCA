@@ -39,7 +39,8 @@ function basicAvailability(matches: MatchListItem[], key: HypothesisDataKey) {
         (match) =>
           match.editable.side !== "unknown" ||
           match.editable.control_submap.trim() ||
-          match.editable.round_sequence.trim(),
+          match.editable.round_sequence.trim() ||
+          match.editable.match_duration.trim(),
       ).length;
     case "patch":
       return matches.filter((match) => match.editable.patch_label.trim()).length;
