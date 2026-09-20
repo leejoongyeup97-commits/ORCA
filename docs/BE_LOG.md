@@ -381,3 +381,13 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - OCR `player.is_me=true`인 ally 행을 실제 '나' 행으로 반영
 - 관련 커밋: `ac5ab7b7b425269806bbed1d8f5e69cbc7ca7676`, `907fd5c8e410933e0bd3778e156801cae01f7f5b`, `5efa37dbc7f5b89b2c19a1c0acf24c23e71fa36a`, `e613d734bd49035ebefe4c0b0f1484668865c0a7`, `80b1f2a6612b56406cd7e77fcb9b43b34333cf63`
 - TODO: Pull 후 production `run_team_benchmark.py` 재실행하여 숫자 599/600 유지 + `is_me 10/10` 확인 후 DONE 처리
+
+
+### 2026-09-20 · Team 내 행(is_me) production 검증 완료
+- 상태: DONE
+- production benchmark:
+  - 숫자 599/600 = 99.8%
+  - is_me 10/10 = 100.0%
+  - 처리시간 7.5초
+- 결론: Team 숫자 OCR과 내 행 자동 식별 모두 production 기준 통과
+- 현재 Team 처리: RapidOCR + blue/red 분리 행 탐지 + row highlight is_me 판정
