@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getMatchBackendAdapter, type MatchImportStatus, type MatchListItem } from "@/lib/backend";
+import { PREDEFINED_HYPOTHESIS_COUNT } from "@/lib/hypothesis-library";
 
 const STATUS_LABELS: Record<MatchImportStatus, string> = {
   awaiting_upload: "업로드 대기",
@@ -137,15 +138,21 @@ export default function DashboardPage() {
                 <QuickLink href="/matches/new" title="경기 등록" text="새 스크린샷 자동 분류" />
                 <QuickLink href="/matches" title="경기 목록" text="상세 · 수정 · 삭제 · OCR 검수" />
                 <QuickLink href="/analysis" title="분석" text="확정 경기 기반 기초 분석" />
-                <QuickLink href="/hypotheses" title="가설" text="검증할 가설 메모 및 관리" />
+                <QuickLink href="/insights" title="인사이트" text="최근 변화와 다음 검증 포인트" />
+                <QuickLink href="/hypotheses" title="가설" text={`사전 가설 Library ${PREDEFINED_HYPOTHESIS_COUNT}개`} />
               </div>
             </section>
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
-              <p className="m-0 text-sm font-bold text-[#8ee9aa]">현재 개발 상태</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Mock 환경에서 경기 CRUD와 OCR 검수 흐름까지 동작합니다. 실제 백엔드 연결 시 Adapter 구현만 교체할 수 있게 구성했습니다.
-              </p>
+              <p className="m-0 text-sm font-bold text-[#8ee9aa]">ORCA 파이프라인</p>
+              <div className="mt-4 space-y-2">
+                <PipelineStep label="1. 스크린샷 수집 / 분류" state="done" />
+                <PipelineStep label="2. 업로드 / 저장" state="mock" />
+                <PipelineStep label="3. OCR 구조화" state="mock" />
+                <PipelineStep label="4. 사용자 검수" state="done" />
+                <PipelineStep label="5. 분석 / 가설 검증" state="partial" />
+                <PipelineStep label="6. AI 인사이트" state="partial" />
+              </div>
             </section>
           </aside>
         </div>
@@ -160,6 +167,21 @@ function MetricCard({ label, value, accent = false, warning = false }: { label: 
     <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4 md:p-5">
       <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
       <p className={`mb-0 mt-2 text-3xl font-black ${valueClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function PipelineStep({ label, state }: { label: string; state: "done" | "mock" | "partial" }) {
+  const meta = {
+    done: { text: "FE 완료", className: "text-[#8ee9aa]" },
+    mock: { text: "Mock", className: "text-[#9bc6ff]" },
+    partial: { text: "준비 중", className: "text-[#ffc779]" },
+  }[state];
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2">
+      <span className="text-[10px] font-bold text-white">{label}</span>
+      <span className={`text-[9px] font-black ${meta.className}`}>{meta.text}</span>
     </div>
   );
 }
