@@ -464,3 +464,12 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 상태: DONE
 - 내용: 비개발자 테스트를 위해 reference sync + 10장 hero matching benchmark를 한 번에 실행하는 `be/RUN_HERO_BENCHMARK.bat` 추가
 - 완료 커밋: `bf114aa93041bb590210c0d40bfc55c8e33efd1a`
+
+
+### 2026-09-21 · develop 통합 테스트 is_me 표시 누락 수정
+- 상태: DONE
+- 증상: Team 숫자는 정상이나 Review 화면의 '나' 위치가 OCR 하이라이트 행으로 이동하지 않음
+- 원인: 실제 업로드 흐름은 `runRealOcrForMatch` → `fe/src/lib/ocr-integration.ts`를 사용하고 있었고, 이전 통합은 사용되지 않는 `runMockOcr` 쪽 adapter에만 `is_me` 반영을 추가함
+- 조치: 실제 OCR 통합 경로의 `applyTeamResult`에서 `player.is_me`를 review draft에 반영하고 기존 기본 '나' 표시를 정리
+- PR: #4
+- develop merge commit: `46192af3450e38b0ce879a343325ea692edbff8a`
