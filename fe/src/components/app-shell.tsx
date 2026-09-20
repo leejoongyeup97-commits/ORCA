@@ -6,11 +6,11 @@ import type { ReactNode } from "react";
 
 const NAV_ITEMS = [
   { href: "/", label: "대시보드", icon: "⌂", exact: true },
-  { href: "/matches/new", label: "경기 등록", icon: "＋" },
+  { href: "/matches/new", label: "경기 등록", icon: "＋", exact: false },
   { href: "/matches", label: "경기 목록", icon: "▤", exact: true },
-  { href: "/analysis", label: "분석", icon: "◔" },
-  { href: "/hypotheses", label: "가설", icon: "◇" },
-  { href: "/settings", label: "설정", icon: "⚙" },
+  { href: "/analysis", label: "분석", icon: "◔", exact: false },
+  { href: "/hypotheses", label: "가설", icon: "◇", exact: false },
+  { href: "/settings", label: "설정", icon: "⚙", exact: false },
 ] as const;
 
 function isActive(pathname: string, href: string, exact?: boolean) {
