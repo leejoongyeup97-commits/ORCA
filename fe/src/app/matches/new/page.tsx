@@ -828,8 +828,8 @@ export default function NewMatchPage() {
             </section>
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
-              <p className="m-0 text-sm font-bold text-[#8ee9aa]">v0.5 추가 기능</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">연결규격 v0.1 기반 MatchBackendAdapter와 Mock 백엔드를 추가했습니다. 검수 완료 후 Draft 생성 → 파일 업로드 → pending_ocr 상태까지 실제 연결 순서 그대로 테스트합니다.</p>
+              <p className="m-0 text-sm font-bold text-[#8ee9aa]">v0.7 연결 흐름</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">검수 완료 후 Mock Draft 생성 → 파일 업로드 → pending_ocr까지 진행합니다. 이후 경기 목록의 상세 화면에서 Mock OCR, 값 수정, 확정, 삭제까지 테스트할 수 있습니다.</p>
             </section>
 
             <section className="rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.06)] p-5">
