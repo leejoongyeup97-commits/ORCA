@@ -183,3 +183,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 조치: PaddleOCR 생성 시 `enable_mkldnn=False`, `cpu_threads=1`을 명시해 Predictor 수준에서 MKLDNN을 강제로 끔
 - 작업 커밋: `b20f5abe41e64b81827313aa6fe56f59f2d4578a`
 - TODO: Pull 후 START_OCR 재실행, 동일 Team OCR 테스트
+
+
+### 2026-09-20 · Paddle 실험 롤백 / Tesseract 복구
+- 상태: DONE
+- 내용: Team OCR 웹 호출을 안정판 `/extract`로 복구. PaddleOCR/PaddlePaddle 의존성과 START_OCR의 Paddle 전용 검사/oneDNN 설정 제거
+- NOTE: Paddle 실험 코드는 비교 기록용으로 남겨두되 기본 실행 경로에서는 사용하지 않음. 현재 Windows + Python 3.13 환경에서 Paddle 런타임 oneDNN 오류가 반복되어 기본 경로 채택 보류
+- 완료 커밋: `b7a25e612e4451c721bb2e3d36249ff9c67f56b1`, `d7212594d3fada8343545141d789749e25d7cc88`, `6d2bfdb7c48f539bda351d2105603b2e2ed23a3f`
+- TODO: 안정판 동작 확인 후 OCR 엔진 독립 벤치마크 구조에서 대체 엔진 비교
