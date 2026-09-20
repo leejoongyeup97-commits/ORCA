@@ -16,6 +16,14 @@ call npm.cmd install
 if errorlevel 1 goto INSTALL_FAIL
 
 :RUN_APP
+echo Checking port 3040...
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":3040" ^| findstr "LISTENING"') do (
+  echo Stopping old process on port 3040 ^(PID %%P^)...
+  taskkill /PID %%P /F >nul 2>nul
+)
+
+timeout /t 1 /nobreak >nul
+
 echo [2/2] Starting ORCA Frontend v0.12 on port 3040...
 echo Keep this window open while using the app.
 echo.
