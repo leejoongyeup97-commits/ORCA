@@ -20,21 +20,21 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - 주변 행 대비 차이가 충분한 행만 `is_me=true`
   - 판정이 애매하면 `is_me=null`로 두고 FE 검수 대상으로 넘김
   - 가능하면 `me_detection_method=row_highlight`, `me_detection_confidence`도 함께 반환
-- 닉네임 Pool:
-  - OCR 내 행 식별의 주 방식으로 사용하지 않음
-  - 필요성이 다시 확인되기 전까지 보조/사용자 설정 용도로만 유지
+- 닉네임 관련 결정:
+  - 닉네임 Pool은 사용하지 않음
+  - 다른 플레이어 닉네임도 OCR/저장하지 않음
+  - 내 행 식별은 닉네임이 아니라 스코어보드 행 하이라이트 방식 검토를 우선
 - 관련: `be/orca_ocr/engine.py`
 - 작업 조건: 위 항목을 먼저 확인하고 타당하다고 판단된 뒤 구현 시작
 
-### 2026-09-20 · 닉네임 OCR / 내 닉네임 Pool 기준
-- 상태: NOTE / 위 하이라이트 식별 제안으로 우선순위 변경
+### 2026-09-20 · 닉네임 기반 식별안 취소
+- 상태: CANCELLED
 - 내용:
-  - 경기 데이터에는 다른 플레이어 닉네임을 저장하지 않음
-  - 현재 team OCR 출력도 team / slot / stats 중심으로 유지하고 player nickname 필드는 추가하지 않음
-  - 내 닉네임은 사용자별 Nickname Pool로 별도 관리
-  - 추후 내 행(is_me) 식별에 닉네임이 꼭 필요하면 닉네임 영역을 일시적으로 OCR해 Pool과 비교한 뒤 원문은 저장하지 않는 방식 사용
-- 관련: `be/orca_ocr/engine.py`, 사용자 identity 설정
-- 참고: FE에는 임시 localStorage 기반 Nickname Pool이 추가됨. 향후 Supabase 사용자별 저장 구조 필요
+  - 닉네임 Pool은 사용하지 않기로 결정
+  - 다른 플레이어 닉네임도 OCR/저장하지 않음
+  - 내 행 식별은 Team 스코어보드의 행 하이라이트 색상/명도 차이 방식 제안을 우선 검토
+- 관련: `be/orca_ocr/engine.py`
+- 참고: FE의 닉네임 Pool UI와 helper도 제거됨
 
 ### 2026-09-20 · Tesseract 경로 설정
 - 상태: TODO
