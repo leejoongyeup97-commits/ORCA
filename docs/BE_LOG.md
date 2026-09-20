@@ -4,6 +4,16 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 
 ## 현재 로그
 
+### 2026-09-20 · 닉네임 OCR / 내 닉네임 Pool 기준
+- 상태: NOTE
+- 내용:
+  - 경기 데이터에는 다른 플레이어 닉네임을 저장하지 않음
+  - 현재 team OCR 출력도 team / slot / stats 중심으로 유지하고 player nickname 필드는 추가하지 않음
+  - 내 닉네임은 사용자별 Nickname Pool로 별도 관리
+  - 추후 내 행(is_me) 식별에 닉네임이 꼭 필요하면 닉네임 영역을 일시적으로 OCR해 Pool과 비교한 뒤 원문은 저장하지 않는 방식 사용
+- 관련: `be/orca_ocr/engine.py`, 사용자 identity 설정
+- 참고: FE에는 임시 localStorage 기반 Nickname Pool이 추가됨. 향후 Supabase 사용자별 저장 구조 필요
+
 ### 2026-09-20 · Tesseract 경로 설정
 - 상태: TODO
 - 내용: 사용자 PC마다 설치 위치가 달라도 OCR이 실행되도록 경로 설정 방식을 정리
