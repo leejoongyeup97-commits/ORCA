@@ -8,6 +8,7 @@ import {
   type MatchListItem,
   type MatchResult,
 } from "@/lib/backend";
+import { removeReviewDraft } from "@/lib/review-draft";
 
 const STATUS_META: Record<MatchImportStatus, { label: string; className: string }> = {
   awaiting_upload: { label: "업로드 대기", className: "bg-[rgba(249,158,26,0.12)] text-[var(--orange)]" },
@@ -54,6 +55,8 @@ export default function MatchesPage() {
   const [query, setQuery] = useState("");
   const [seasonFilter, setSeasonFilter] = useState("all");
   const [patchFilter, setPatchFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -111,6 +114,51 @@ export default function MatchesPage() {
     });
   }, [filter, matches, patchFilter, query, seasonFilter]);
 
+  const visibleIds = visible.map((match) => match.match_id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelected(matchId: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(matchId)) next.delete(matchId);
+      else next.add(matchId);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) {
+        for (const id of visibleIds) next.delete(id);
+      } else {
+        for (const id of visibleIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    const ok = window.confirm(`선택한 경기 ${ids.length}개를 한 번에 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`);
+    if (!ok) return;
+
+    setDeleting(true);
+    try {
+      const adapter = getMatchBackendAdapter();
+      for (const id of ids) {
+        await adapter.deleteMatchImport(id);
+        removeReviewDraft(id);
+      }
+      setMatches((current) => current.filter((match) => !selectedIds.has(match.match_id)));
+      setSelectedIds(new Set());
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[1240px]">
@@ -155,7 +203,7 @@ export default function MatchesPage() {
               />
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-3">
               <select
                 value={seasonFilter}
                 onChange={(event) => setSeasonFilter(event.target.value)}
@@ -172,6 +220,23 @@ export default function MatchesPage() {
                 <option value="all">패치 전체</option>
                 {patchOptions.map((patch) => <option key={patch} value={patch}>{patch}</option>)}
               </select>
+              <button
+                type="button"
+                onClick={toggleSelectAllVisible}
+                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#121823] px-3 py-2 text-[10px] font-bold text-white hover:border-[#4b5668]"
+              >
+                {allVisibleSelected ? "현재 목록 선택 해제" : `현재 목록 전체 선택 (${visible.length})`}
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => void deleteSelected()}
+                  className="cursor-pointer rounded-lg border border-[#6a3a40] bg-[#281419] px-3 py-2 text-[10px] font-black text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
+                >
+                  {deleting ? "삭제 중..." : `선택 ${selectedIds.size}개 삭제`}
+                </button>
+              )}
               {(seasonFilter !== "all" || patchFilter !== "all" || query) && (
                 <button
                   type="button"
@@ -207,7 +272,17 @@ export default function MatchesPage() {
                 const result = RESULT_META[match.editable.result];
 
                 return (
-                  <article key={match.match_id} className="grid gap-4 px-5 py-4 transition hover:bg-[#141a25] xl:grid-cols-[150px_110px_1fr_200px_auto] xl:items-center">
+                  <article key={match.match_id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#141a25] xl:grid-cols-[34px_150px_110px_1fr_200px_auto] xl:items-center ${selectedIds.has(match.match_id) ? "bg-[rgba(249,158,26,0.04)]" : ""}`}>
+                    <label className="flex cursor-pointer items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(match.match_id)}
+                        onChange={() => toggleSelected(match.match_id)}
+                        className="h-4 w-4 accent-[var(--orange)]"
+                        aria-label={`${match.match_id} 선택`}
+                      />
+                    </label>
+
                     <div>
                       <p className="m-0 text-sm font-bold text-white">{formatDate(match.editable.played_at || match.detected_at)}</p>
                       <p className="mt-1 truncate text-[10px] text-[var(--muted)]">{match.match_id.slice(0, 16)}...</p>
