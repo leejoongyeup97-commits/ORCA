@@ -67,6 +67,21 @@ export default function AnalysisPage() {
   const mapRows = useMemo(() => buildBreakdown(confirmed, (match) => match.editable.map_name), [confirmed]);
   const heroRows = useMemo(() => buildBreakdown(confirmed, (match) => match.editable.my_hero), [confirmed]);
   const modeRows = useMemo(() => buildBreakdown(confirmed, (match) => match.editable.game_mode), [confirmed]);
+  const seasonRows = useMemo(() => buildBreakdown(confirmed, (match) => match.editable.season), [confirmed]);
+  const patchRows = useMemo(() => buildBreakdown(confirmed, (match) => match.editable.patch_label), [confirmed]);
+  const sideRows = useMemo(
+    () =>
+      buildBreakdown(confirmed, (match) =>
+        match.editable.side === "attack"
+          ? "선공"
+          : match.editable.side === "defense"
+            ? "선수비"
+            : match.editable.side === "neutral"
+              ? "해당 없음"
+              : "미확인",
+      ),
+    [confirmed],
+  );
 
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
@@ -75,7 +90,7 @@ export default function AnalysisPage() {
           <p className="mb-2 text-sm font-semibold text-[var(--orange)]">분석</p>
           <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">확정 경기 기초 분석</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            현재는 확정된 경기의 수동 검수값을 기준으로 승률과 맵, 영웅, 모드별 표를 만듭니다. 실제 OCR 및 통계 모델 연결 전 단계입니다.
+            현재는 확정된 경기의 검수값을 기준으로 승률과 맵, 영웅, 모드, 시즌, 패치, 선공/선수비를 비교합니다. 실제 통계 모델 연결 전 단계입니다.
           </p>
         </section>
 
@@ -101,6 +116,9 @@ export default function AnalysisPage() {
                 <Breakdown title="맵별" rows={mapRows} />
                 <Breakdown title="영웅별" rows={heroRows} />
                 <Breakdown title="모드별" rows={modeRows} />
+                <Breakdown title="시즌별" rows={seasonRows} />
+                <Breakdown title="패치별" rows={patchRows} />
+                <Breakdown title="선공 / 선수비" rows={sideRows} />
               </div>
             )}
 
