@@ -135,3 +135,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 목적: 기존 UI/업로드 흐름 그대로 동일 Team 이미지의 PaddleOCR 결과와 처리시간 확인
 - 작업 커밋: `b66eb55d35009a18ed0553ced307cf2845e1839f`
 - TODO: 동일 경기 OCR 실행 후 Team 결과 및 서버의 PADDLE elapsed 확인. 비교 후 Paddle 채택 여부 결정
+
+
+### 2026-09-20 · START_OCR 의존성 동기화 수정
+- 상태: DONE
+- 원인: 기존 START_OCR은 .venv 최초 생성 때만 requirements.txt를 설치해서, 이후 추가된 PaddleOCR이 기존 가상환경에 설치되지 않았음
+- 조치: 실행할 때마다 requirements.txt 동기화 후 PaddleOCR/Paddle import 검증. 설치/검증 실패 시 서버를 시작하지 않고 오류 표시
+- 완료 커밋: `8cd556d7ebb9a392e9c1d4dedfdb3cfd614838f5`
+- TODO: Pull 후 START_OCR 재실행하여 `PaddleOCR dependencies OK` 확인, 이후 Team A/B 테스트 재개
