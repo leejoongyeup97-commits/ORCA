@@ -78,3 +78,12 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 - `be-dev`는 오래 분기되어 FE 파일 일부가 develop과 다르므로 branch 전체 merge 금지 권장
 - 통합 시 develop의 FE 화면/컴포넌트/contracts를 기준으로 유지하고, BE 쪽에서 필요한 FE 변경은 adapter 수준으로 최소 반영
 - 현재 필요한 최신 연동: Team OCR의 `player.is_me=true`를 review draft의 실제 '나' 행으로 반영하는 `fe/src/lib/backend/supabase-adapter.ts` 변경
+
+
+### 2026-09-20 · develop에 BE/OCR 안전 통합
+- 상태: DONE
+- develop 기준으로 BE runtime + Team benchmark + `is_me` adapter 최소 변경만 통합
+- FE pages/components/contracts는 develop 버전을 유지
+- PR #3 merge 완료
+- merge commit: `db6b8e3d5306a58f909818b4174c4119313f0628`
+- 다음: develop Pull 후 경기 업로드 → OCR → Review 화면 통합 테스트
