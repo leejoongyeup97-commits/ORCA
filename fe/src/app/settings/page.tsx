@@ -3,7 +3,6 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { BACKEND_MODE } from "@/lib/backend";
 import { getSupabaseConfig } from "@/lib/auth";
-import { getMyNicknamePool, setMyNicknamePool } from "@/lib/player-identity";
 import {
   forgetScreenshotFolder,
   getSavedScreenshotFolder,
@@ -40,8 +39,6 @@ export default function SettingsPage() {
   const [folderPermission, setFolderPermission] = useState<DirectoryPermissionState | "none">("none");
   const [autoScanFolder, setAutoScanFolder] = useState(false);
   const [folderBusy, setFolderBusy] = useState(false);
-  const [nicknamePool, setNicknamePoolState] = useState<string[]>([]);
-  const [nicknameDraft, setNicknameDraft] = useState("");
   const supabaseConfig = getSupabaseConfig();
 
   function refreshCount() {
@@ -51,7 +48,6 @@ export default function SettingsPage() {
   useEffect(() => {
     refreshCount();
     setAutoScanFolder(getScreenshotAutoScanEnabled());
-    setNicknamePoolState(getMyNicknamePool());
 
     getSavedScreenshotFolder()
       .then(async (handle) => {
@@ -109,24 +105,6 @@ export default function SettingsPage() {
         ? "경기 등록 화면 진입 시 권한이 유지되어 있으면 자동으로 새 스크린샷을 확인합니다."
         : "자동 확인을 끄고 경기 등록 화면의 버튼으로만 스캔합니다.",
     );
-  }
-
-  function addNickname() {
-    const value = nicknameDraft.trim();
-    if (!value) {
-      setNotice("닉네임을 입력해 주세요.");
-      return;
-    }
-    const next = setMyNicknamePool([...nicknamePool, value]);
-    setNicknamePoolState(next);
-    setNicknameDraft("");
-    setNotice("내 닉네임 Pool을 저장했습니다.");
-  }
-
-  function removeNickname(value: string) {
-    const next = setMyNicknamePool(nicknamePool.filter((nickname) => nickname !== value));
-    setNicknamePoolState(next);
-    setNotice("닉네임을 Pool에서 제거했습니다.");
   }
 
   function exportData() {
@@ -260,59 +238,6 @@ export default function SettingsPage() {
 
           <p className="mb-0 mt-3 text-[9px] leading-4 text-[var(--muted)]">
             브라우저 보안상 Windows 전체 경로 문자열은 표시하지 않고, 선택한 폴더 자체의 접근 권한을 안전하게 저장합니다.
-          </p>
-        </section>
-
-        <section className="app-panel mb-5 rounded-[16px] p-5 md:p-6">
-          <div className="max-w-2xl">
-            <p className="m-0 text-[17px] font-medium text-white">내 닉네임 Pool</p>
-            <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">
-              현재 또는 예전에 사용한 내 닉네임만 보관합니다. 다른 플레이어 닉네임은 경기 데이터에 저장하지 않는 방향으로 사용합니다.
-            </p>
-          </div>
-
-          <div className="mt-5 flex max-w-2xl flex-col gap-2 sm:flex-row">
-            <input
-              value={nicknameDraft}
-              onChange={(event) => setNicknameDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addNickname();
-                }
-              }}
-              placeholder="예: MyNickname"
-              className="field-input min-h-10 flex-1"
-            />
-            <button
-              type="button"
-              onClick={addNickname}
-              className="app-orange-button min-h-10 cursor-pointer rounded-lg px-5 text-[13px] font-bold"
-            >
-              추가
-            </button>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {nicknamePool.length === 0 ? (
-              <span className="text-[12px] text-[var(--muted)]">등록된 닉네임이 없습니다.</span>
-            ) : (
-              nicknamePool.map((nickname) => (
-                <button
-                  key={nickname}
-                  type="button"
-                  onClick={() => removeNickname(nickname)}
-                  title="클릭해서 삭제"
-                  className="cursor-pointer rounded-lg bg-[#0d141d] px-3 py-2 text-[12px] font-medium text-[#c5cfda] hover:bg-[#17212d]"
-                >
-                  {nickname} ×
-                </button>
-              ))
-            )}
-          </div>
-
-          <p className="mb-0 mt-4 text-[11px] leading-5 text-[var(--muted)]">
-            우선 브라우저에 저장하고, Supabase 사용자 설정이 정리되면 계정별로 동기화할 예정입니다.
           </p>
         </section>
 
