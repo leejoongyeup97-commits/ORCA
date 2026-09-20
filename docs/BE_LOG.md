@@ -423,3 +423,19 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
   - is_me 10/10 = 100%
   - Team OCR 처리시간 7.5초
 - 다음: develop에서 안전 통합용 체크리스트대로 BE 파일 + 필요한 FE adapter 변경만 반영 후 통합 테스트
+
+
+### 2026-09-20 · FE/BE develop 안전 통합 완료
+- 상태: DONE
+- 방식: `develop`을 기준으로 별도 `integration/be-safe-sync` 브랜치를 만들고 검증된 BE 변경만 선택 반영
+- develop에 반영한 파일:
+  - `be/app.py`
+  - `be/orca_ocr/engine.py`
+  - `be/requirements.txt`
+  - `be/ocr_benchmark/run_team_benchmark.py`
+  - `be/ocr_benchmark/team_ground_truth.json`
+  - `fe/src/lib/backend/supabase-adapter.ts`의 `is_me` 최소 연동
+- 의도적으로 유지한 것: develop의 최신 FE pages/components/contracts
+- PR: #3 `Integrate validated backend OCR into develop`
+- merge commit: `db6b8e3d5306a58f909818b4174c4119313f0628`
+- 다음: develop을 로컬에서 Pull 후 전체 FE + OCR 통합 실행 테스트
