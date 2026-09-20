@@ -281,3 +281,20 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 커밋: `1f88309b9b7c7b0c2a8b87503b73797a92b843ba`, `d344d33bd79fa2319a564b51f3f509aeae0030e9`, `2761eb44aac2c7450f76e1a527c63ba8e39e1f97`
 - NOTE: 공식 RapidOCR 최신 문서 기준 `rapidocr` + `onnxruntime` 조합을 사용. production requirements에는 아직 추가하지 않음
 - TODO: 별도 benchmark dependency 설치 후 10장 / 600셀 정확도와 전체 처리시간 측정. 기준선 52.5%를 유의미하게 넘지 못하면 채택하지 않음
+
+
+### 2026-09-20 · RapidOCR 벤치마크 결과
+- 상태: DONE
+- 결과: 10장 / 600셀 기준 317/600 = 52.8%
+- 필드별: elims 53%, assists 52%, deaths 56%, damage 50%, healing 50%, mitigation 56%
+- 처리시간: 6.4초
+- 비교: grid Tesseract 52.5% / 17.0초 대비 정확도 +0.3%p, 속도 약 2.7배 개선
+- 결론: 속도는 우수하지만 정확도 개선이 거의 없어 production 채택 기준에는 부족
+
+### 2026-09-20 · RapidOCR 오답 패턴 분석기 추가
+- 상태: DONE
+- 내용: 엔진을 또 바꾸기 전에 오답이 팀 색상/행 위치/0값/자릿수 잘림 중 어디에 집중되는지 확인하는 분석기 추가
+- 출력: blue/red 정확도, 필드×팀 정확도, expected zero/nonzero 정확도, None/0/자릿수 오류 유형, 행별 정확도
+- 관련 파일: `be/ocr_benchmark/analyze_rapidocr_failures.py`
+- 완료 커밋: `5bc95b4229fbf504eda6be45990616c6fcbd3a42`
+- TODO: 로컬에서 분석기 실행 후 결과에 따라 다음 실험을 결정. 구조적 문제면 crop/layout을 수정하고, 구조적 편향이 없으면 다른 OCR 계열로 이동
