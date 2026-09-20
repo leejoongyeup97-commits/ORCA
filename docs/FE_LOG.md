@@ -15,6 +15,13 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-20 · ORCA 풀네임 수정
+- 상태: DONE
+- 내용: FE에 표시되는 ORCA 풀네임을 `Overwatch Result Correlation Analysis`로 통일
+- 관련: 앱 쉘, 로그인 화면, 메타데이터
+- 완료 커밋: 74039c1291c557a1d32dc3745a0f82522d96a373
+
+
 ### 2026-09-20 · 실제 OCR 연동 코드 이동
 - 상태: DONE
 - 내용: 기존 integration 브랜치에 있던 FE↔OCR 연동 코드를 fe-dev로 이동
