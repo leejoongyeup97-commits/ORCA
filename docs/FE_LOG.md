@@ -15,6 +15,17 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-20 · Tesla-inspired 1차 디자인 / 내 닉네임 Pool
+- 상태: DONE
+- 내용:
+  - DESIGN-tesla 기준으로 상단 내비게이션, 대시보드, 설정 화면을 1차 라이트 디자인으로 변경
+  - White / Light Ash / Carbon 계열 + Electric Blue(#3E6AE1) 중심
+  - 둥근 정도와 장식을 줄이고 4px 버튼, 0.33s 전환 적용
+  - 설정에 "내 닉네임 Pool" 추가
+- 관련: `fe/src/components/app-shell.tsx`, `fe/src/app/page.tsx`, `fe/src/app/settings/page.tsx`, `fe/src/lib/player-identity.ts`
+- 참고: 닉네임 Pool은 현재 브라우저 저장, 이후 Supabase 사용자별 설정으로 이동 예정
+- 완료 커밋: f5e3a25af2dc9f5587466503e9ce7725fa43691d
+
 ### 2026-09-20 · ORCA 풀네임 수정
 - 상태: DONE
 - 내용: FE에 표시되는 ORCA 풀네임을 `Overwatch Result Correlation Analysis`로 통일
