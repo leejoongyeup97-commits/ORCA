@@ -1,9 +1,18 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { BACKEND_MODE, getMatchBackendAdapter } from "@/lib/backend";
 
 type ScreenType = "summary" | "team" | "personal" | "replay" | "unknown";
-type ReviewStatus = "unreviewed" | "ready_to_upload";
+type ReviewStatus = "unreviewed" | "ready_to_upload" | "uploading" | "pending_ocr";
+
+type UploadUiState = {
+  phase: "idle" | "creating" | "uploading" | "completing" | "done" | "error";
+  current: number;
+  total: number;
+  message: string;
+  matchId?: string;
+};
 
 type DirectoryEntryLike = {
   kind: "file" | "directory";
@@ -251,6 +260,12 @@ export default function NewMatchPage() {
   const [reviewingMatchId, setReviewingMatchId] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [reviewNotice, setReviewNotice] = useState("");
+  const [uploadState, setUploadState] = useState<UploadUiState>({
+    phase: "idle",
+    current: 0,
+    total: 0,
+    message: "",
+  });
 
   const counts = useMemo(() => {
     const all = matches.flatMap((match) => match.files).filter((item) => !item.excluded);
@@ -435,6 +450,7 @@ export default function NewMatchPage() {
     setReviewingMatchId(match.id);
     setSelectedFileId(match.files.find((file) => !file.excluded)?.id ?? match.files[0]?.id ?? null);
     setReviewNotice("");
+    setUploadState({ phase: "idle", current: 0, total: 0, message: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -506,7 +522,7 @@ export default function NewMatchPage() {
     setReviewNotice(`${additions.length}장을 추가했습니다. 화면 종류를 직접 지정해 주세요.`);
   }
 
-  function markReady(match: DetectedMatch) {
+  async function markReady(match: DetectedMatch) {
     const validation = validateMatch(match);
     if (!validation.valid) {
       setReviewNotice(validation.messages.join(" · "));
@@ -519,7 +535,7 @@ export default function NewMatchPage() {
       status: "ready_to_upload",
       started_at: new Date(match.startedAt).toISOString(),
       images: activeFiles.map((file, index) => ({
-        client_file_id: file.hash,
+        client_file_id: `sha256:${file.hash}`,
         type: file.type,
         filename: file.file.name,
         size: file.file.size,
@@ -530,8 +546,95 @@ export default function NewMatchPage() {
     };
 
     localStorage.setItem(readyManifestKey(match.localMatchKey), JSON.stringify(manifest));
-    patchMatch(match.id, (current) => ({ ...current, reviewStatus: "ready_to_upload" }));
-    setReviewNotice("검수 완료. 백엔드 연결 시 그대로 업로드할 수 있는 상태로 표시했습니다.");
+    patchMatch(match.id, (current) => ({ ...current, reviewStatus: "uploading" }));
+    setReviewNotice("");
+    setUploadState({
+      phase: "creating",
+      current: 0,
+      total: activeFiles.length,
+      message: "Match Draft를 만들고 있습니다...",
+    });
+
+    try {
+      const adapter = getMatchBackendAdapter();
+      const draft = await adapter.createMatchDraft({
+        contract_version: "0.1",
+        local_match_key: match.localMatchKey,
+        source: "local_folder_import",
+        detected_at: new Date(match.startedAt).toISOString(),
+        files: activeFiles.map((file) => ({
+          client_file_id: `sha256:${file.hash}`,
+          screen_type: file.type,
+          original_name: file.file.name,
+          mime_type: file.file.type || "application/octet-stream",
+          size_bytes: file.file.size,
+          last_modified_ms: file.file.lastModified,
+          sha256: file.hash,
+          classification_score: Number.isFinite(file.score) ? file.score : null,
+        })),
+      });
+
+      const uploadedFiles: Array<{ upload_id: string; sha256: string }> = [];
+
+      for (let index = 0; index < activeFiles.length; index += 1) {
+        const item = activeFiles[index];
+        const clientFileId = `sha256:${item.hash}`;
+        const target = draft.uploads.find((upload) => upload.client_file_id === clientFileId);
+        if (!target) throw new Error(`업로드 대상이 없습니다: ${item.file.name}`);
+
+        setUploadState({
+          phase: "uploading",
+          current: index,
+          total: activeFiles.length,
+          message: `${index + 1} / ${activeFiles.length} · ${item.file.name}`,
+          matchId: draft.match_id,
+        });
+
+        await adapter.uploadMatchFile(target, item.file);
+        uploadedFiles.push({ upload_id: target.upload_id, sha256: item.hash });
+
+        setUploadState({
+          phase: "uploading",
+          current: index + 1,
+          total: activeFiles.length,
+          message: `${index + 1} / ${activeFiles.length} 업로드 완료`,
+          matchId: draft.match_id,
+        });
+      }
+
+      setUploadState({
+        phase: "completing",
+        current: activeFiles.length,
+        total: activeFiles.length,
+        message: "업로드 완료 상태를 저장하고 있습니다...",
+        matchId: draft.match_id,
+      });
+
+      const completed = await adapter.completeMatchUpload({
+        contract_version: "0.1",
+        match_id: draft.match_id,
+        uploaded_files: uploadedFiles,
+      });
+
+      patchMatch(match.id, (current) => ({ ...current, reviewStatus: "pending_ocr" }));
+      setUploadState({
+        phase: "done",
+        current: activeFiles.length,
+        total: activeFiles.length,
+        message: "업로드 완료 · OCR 대기 상태로 전환했습니다.",
+        matchId: completed.matchId,
+      });
+      setReviewNotice(`Mock 백엔드 연결 완료 · match_id ${completed.matchId}`);
+    } catch (error) {
+      patchMatch(match.id, (current) => ({ ...current, reviewStatus: "ready_to_upload" }));
+      setUploadState({
+        phase: "error",
+        current: 0,
+        total: activeFiles.length,
+        message: error instanceof Error ? error.message : "업로드 중 오류가 발생했습니다.",
+      });
+      setReviewNotice("업로드에 실패했습니다. 다시 시도할 수 있습니다.");
+    }
   }
 
   if (reviewingMatch) {
@@ -547,6 +650,7 @@ export default function NewMatchPage() {
         onMove={(fileId, direction) => moveFile(reviewingMatch.id, fileId, direction)}
         onAddFiles={(event) => addManualFiles(reviewingMatch.id, event)}
         onReady={() => markReady(reviewingMatch)}
+        uploadState={uploadState}
       />
     );
   }
@@ -636,7 +740,13 @@ export default function NewMatchPage() {
                             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--orange-soft)] text-xs font-black text-[var(--orange)]">{matchIndex + 1}</span>
                             <h3 className="m-0 text-sm font-bold">{match.id}</h3>
                             {match.reviewStatus === "ready_to_upload" && (
-                              <span className="rounded-full bg-[rgba(121,227,156,0.12)] px-2 py-1 text-[9px] font-black text-[#8ee9aa]">검수 완료</span>
+                              <span className="rounded-full bg-[rgba(121,227,156,0.12)] px-2 py-1 text-[9px] font-black text-[#8ee9aa]">업로드 준비</span>
+                            )}
+                            {match.reviewStatus === "uploading" && (
+                              <span className="rounded-full bg-[rgba(249,158,26,0.14)] px-2 py-1 text-[9px] font-black text-[var(--orange)]">업로드 중</span>
+                            )}
+                            {match.reviewStatus === "pending_ocr" && (
+                              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2 py-1 text-[9px] font-black text-[#8fc1ff]">OCR 대기</span>
                             )}
                           </div>
                           <p className="ml-9 mt-1 text-xs text-[var(--muted)]">시작 {formatDate(match.startedAt)} · 이미지 {active.length}장</p>
@@ -665,14 +775,22 @@ export default function NewMatchPage() {
 
                       <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-[#0d1118] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <span className={`text-xs ${validation.valid ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
-                          {match.reviewStatus === "ready_to_upload" ? "업로드 준비 완료" : validation.valid ? "필수 구성 확인됨 · 검수 가능" : validation.messages[0]}
+                          {match.reviewStatus === "pending_ocr"
+                            ? "Mock 업로드 완료 · OCR 대기"
+                            : match.reviewStatus === "uploading"
+                              ? "업로드 진행 중"
+                              : match.reviewStatus === "ready_to_upload"
+                                ? "업로드 준비 완료"
+                                : validation.valid
+                                  ? "필수 구성 확인됨 · 검수 가능"
+                                  : validation.messages[0]}
                         </span>
                         <button
                           type="button"
                           onClick={() => openReview(match)}
                           className="cursor-pointer rounded-lg border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-xs font-bold text-white transition hover:border-[#4b5668] hover:bg-[#19202d]"
                         >
-                          {match.reviewStatus === "ready_to_upload" ? "다시 검수" : "검수하기"}
+                          {match.reviewStatus === "unreviewed" ? "검수하기" : "다시 검수"}
                         </button>
                       </div>
                     </article>
@@ -711,13 +829,13 @@ export default function NewMatchPage() {
             </section>
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
-              <p className="m-0 text-sm font-bold text-[#8ee9aa]">v0.4.1 추가 기능</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">경기별 검수 화면에서 이미지 종류 수정, 제외, 순서 변경, 수동 이미지 추가가 가능합니다. 검수 완료 결과는 브라우저에 업로드 대기 상태로 저장합니다.</p>
+              <p className="m-0 text-sm font-bold text-[#8ee9aa]">v0.5 추가 기능</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">연결규격 v0.1 기반 MatchBackendAdapter와 Mock 백엔드를 추가했습니다. 검수 완료 후 Draft 생성 → 파일 업로드 → pending_ocr 상태까지 실제 연결 순서 그대로 테스트합니다.</p>
             </section>
 
             <section className="rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.06)] p-5">
               <p className="m-0 text-sm font-bold text-[#9bc6ff]">현재 단계</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Supabase와 OCR은 아직 연결하지 않습니다. 백엔드가 완성되면 검수 완료 데이터와 원본 이미지를 연결규격에 맞춰 전송합니다.</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Supabase와 OCR은 아직 실제 연결하지 않습니다. 현재는 Mock Adapter로 연동 계약을 먼저 검증하고, 백엔드 완성 후 Adapter 구현만 교체합니다.</p>
             </section>
           </aside>
         </div>
@@ -737,6 +855,7 @@ function ReviewScreen({
   onMove,
   onAddFiles,
   onReady,
+  uploadState,
 }: {
   match: DetectedMatch;
   selectedFileId: string | null;
@@ -748,6 +867,7 @@ function ReviewScreen({
   onMove: (fileId: string, direction: -1 | 1) => void;
   onAddFiles: (event: ChangeEvent<HTMLInputElement>) => void;
   onReady: () => void;
+  uploadState: UploadUiState;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validation = validateMatch(match);
@@ -893,21 +1013,41 @@ function ReviewScreen({
                   </div>
                 </div>
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${match.reviewStatus === "ready_to_upload" ? "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
-                  {match.reviewStatus === "ready_to_upload" ? "READY" : "REVIEW"}
+                  {match.reviewStatus === "pending_ocr" ? "PENDING OCR" : match.reviewStatus === "uploading" ? "UPLOADING" : match.reviewStatus === "ready_to_upload" ? "READY" : "REVIEW"}
                 </span>
               </div>
 
               {notice && <div className="mt-4 rounded-lg border border-[#303847] bg-[#0a0d12] px-3 py-2.5 text-xs leading-5 text-[#c8d0dc]">{notice}</div>}
 
+              {uploadState.phase !== "idle" && (
+                <div className="mt-4 rounded-lg border border-[#303847] bg-[#0a0d12] px-3 py-3">
+                  <div className="mb-2 flex items-center justify-between gap-3 text-[10px] text-[var(--muted)]">
+                    <span>{uploadState.message}</span>
+                    <span>{uploadState.total > 0 ? `${uploadState.current}/${uploadState.total}` : ""}</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[#1b2230]">
+                    <div
+                      className="h-full rounded-full bg-[var(--orange)] transition-all"
+                      style={{ width: `${uploadState.total > 0 ? Math.round((uploadState.current / uploadState.total) * 100) : 10}%` }}
+                    />
+                  </div>
+                  {uploadState.matchId && <p className="mb-0 mt-2 break-all text-[9px] text-[var(--muted)]">match_id · {uploadState.matchId}</p>}
+                </div>
+              )}
+
               <button
                 type="button"
-                disabled={!validation.valid}
+                disabled={!validation.valid || uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"}
                 onClick={onReady}
                 className="mt-4 w-full rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
               >
-                {match.reviewStatus === "ready_to_upload" ? "검수 결과 다시 저장" : "업로드 준비 완료"}
+                {match.reviewStatus === "pending_ocr"
+                  ? "Mock 업로드 완료"
+                  : uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
+                    ? "업로드 중..."
+                    : "검수 완료 · Mock 업로드"}
               </button>
-              <p className="mb-0 mt-3 text-[10px] leading-4 text-[var(--muted)]">현재는 실제 서버로 업로드하지 않습니다. 연결규격에 맞춘 manifest 정보만 브라우저에 저장합니다.</p>
+              <p className="mb-0 mt-3 text-[10px] leading-4 text-[var(--muted)]">현재 백엔드 모드: <strong className="text-white">{BACKEND_MODE}</strong>. 실제 Supabase 연결 전까지 연결규격 v0.1과 동일한 Mock Adapter로 업로드 흐름을 검증합니다.</p>
             </section>
           </aside>
         </div>
@@ -937,7 +1077,7 @@ function AppHeader() {
           <p className="m-0 text-[15px] font-bold tracking-wide">OVERWATCH INSIGHT</p>
           <p className="mt-1 text-xs text-[var(--muted)]">
             승패 요인 분석기
-            <span className="ml-2 rounded-md border border-[var(--line)] px-1.5 py-0.5 text-[10px] text-[var(--orange)]">v0.4.1</span>
+            <span className="ml-2 rounded-md border border-[var(--line)] px-1.5 py-0.5 text-[10px] text-[var(--orange)]">v0.5</span>
           </p>
         </div>
       </div>
