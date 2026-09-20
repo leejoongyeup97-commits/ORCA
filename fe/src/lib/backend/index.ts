@@ -1,11 +1,11 @@
-import type { MatchBackendAdapter } from "./contracts";
+import type { MatchManagementAdapter } from "./contracts";
 import { MockMatchBackendAdapter } from "./mock-adapter";
 
 export * from "./contracts";
 
-let adapter: MatchBackendAdapter | null = null;
+let adapter: MatchManagementAdapter | null = null;
 
-export function getMatchBackendAdapter(): MatchBackendAdapter {
+export function getMatchBackendAdapter(): MatchManagementAdapter {
   if (!adapter) adapter = new MockMatchBackendAdapter();
   return adapter;
 }

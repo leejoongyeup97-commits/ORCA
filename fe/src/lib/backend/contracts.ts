@@ -8,6 +8,31 @@ export type MatchImportStatus =
   | "confirmed"
   | "failed";
 
+export type MatchResult = "win" | "loss" | "draw" | "unknown";
+
+export type MatchSide = "attack" | "defense" | "neutral" | "unknown";
+
+export type EditableMatchFields = {
+  played_at: string;
+  map_name: string;
+  game_mode: string;
+  result: MatchResult;
+  my_hero: string;
+  season: string;
+  patch_label: string;
+  side: MatchSide;
+  control_submap: string;
+  round_sequence: string;
+  match_duration: string;
+  notes: string;
+};
+
+export type OcrReviewState = {
+  generated_at: string | null;
+  overall_confidence: number | null;
+  message: string;
+};
+
 export type CreateMatchDraftFile = {
   client_file_id: string;
   screen_type: BackendScreenType;
@@ -55,8 +80,13 @@ export type MatchImportView = {
   match_id: string;
   local_match_key: string;
   status: MatchImportStatus;
+  detected_at: string;
   files: CreateMatchDraftFile[];
+  editable: EditableMatchFields;
+  ocr: OcrReviewState;
 };
+
+export type MatchListItem = MatchImportView;
 
 export type ConfirmMatchInput = {
   contract_version: "0.1";
@@ -77,4 +107,12 @@ export interface MatchBackendAdapter {
   confirmMatch(
     input: ConfirmMatchInput,
   ): Promise<{ matchId: string; status: "confirmed" }>;
+}
+
+export interface MatchManagementAdapter extends MatchBackendAdapter {
+  listMatchImports(): Promise<MatchListItem[]>;
+  updateMatchImport(matchId: string, patch: Partial<EditableMatchFields>): Promise<MatchImportView>;
+  deleteMatchImport(matchId: string): Promise<void>;
+  runMockOcr(matchId: string): Promise<MatchImportView>;
+  resetMatchReview(matchId: string): Promise<MatchImportView>;
 }

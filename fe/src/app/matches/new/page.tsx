@@ -2,6 +2,14 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BACKEND_MODE, getMatchBackendAdapter } from "@/lib/backend";
+import {
+  ensureScreenshotFolderPermission,
+  getSavedScreenshotFolder,
+  getScreenshotAutoScanEnabled,
+  pickAndSaveScreenshotFolder,
+  queryScreenshotFolderPermission,
+  supportsDirectoryPicker,
+} from "@/lib/screenshot-folder";
 
 type ScreenType = "summary" | "team" | "personal" | "replay" | "unknown";
 type ReviewStatus = "unreviewed" | "ready_to_upload" | "uploading" | "pending_ocr";
@@ -13,23 +21,6 @@ type UploadUiState = {
   message: string;
   matchId?: string;
 };
-
-type DirectoryEntryLike = {
-  kind: "file" | "directory";
-  name: string;
-  getFile?: () => Promise<File>;
-};
-
-type DirectoryHandleLike = {
-  name: string;
-  values: () => AsyncIterableIterator<DirectoryEntryLike>;
-};
-
-declare global {
-  interface Window {
-    showDirectoryPicker?: () => Promise<DirectoryHandleLike>;
-  }
-}
 
 type Classification = {
   id: string;
@@ -266,6 +257,50 @@ export default function NewMatchPage() {
     total: 0,
     message: "",
   });
+  const [bulkReviewState, setBulkReviewState] = useState({ running: false, current: 0, total: 0 });
+  const autoScanStartedRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getSavedScreenshotFolder()
+      .then(async (handle) => {
+        if (!mounted || !handle) {
+          if (mounted) setMessage("설정에서 스크린샷 폴더를 지정하면 이후에는 폴더를 다시 고를 필요가 없습니다.");
+          return;
+        }
+
+        setFolderName(handle.name);
+        const previous = loadFolderState(handle.name);
+        setLastProcessed(previous?.lastFileName ?? "");
+
+        const permission = await queryScreenshotFolderPermission(handle);
+        if (!mounted) return;
+
+        if (
+          getScreenshotAutoScanEnabled() &&
+          permission === "granted" &&
+          !autoScanStartedRef.current
+        ) {
+          autoScanStartedRef.current = true;
+          void autoClassify("auto");
+          return;
+        }
+
+        setMessage(
+          permission === "granted"
+            ? `고정 폴더 '${handle.name}'가 연결되어 있습니다. 자동 분류하기를 누르면 새 파일만 확인합니다.`
+            : `고정 폴더 '${handle.name}'가 저장되어 있습니다. 자동 분류하기를 누르면 브라우저 권한만 확인합니다.`,
+        );
+      })
+      .catch(() => {
+        if (mounted) setMessage("저장된 폴더 설정을 읽지 못했습니다. 설정에서 폴더를 다시 지정해 주세요.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const all = matches.flatMap((match) => match.files).filter((item) => !item.excluded);
@@ -283,19 +318,40 @@ export default function NewMatchPage() {
     [matches, reviewingMatchId],
   );
 
-  async function autoClassify() {
-    if (!window.showDirectoryPicker) {
+  async function autoClassify(source: "manual" | "auto" = "manual") {
+    if (!supportsDirectoryPicker()) {
       setStatus("error");
       setMessage("현재 브라우저는 폴더 자동 읽기를 지원하지 않습니다. Windows의 Chrome 또는 Edge에서 localhost로 실행해 주세요.");
       return;
     }
 
     try {
-      setStatus("scanning");
-      setMessage("폴더를 선택한 뒤 새 스크린샷을 찾고 있습니다...");
+      let handle = await getSavedScreenshotFolder();
 
-      const handle = await window.showDirectoryPicker();
+      if (!handle) {
+        if (source === "auto") {
+          setStatus("idle");
+          setMessage("설정에서 스크린샷 폴더를 먼저 지정해 주세요.");
+          return;
+        }
+        handle = await pickAndSaveScreenshotFolder();
+      } else {
+        const allowed = await ensureScreenshotFolderPermission(handle, source === "manual");
+        if (!allowed) {
+          setStatus("idle");
+          setFolderName(handle.name);
+          setMessage(
+            source === "auto"
+              ? `고정 폴더 '${handle.name}'의 읽기 권한을 다시 확인해야 합니다. 자동 분류하기를 한 번 눌러 주세요.`
+              : `고정 폴더 '${handle.name}'의 읽기 권한이 필요합니다. 브라우저 권한 요청을 허용해 주세요.`,
+          );
+          return;
+        }
+      }
+
+      setStatus("scanning");
       setFolderName(handle.name);
+      setMessage(`고정 폴더 '${handle.name}'에서 새 스크린샷을 찾고 있습니다...`);
 
       const files: File[] = [];
       for await (const entry of handle.values()) {
@@ -446,12 +502,33 @@ export default function NewMatchPage() {
     setStatus("idle");
   }
 
-  function openReview(match: DetectedMatch) {
+  function selectReviewMatch(match: DetectedMatch) {
     setReviewingMatchId(match.id);
     setSelectedFileId(match.files.find((file) => !file.excluded)?.id ?? match.files[0]?.id ?? null);
     setReviewNotice("");
     setUploadState({ phase: "idle", current: 0, total: 0, message: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openReview(match: DetectedMatch) {
+    selectReviewMatch(match);
+  }
+
+  function openBatchReview() {
+    const first = matches.find((match) => match.reviewStatus !== "pending_ocr") ?? matches[0];
+    if (first) selectReviewMatch(first);
+  }
+
+  function moveReviewMatch(direction: -1 | 1) {
+    if (!reviewingMatchId) return;
+    const index = matches.findIndex((match) => match.id === reviewingMatchId);
+    const next = matches[index + direction];
+    if (next) selectReviewMatch(next);
+  }
+
+  function selectReviewMatchById(matchId: string) {
+    const target = matches.find((match) => match.id === matchId);
+    if (target) selectReviewMatch(target);
   }
 
   function closeReview() {
@@ -522,11 +599,11 @@ export default function NewMatchPage() {
     setReviewNotice(`${additions.length}장을 추가했습니다. 화면 종류를 직접 지정해 주세요.`);
   }
 
-  async function markReady(match: DetectedMatch) {
+  async function markReady(match: DetectedMatch, skipValidation = false): Promise<boolean> {
     const validation = validateMatch(match);
-    if (!validation.valid) {
+    if (!skipValidation && !validation.valid) {
       setReviewNotice(validation.messages.join(" · "));
-      return;
+      return false;
     }
 
     const activeFiles = match.files.filter((file) => !file.excluded);
@@ -625,6 +702,7 @@ export default function NewMatchPage() {
         matchId: completed.matchId,
       });
       setReviewNotice(`Mock 백엔드 연결 완료 · match_id ${completed.matchId}`);
+      return true;
     } catch (error) {
       patchMatch(match.id, (current) => ({ ...current, reviewStatus: "ready_to_upload" }));
       setUploadState({
@@ -634,22 +712,85 @@ export default function NewMatchPage() {
         message: error instanceof Error ? error.message : "업로드 중 오류가 발생했습니다.",
       });
       setReviewNotice("업로드에 실패했습니다. 다시 시도할 수 있습니다.");
+      return false;
+    }
+  }
+
+  async function completeReviewAndNext(match: DetectedMatch) {
+    const currentIndex = matches.findIndex((item) => item.id === match.id);
+
+    if (match.reviewStatus !== "pending_ocr") {
+      const completed = await markReady(match);
+      if (!completed) return;
+    }
+
+    const next = matches[currentIndex + 1];
+    if (next) {
+      selectReviewMatch(next);
+      return;
+    }
+
+    setMessage("이번에 발견된 모든 경기 검수가 끝났습니다.");
+    closeReview();
+  }
+
+  async function approveAllWithoutReview() {
+    const targets = matches.filter((item) => item.reviewStatus !== "pending_ocr");
+    if (targets.length === 0) {
+      setMessage("이번에 발견된 경기는 이미 모두 검수 완료 상태입니다.");
+      closeReview();
+      return;
+    }
+
+    const ok = window.confirm(
+      `자동 분류 결과를 그대로 믿고 남은 ${targets.length}개 경기를 한 번에 검수 완료 처리할까요?\n\n미분류나 잘못된 분류가 있어도 그대로 저장됩니다.`,
+    );
+    if (!ok) return;
+
+    setBulkReviewState({ running: true, current: 0, total: targets.length });
+    let succeeded = 0;
+
+    for (let index = 0; index < targets.length; index += 1) {
+      setBulkReviewState({ running: true, current: index + 1, total: targets.length });
+      const completed = await markReady(targets[index], true);
+      if (completed) succeeded += 1;
+    }
+
+    setBulkReviewState({ running: false, current: targets.length, total: targets.length });
+
+    if (succeeded === targets.length) {
+      setMessage(`${succeeded}개 경기를 검수 건너뛰기로 모두 완료 처리했습니다.`);
+      closeReview();
+    } else {
+      setReviewNotice(`${targets.length}개 중 ${succeeded}개 완료. 실패한 경기는 다시 시도해 주세요.`);
     }
   }
 
   if (reviewingMatch) {
+    const reviewIndex = matches.findIndex((match) => match.id === reviewingMatch.id);
+    const reviewedCount = matches.filter((match) => match.reviewStatus === "pending_ocr").length;
+
     return (
       <ReviewScreen
         match={reviewingMatch}
+        queue={matches}
+        currentIndex={reviewIndex}
+        reviewedCount={reviewedCount}
         selectedFileId={selectedFileId}
         notice={reviewNotice}
         onSelectFile={setSelectedFileId}
         onBack={closeReview}
+        onSelectMatch={selectReviewMatchById}
+        onPrevious={() => moveReviewMatch(-1)}
+        onNext={() => moveReviewMatch(1)}
         onChangeType={(fileId, type) => changeFileType(reviewingMatch.id, fileId, type)}
         onToggleExcluded={(fileId) => toggleExcluded(reviewingMatch.id, fileId)}
         onMove={(fileId, direction) => moveFile(reviewingMatch.id, fileId, direction)}
         onAddFiles={(event) => addManualFiles(reviewingMatch.id, event)}
         onReady={() => markReady(reviewingMatch)}
+        onReadyAndNext={() => completeReviewAndNext(reviewingMatch)}
+        onApproveAll={() => approveAllWithoutReview()}
+        bulkReviewState={bulkReviewState}
         uploadState={uploadState}
       />
     );
@@ -658,13 +799,12 @@ export default function NewMatchPage() {
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[1240px]">
-        <AppHeader />
 
         <section className="mb-7">
           <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 등록</p>
           <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">스크린샷 폴더에서 경기를 자동으로 찾습니다</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            파일을 한 장씩 업로드할 필요가 없습니다. 자동 분류하기를 누르고 오버워치 스크린샷 폴더만 선택하면 새 파일만 찾아서 요약 화면을 기준으로 경기별로 묶습니다.
+            설정에서 오버워치 스크린샷 폴더를 한 번 지정해두면 됩니다. 이후에는 같은 폴더에서 새 파일만 찾아 요약 화면을 기준으로 경기별로 묶습니다.
           </p>
         </section>
 
@@ -675,7 +815,7 @@ export default function NewMatchPage() {
                 <div>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-[var(--orange-soft)] px-2.5 py-1 text-[10px] font-black text-[var(--orange)]">LOCAL AUTO IMPORT</span>
-                    {folderName && <span className="text-xs text-[var(--muted)]">선택 폴더 · {folderName}</span>}
+                    {folderName && <span className="text-xs text-[var(--muted)]">고정 폴더 · {folderName}</span>}
                   </div>
                   <h2 className="m-0 text-xl font-bold">새 경기 자동 분류</h2>
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">요약 → 팀 → 개인 상세 → 리플레이 순서가 섞여 있어도 화면 모양으로 구분합니다.</p>
@@ -683,7 +823,7 @@ export default function NewMatchPage() {
                 <button
                   type="button"
                   disabled={status === "scanning"}
-                  onClick={autoClassify}
+                  onClick={() => void autoClassify("manual")}
                   className="min-w-[180px] rounded-xl bg-[var(--orange)] px-6 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
                   {status === "scanning" ? "분류 중..." : "자동 분류하기"}
@@ -714,12 +854,29 @@ export default function NewMatchPage() {
 
             {matches.length > 0 ? (
               <section className="space-y-3">
-                <div className="flex items-end justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="m-0 text-sm font-bold">이번에 발견된 경기</p>
-                    <p className="mt-1 text-xs text-[var(--muted)]">검수하기에서 자동 분류를 수정하고, 잘못 찍은 이미지는 제외할 수 있습니다.</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">이제 경기마다 뒤로 갈 필요 없이 전체 검수에서 순서대로 확인할 수 있습니다.</p>
                   </div>
-                  <span className="text-xs text-[var(--muted)]">{matches.length}건</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--muted)]">{matches.length}건</span>
+                    <button
+                      type="button"
+                      onClick={openBatchReview}
+                      className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black hover:brightness-110"
+                    >
+                      전체 검수 시작
+                    </button>
+                    <button
+                      type="button"
+                      disabled={bulkReviewState.running}
+                      onClick={() => void approveAllWithoutReview()}
+                      className="cursor-pointer rounded-xl border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-4 py-2.5 text-xs font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
+                    >
+                      {bulkReviewState.running ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}` : "검수 건너뛰고 전체 완료"}
+                    </button>
+                  </div>
                 </div>
 
                 {matches.map((match, matchIndex) => {
@@ -801,7 +958,7 @@ export default function NewMatchPage() {
               <section className="rounded-2xl border border-dashed border-[#364052] bg-[#0d1118] px-6 py-12 text-center">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#364052] bg-[var(--panel)] text-xl">⌕</div>
                 <p className="m-0 text-sm font-bold">아직 분류된 경기가 없습니다</p>
-                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">자동 분류하기를 누른 뒤 스크린샷이 저장되는 폴더를 선택하세요.</p>
+                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">설정에서 고정한 스크린샷 폴더의 새 이미지를 확인하면 여기에 경기별로 나타납니다.</p>
               </section>
             )}
           </section>
@@ -829,8 +986,8 @@ export default function NewMatchPage() {
             </section>
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
-              <p className="m-0 text-sm font-bold text-[#8ee9aa]">v0.5 추가 기능</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">연결규격 v0.1 기반 MatchBackendAdapter와 Mock 백엔드를 추가했습니다. 검수 완료 후 Draft 생성 → 파일 업로드 → pending_ocr 상태까지 실제 연결 순서 그대로 테스트합니다.</p>
+              <p className="m-0 text-sm font-bold text-[#8ee9aa]">고정 폴더 연결 흐름</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">검수 완료 후 Mock Draft 생성 → 파일 업로드 → pending_ocr까지 진행합니다. 이후 경기 목록의 상세 화면에서 Mock OCR, 값 수정, 확정, 삭제까지 테스트할 수 있습니다.</p>
             </section>
 
             <section className="rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.06)] p-5">
@@ -846,27 +1003,45 @@ export default function NewMatchPage() {
 
 function ReviewScreen({
   match,
+  queue,
+  currentIndex,
+  reviewedCount,
   selectedFileId,
   notice,
   onSelectFile,
   onBack,
+  onSelectMatch,
+  onPrevious,
+  onNext,
   onChangeType,
   onToggleExcluded,
   onMove,
   onAddFiles,
   onReady,
+  onReadyAndNext,
+  onApproveAll,
+  bulkReviewState,
   uploadState,
 }: {
   match: DetectedMatch;
+  queue: DetectedMatch[];
+  currentIndex: number;
+  reviewedCount: number;
   selectedFileId: string | null;
   notice: string;
   onSelectFile: (id: string) => void;
   onBack: () => void;
+  onSelectMatch: (matchId: string) => void;
+  onPrevious: () => void;
+  onNext: () => void;
   onChangeType: (fileId: string, type: ScreenType) => void;
   onToggleExcluded: (fileId: string) => void;
   onMove: (fileId: string, direction: -1 | 1) => void;
   onAddFiles: (event: ChangeEvent<HTMLInputElement>) => void;
   onReady: () => void;
+  onReadyAndNext: () => void;
+  onApproveAll: () => void;
+  bulkReviewState: { running: boolean; current: number; total: number };
   uploadState: UploadUiState;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -887,11 +1062,87 @@ function ReviewScreen({
   return (
     <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-[1320px]">
-        <AppHeader />
+
+        <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[var(--orange-soft)] px-2.5 py-1 text-[9px] font-black text-[var(--orange)]">BATCH REVIEW</span>
+                <span className="text-xs font-bold text-white">{currentIndex + 1} / {queue.length}</span>
+                <span className="text-[10px] text-[var(--muted)]">완료 {reviewedCount}건</span>
+              </div>
+              <div className="mt-3 h-1.5 w-full max-w-[360px] overflow-hidden rounded-full bg-[#171e2a]">
+                <div
+                  className="h-full rounded-full bg-[var(--orange)] transition-all"
+                  style={{ width: `${queue.length > 0 ? Math.round(((currentIndex + 1) / queue.length) * 100) : 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={bulkReviewState.running}
+                onClick={onApproveAll}
+                className="cursor-pointer rounded-lg border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-3 py-2 text-[10px] font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
+              >
+                {bulkReviewState.running
+                  ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}`
+                  : "검수 건너뛰고 전체 완료"}
+              </button>
+              <button
+                type="button"
+                disabled={currentIndex <= 0 || bulkReviewState.running}
+                onClick={onPrevious}
+                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ← 이전 경기
+              </button>
+              <button
+                type="button"
+                disabled={currentIndex >= queue.length - 1 || bulkReviewState.running}
+                onClick={onNext}
+                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                다음 경기 →
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {queue.map((item, index) => {
+              const valid = validateMatch(item).valid;
+              const done = item.reviewStatus === "pending_ocr";
+              const active = item.id === match.id;
+
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => onSelectMatch(item.id)}
+                  className={`min-w-[116px] cursor-pointer rounded-xl border px-3 py-2 text-left transition ${
+                    active
+                      ? "border-[var(--orange)] bg-[var(--orange-soft)]"
+                      : done
+                        ? "border-[rgba(121,227,156,0.25)] bg-[rgba(121,227,156,0.05)]"
+                        : "border-[var(--line)] bg-[#0d1118] hover:border-[#4b5668]"
+                  }`}
+                >
+                  <span className={`block text-[9px] font-black ${active ? "text-[var(--orange)]" : done ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
+                    경기 {index + 1}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-bold text-white">
+                    {done ? "완료" : valid ? "검수 가능" : "확인 필요"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 경기 목록으로</button>
+            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 전체 검수 종료</button>
             <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 검수</p>
             <h1 className="m-0 text-3xl font-bold tracking-[-0.03em]">{match.id}</h1>
             <p className="mt-2 text-xs text-[var(--muted)]">자동 분류가 틀린 이미지는 직접 바꾸고, 필요 없는 이미지는 제외한 뒤 업로드 준비 완료로 표시하세요.</p>
@@ -1037,16 +1288,40 @@ function ReviewScreen({
 
               <button
                 type="button"
-                disabled={!validation.valid || uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"}
-                onClick={onReady}
+                disabled={
+                  bulkReviewState.running ||
+                  (match.reviewStatus !== "pending_ocr" && !validation.valid) ||
+                  uploadState.phase === "creating" ||
+                  uploadState.phase === "uploading" ||
+                  uploadState.phase === "completing"
+                }
+                onClick={onReadyAndNext}
                 className="mt-4 w-full rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
               >
-                {match.reviewStatus === "pending_ocr"
-                  ? "Mock 업로드 완료"
-                  : uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
-                    ? "업로드 중..."
-                    : "검수 완료 · Mock 업로드"}
+                {uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
+                  ? "업로드 중..."
+                  : match.reviewStatus === "pending_ocr"
+                    ? currentIndex < queue.length - 1
+                      ? "다음 경기 검수 →"
+                      : "전체 검수 완료"
+                    : currentIndex < queue.length - 1
+                      ? "검수 완료 · 다음 경기 →"
+                      : "검수 완료 · 전체 검수 끝"}
               </button>
+              {match.reviewStatus !== "pending_ocr" && validation.valid && (
+                <button
+                  type="button"
+                  onClick={onReady}
+                  disabled={
+                    uploadState.phase === "creating" ||
+                    uploadState.phase === "uploading" ||
+                    uploadState.phase === "completing"
+                  }
+                  className="mt-2 w-full cursor-pointer rounded-xl border border-[var(--line)] bg-[#0d1118] px-5 py-3 text-[10px] font-bold text-[var(--muted)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  이 경기만 저장하고 계속 보기
+                </button>
+              )}
               <p className="mb-0 mt-3 text-[10px] leading-4 text-[var(--muted)]">현재 백엔드 모드: <strong className="text-white">{BACKEND_MODE}</strong>. 실제 Supabase 연결 전까지 연결규격 v0.1과 동일한 Mock Adapter로 업로드 흐름을 검증합니다.</p>
             </section>
           </aside>
@@ -1066,24 +1341,6 @@ function validateMatch(match: DetectedMatch) {
   if (teamCount !== 1) messages.push(`팀 화면이 ${teamCount}장입니다. 1장으로 맞춰 주세요.`);
   if (unknownCount > 0) messages.push(`미분류 이미지 ${unknownCount}장의 종류를 정해 주세요.`);
   return { valid: messages.length === 0, messages };
-}
-
-function AppHeader() {
-  return (
-    <header className="mb-8 flex items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--orange)] font-black text-black">OI</div>
-        <div>
-          <p className="m-0 text-[15px] font-bold tracking-wide">OVERWATCH INSIGHT</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            승패 요인 분석기
-            <span className="ml-2 rounded-md border border-[var(--line)] px-1.5 py-0.5 text-[10px] text-[var(--orange)]">v0.5</span>
-          </p>
-        </div>
-      </div>
-      <div className="rounded-full border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-xs text-[var(--muted)]">사용자 A</div>
-    </header>
-  );
 }
 
 function FilePreview({ file, className }: { file: File; className?: string }) {
