@@ -127,3 +127,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 의존성: paddleocr / paddlepaddle 추가
 - 관련 커밋: `4ee962f`, `e9c8760`, `e86b493`
 - TODO: Windows Python 3.13 환경 설치 성공 여부 확인 후 동일 이미지 A/B 실행. 설치 호환성 문제 시 별도 Python 환경 또는 다른 OCR 엔진 실험으로 분리
+
+
+### 2026-09-20 · PaddleOCR Team 웹 테스트 연결
+- 상태: IN_PROGRESS
+- 내용: 기존 경기 상세의 OCR 실행 흐름에서 Team 이미지만 `/extract-team-paddle`로 보내도록 연결. Summary/Personal/Replay는 기존 `/extract` 유지
+- 목적: 기존 UI/업로드 흐름 그대로 동일 Team 이미지의 PaddleOCR 결과와 처리시간 확인
+- 작업 커밋: `b66eb55d35009a18ed0553ced307cf2845e1839f`
+- TODO: 동일 경기 OCR 실행 후 Team 결과 및 서버의 PADDLE elapsed 확인. 비교 후 Paddle 채택 여부 결정
