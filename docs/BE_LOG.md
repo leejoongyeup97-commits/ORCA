@@ -247,3 +247,21 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 파일: `be/ocr_benchmark/grid_tesseract_experiment.py`, `be/ocr_benchmark/run_grid_tesseract_benchmark.py`
 - 관련 커밋: `c45d144a1a0571b4be4570bd8b71903edae17508`, `22f0a037ac20f6600e71d1b8dfd972703490d0c5`
 - TODO: 로컬 10장 benchmark로 전체 정확도/속도 측정. 49.0%를 유의미하게 넘지 못하면 채택하지 않음
+
+
+### 2026-09-20 · Grid-level Tesseract 벤치마크 결과
+- 상태: DONE
+- 결과: 10장 / 600셀 기준 315/600 = 52.5%
+- 필드별: elims 53%, assists 52%, deaths 54%, damage 50%, healing 50%, mitigation 56%
+- 처리시간: 17.0초
+- 비교: 기존 셀별 Tesseract 49.0% / 411.6초 대비 정확도 +3.5%p, 속도 약 24배 개선
+- 결론: 속도 개선은 매우 크지만 정확도 52.5%는 production 채택 기준에 부족. 현재는 실험 후보로만 유지
+
+### 2026-09-20 · Team OCR 후보 오답 겹침 분석기
+- 상태: DONE
+- 내용: 기존 Tesseract와 grid Tesseract의 `last_failures.json` 결과를 재사용해 재-OCR 없이 두 방식의 오답 겹침을 계산하는 분석기 추가
+- 목적: 두 방식의 정답이 서로 보완적인지 확인하여 hybrid OCR을 만들 가치가 있는지 결정
+- 출력: both correct / baseline only / grid only / both wrong / 필드별 oracle 상한 / hybrid headroom
+- 관련 파일: `be/ocr_benchmark/compare_team_candidates.py`
+- 완료 커밋: `068d241c15bb98669914025f8edfc9f581a7ea70`
+- TODO: 로컬에서 분석기 실행. oracle 상한이 충분히 높으면 confidence-based hybrid 실험, 낮으면 Tesseract 계열 조합을 중단하고 다른 OCR 계열로 이동
