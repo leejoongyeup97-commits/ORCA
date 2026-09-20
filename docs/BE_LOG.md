@@ -314,3 +314,24 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 파일: `be/ocr_benchmark/rapidocr_experiment.py`
 - 완료 커밋: `03ea3bbd49159851a164fc0bb2d8e6ad2a246674`
 - TODO: 동일 600셀 benchmark 재실행. red 정확도가 크게 회복되면 해당 row detector를 production 후보로 승격
+
+
+### 2026-09-20 · RapidOCR 적군 행 수정 벤치마크 결과
+- 상태: DONE
+- 결과: 10장 / 600셀 기준 599/600 = 99.8%
+- 필드별: elims 100%, assists 100%, deaths 99%, damage 100%, healing 100%, mitigation 100%
+- 처리시간: 7.7초
+- 비교: 기존 production Tesseract 49.0% / 411.6초 대비 정확도 +50.8%p, 전체 처리시간 약 53배 개선
+- 결론: 목표 기준(최종 97% 이상)을 초과했으며 Team 숫자 인식 후보로 채택
+
+### 2026-09-20 · RapidOCR Team reader production 승격
+- 상태: IN_PROGRESS
+- 내용:
+  - `be/requirements.txt`에 `rapidocr>=3.9,<4`, `onnxruntime` 추가
+  - `be/orca_ocr/engine.py`의 Team 경로를 검증된 RapidOCR + blue/red 분리 행 탐지 방식으로 교체
+  - Summary / Personal / Replay Tesseract 경로는 변경하지 않음
+  - 기존 `/extract` API 계약은 유지
+  - Team 응답 `ocr_version=0.9.10-dev`, `stat_reading=rapidocr_split_rows_v1`
+  - API 버전 0.2.9로 갱신
+- 관련 커밋: `9c3d0f0acfebfb393cfc33c6c9b2cd064ee37472`, `3164382c29523261393b48e700f7acddfb43e594`, `3ceb6878ab683ae81013e4b926a1d1fc5dc21eae`
+- TODO: Pull 후 START_OCR로 runtime dependency 동기화, production `run_team_benchmark.py` 재실행하여 599/600 수준 유지 확인 후 DONE 처리
