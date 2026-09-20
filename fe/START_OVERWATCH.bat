@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Overwatch Insight v0.6
+title Overwatch Insight v0.7
 
 where node.exe >nul 2>nul
 if errorlevel 1 goto NO_NODE
@@ -16,10 +16,10 @@ call npm.cmd install
 if errorlevel 1 goto INSTALL_FAIL
 
 :RUN_APP
-echo [2/2] Starting Overwatch Insight v0.6 on port 3040...
+echo [2/2] Starting Overwatch Insight v0.7 on port 3040...
 echo Keep this window open while using the app.
 echo.
-start "Overwatch Insight v0.6 Server" cmd.exe /k npm.cmd run dev -- -p 3040
+start "Overwatch Insight v0.7 Server" cmd.exe /k npm.cmd run dev -- -p 3040
 timeout /t 6 /nobreak >nul
 start "" http://localhost:3040/
 exit /b 0
