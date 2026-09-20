@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import MatchReviewEditor from "@/components/match-review-editor";
+import { removeReviewDraft, type MatchReviewDraft } from "@/lib/review-draft";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   getMatchBackendAdapter,
@@ -66,6 +68,7 @@ export default function MatchDetailPage() {
   const [busy, setBusy] = useState<"save" | "ocr" | "confirm" | "delete" | "review" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [reviewDraft, setReviewDraft] = useState<MatchReviewDraft | null>(null);
 
   useEffect(() => {
     if (!matchId) return;
@@ -154,8 +157,8 @@ export default function MatchDetailPage() {
         contract_version: "0.1",
         match_id: match.match_id,
         match: saved.editable,
-        players: [],
-        my_hero_details: [],
+        players: reviewDraft?.players ?? [],
+        my_hero_details: reviewDraft?.hero_details ?? [],
         manual_fields: {},
       });
       const confirmed = await getMatchBackendAdapter().getMatchImport(match.match_id);
@@ -191,6 +194,7 @@ export default function MatchDetailPage() {
     setBusy("delete");
     try {
       await getMatchBackendAdapter().deleteMatchImport(match.match_id);
+      removeReviewDraft(match.match_id);
       router.push("/matches");
       router.refresh();
     } catch {
@@ -305,6 +309,12 @@ export default function MatchDetailPage() {
                 </Field>
               </div>
             </form>
+
+            <MatchReviewEditor
+              matchId={match.match_id}
+              defaultHero={form.my_hero}
+              onChange={setReviewDraft}
+            />
 
             <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
               <div className="border-b border-[var(--line)] px-5 py-4">
