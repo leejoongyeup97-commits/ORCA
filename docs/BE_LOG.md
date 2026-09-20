@@ -473,3 +473,15 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 조치: 실제 OCR 통합 경로의 `applyTeamResult`에서 `player.is_me`를 review draft에 반영하고 기존 기본 '나' 표시를 정리
 - PR: #4
 - develop merge commit: `46192af3450e38b0ce879a343325ea692edbff8a`
+
+
+### 2026-09-21 · OCR 재실행에서 기존 업로드 screen_type 누락 대응
+- 상태: DONE
+- 증상: OCR 다시 실행 후 Review 표가 기본값(ME 1번 + 빈 값)으로 보임
+- 원인: 일부 기존 uploads 행은 `screen_type`이 비어 있어 재실행 경로가 처리할 파일 0개로 판단할 수 있었음. 기존 `upload_type`에는 team_stats/hero_detail/replay/summary 정보가 남아 있음
+- 조치:
+  - `upload_type` → `screen_type` fallback 추가
+  - 경기 상세 파일 표시와 OCR 재실행 모두 같은 fallback 사용
+  - 처리 가능한 파일이 0개면 조용히 성공 처리하지 않고 오류 반환
+- PR: #6
+- develop merge commit: `d6cb2bf794628b3864c5f0ea20b994928b729410`
