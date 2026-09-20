@@ -119,3 +119,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 목적: 정상값을 임의 수정하지 않으면서 명백한 비정상값의 자동 확정 방지
 - 작업 커밋: `e2aaf09b3fb004147b9b82fde12432201d186d9e`
 - TODO: 동일 이미지에서 약 30초 복귀 확인. 이후 실제 정답 라벨을 기준으로 숫자 인식 개선 필요
+
+
+### 2026-09-20 · PaddleOCR Team A/B 실험
+- 상태: IN_PROGRESS
+- 내용: 기존 /extract Tesseract 경로는 변경하지 않고 PaddleOCR 전용 `/extract-team-paddle` 엔드포인트 추가. 동일 Team 이미지에서 숫자 셀만 PaddleOCR로 읽어 정확도/속도를 비교할 수 있도록 격리
+- 의존성: paddleocr / paddlepaddle 추가
+- 관련 커밋: `4ee962f`, `e9c8760`, `e86b493`
+- TODO: Windows Python 3.13 환경 설치 성공 여부 확인 후 동일 이미지 A/B 실행. 설치 호환성 문제 시 별도 Python 환경 또는 다른 OCR 엔진 실험으로 분리
