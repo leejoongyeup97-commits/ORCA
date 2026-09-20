@@ -159,3 +159,11 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 조치: 해당 경로 모두 `await configAndSession()`으로 수정
 - 완료 커밋: `eedbe8f46655aba74269585091b0f293cb177cd5`
 - TODO: Pull 후 프론트 재시작, 동일 경기 OCR 실행. START_OCR 창에서 POST /extract 및 /extract-team-paddle 확인
+
+
+### 2026-09-20 · PaddleOCR 3.x Windows 런타임 오류 대응
+- 상태: IN_PROGRESS
+- 원인: PaddleOCR 3.3.1/PaddleX 경로에서 Windows CPU oneDNN 실행 중 `ConvertPirAttribute2RuntimeAttribute not support ArrayAttribute<DoubleAttribute>` 발생
+- 조치: 실험 의존성을 PaddleOCR 2.10.0 + paddlepaddle 3.2.2로 고정하고, 실험 코드를 2.x `.ocr(...)` API로 전환. PaddleX 3.x 파이프라인을 우회
+- 관련 커밋: `84c173d5cba34177a2e6c5e722598df692d37833`, `f52da97037bf3432b1bd84a2a14e52ab3ed54f2a`
+- TODO: Pull 후 START_OCR 재실행(패키지 다운그레이드), 동일 Team OCR 테스트
