@@ -45,7 +45,8 @@ function countAvailable(matches: MatchListItem[], key: HypothesisDataKey) {
         (match) =>
           match.editable.side !== "unknown" ||
           match.editable.control_submap.trim() ||
-          match.editable.round_sequence.trim(),
+          match.editable.round_sequence.trim() ||
+          match.editable.match_duration.trim(),
       ).length;
     case "patch":
       return confirmed.filter((match) => match.editable.patch_label.trim()).length;
@@ -55,6 +56,8 @@ function countAvailable(matches: MatchListItem[], key: HypothesisDataKey) {
     case "meta_snapshot":
     case "profile_snapshot":
     case "duo_link":
+    case "session_context":
+    case "replay_timeline":
       return 0;
   }
 }
