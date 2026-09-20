@@ -87,3 +87,11 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 - PR #3 merge 완료
 - merge commit: `db6b8e3d5306a58f909818b4174c4119313f0628`
 - 다음: develop Pull 후 경기 업로드 → OCR → Review 화면 통합 테스트
+
+
+### 2026-09-21 · OCR 내 행 표시 실제 경로 수정
+- 상태: DONE
+- 원인: 실제 경기 업로드는 `runRealOcrForMatch`를 사용하므로, `supabase-adapter.ts`의 `runMockOcr` 수정만으로는 Review 화면에 `is_me`가 반영되지 않았음
+- 조치: `fe/src/lib/ocr-integration.ts`의 Team 결과 적용 단계에서 OCR `is_me=true` 행을 '나'로 지정하고 기존 기본 '나' 표시 제거
+- PR: #4
+- develop merge commit: `46192af3450e38b0ce879a343325ea692edbff8a`
