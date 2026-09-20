@@ -110,8 +110,20 @@ function applyTeamResult(draft: MatchReviewDraft, result: OcrExtractResult) {
       const record = asRecord(target);
       if (!record) return player;
 
+      const isMe = player.team === "ally" && record.is_me === true;
+      const nextName =
+        player.team === "ally"
+          ? isMe
+            ? "나"
+            : player.player_name === "나"
+              ? ""
+              : player.player_name
+          : player.player_name;
+
       return {
         ...player,
+        is_me: isMe,
+        player_name: nextName,
         hero: asString(record.hero_id) || player.hero,
         eliminations: asNumberString(record.elims) || player.eliminations,
         assists: asNumberString(record.assists) || player.assists,
