@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MatchReviewEditor from "@/components/match-review-editor";
 import { removeReviewDraft, type MatchReviewDraft } from "@/lib/review-draft";
+import { getStoredOcrBundle, type StoredOcrBundle } from "@/lib/ocr-integration";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   getMatchBackendAdapter,
@@ -70,6 +71,7 @@ export default function MatchDetailPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [reviewDraft, setReviewDraft] = useState<MatchReviewDraft | null>(null);
+  const [ocrBundle, setOcrBundle] = useState<StoredOcrBundle | null>(null);
 
   useEffect(() => {
     if (!matchId) return;
@@ -92,6 +94,11 @@ export default function MatchDetailPage() {
       mounted = false;
     };
   }, [matchId]);
+
+  useEffect(() => {
+    if (!matchId) return;
+    setOcrBundle(getStoredOcrBundle(matchId));
+  }, [matchId, match?.ocr.generated_at]);
 
   const counts = useMemo(() => {
     if (!match) return { summary: 0, team: 0, personal: 0, replay: 0, unknown: 0 };
@@ -123,23 +130,6 @@ export default function MatchDetailPage() {
     } catch {
       setNotice("저장에 실패했습니다.");
       return null;
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function runOcr() {
-    if (!match) return;
-    setBusy("ocr");
-    setNotice("Mock OCR을 실행하고 있습니다...");
-    try {
-      const updated = await getMatchBackendAdapter().runMockOcr(match.match_id);
-      setMatch(updated);
-      setForm(updated.editable);
-      setPlayedAtLocal(toLocalDateTime(updated.editable.played_at));
-      setNotice("Mock OCR 결과를 만들었습니다. 실제 이미지 인식값이 아니라 검수 화면 테스트용 빈 결과입니다.");
-    } catch {
-      setNotice("Mock OCR 처리에 실패했습니다.");
     } finally {
       setBusy(null);
     }
@@ -220,7 +210,6 @@ export default function MatchDetailPage() {
   }
 
   const statusMeta = STATUS_META[match.status];
-  const canRunOcr = match.status === "pending_ocr" || match.status === "failed";
   const canConfirm = match.status === "needs_review";
   const isConfirmed = match.status === "confirmed";
 
@@ -240,11 +229,6 @@ export default function MatchDetailPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {canRunOcr && (
-                <button type="button" disabled={busy !== null} onClick={runOcr} className="cursor-pointer rounded-xl bg-[#66a9ff] px-4 py-2.5 text-xs font-black text-black disabled:opacity-40">
-                  {busy === "ocr" ? "OCR 처리 중..." : "Mock OCR 실행"}
-                </button>
-              )}
               {canConfirm && (
                 <button type="button" disabled={busy !== null} onClick={confirmMatch} className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black disabled:opacity-40">
                   {busy === "confirm" ? "확정 중..." : "검수 확정"}
@@ -340,10 +324,35 @@ export default function MatchDetailPage() {
               onChange={setReviewDraft}
             />
 
+            {ocrBundle && (
+              <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+                <div className="border-b border-[var(--line)] px-5 py-4">
+                  <p className="m-0 text-sm font-bold">실제 OCR 처리 결과</p>
+                  <p className="mt-1 text-[10px] text-[var(--muted)]">
+                    Python OCR 서버가 처리한 파일별 성공/실패 상태입니다.
+                  </p>
+                </div>
+                <div className="divide-y divide-[var(--line)]">
+                  {ocrBundle.files.map((file, index) => (
+                    <div key={`${file.filename}-${index}`} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[80px_1fr_auto] sm:items-center">
+                      <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-black text-white">{file.screen_type}</span>
+                      <div className="min-w-0">
+                        <p className="m-0 truncate font-bold text-white">{file.filename}</p>
+                        {!file.ok && file.error && <p className="mt-1 truncate text-[9px] text-[#ff9b9b]">{file.error}</p>}
+                      </div>
+                      <span className={`text-[10px] font-black ${file.ok ? "text-[#8ee9aa]" : "text-[#ff9b9b]"}`}>
+                        {file.ok ? "OCR 성공" : "OCR 실패"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
               <div className="border-b border-[var(--line)] px-5 py-4">
                 <p className="m-0 text-sm font-bold">스크린샷 메타데이터</p>
-                <p className="mt-1 text-[10px] text-[var(--muted)]">Mock 단계에서는 원본 이미지 자체는 저장하지 않고 파일 정보만 유지합니다.</p>
+                <p className="mt-1 text-[10px] text-[var(--muted)]">현재는 원본 이미지를 영구 저장하지 않고, 등록 시 OCR 서버에 전달한 뒤 파일 메타데이터를 유지합니다.</p>
               </div>
               <div className="divide-y divide-[var(--line)]">
                 {match.files.map((file, index) => (
