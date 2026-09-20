@@ -183,25 +183,25 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="orca-light min-h-screen bg-white px-5 py-10 text-[#171A20] md:px-8 md:py-14">
-      <div className="mx-auto max-w-[980px]">
-        <section className="mb-7">
-          <p className="mb-3 text-[13px] font-medium text-[#5C5E62]">설정</p>
-          <h1 className="m-0 text-4xl font-medium leading-[1.15] md:text-[40px]">개발 환경 및 데이터</h1>
-          <p className="mt-3 text-sm leading-6 text-[#5C5E62]">
+    <main className="min-h-screen px-4 py-5 text-[var(--text)] md:px-6 md:py-6">
+      <div className="mx-auto max-w-[1180px]">
+        <section className="mb-5 rounded-[16px] border border-[var(--line)] bg-[#0f1721] p-6">
+          <p className="mb-2 text-[12px] font-bold text-[var(--orange-2)]">설정</p>
+          <h1 className="m-0 text-3xl font-extrabold leading-[1.15] text-white md:text-[36px]">개발 환경 및 데이터</h1>
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
             실제 백엔드 연결 전까지 브라우저에 저장되는 Mock 데이터를 관리합니다.
           </p>
         </section>
 
         {notice && (
-          <div className="mb-6 rounded-[4px] bg-[#F4F4F4] px-4 py-3 text-xs text-[#393C41]">{notice}</div>
+          <div className="mb-5 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-xs text-[#c5cfda]">{notice}</div>
         )}
 
-        <section className="mb-8 rounded-[12px] bg-[#F4F4F4] p-5 md:p-6">
+        <section className="app-panel mb-5 rounded-[16px] p-5 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="m-0 text-sm font-medium text-[#171A20]">스크린샷 폴더</p>
-              <p className="mt-2 text-xs leading-5 text-[#5C5E62]">
+              <p className="m-0 text-sm font-medium text-white">스크린샷 폴더</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
                 한 번 지정하면 브라우저가 폴더 권한을 기억합니다. 경기 등록 때마다 폴더를 다시 선택하지 않아도 됩니다.
               </p>
             </div>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={folderBusy}
                 onClick={chooseScreenshotFolder}
-                className="cursor-pointer rounded-[4px] bg-[#3E6AE1] px-4 py-3 text-xs font-medium text-white disabled:cursor-wait disabled:opacity-50"
+                className="app-orange-button cursor-pointer rounded-lg px-4 py-3 text-xs font-bold disabled:cursor-wait disabled:opacity-50"
               >
                 {folderBusy ? "폴더 연결 중..." : folderName ? "폴더 변경" : "폴더 지정"}
               </button>
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={clearScreenshotFolder}
-                  className="cursor-pointer rounded-[4px] bg-white px-4 py-3 text-xs font-medium text-[#171A20] hover:bg-[#EEEEEE]"
+                  className="cursor-pointer rounded-lg bg-[#0d141d] px-4 py-3 text-xs font-medium text-white hover:bg-[#17212d]"
                 >
                   연결 해제
                 </button>
@@ -243,30 +243,30 @@ export default function SettingsPage() {
             <FolderStatus label="브라우저" value={supportsDirectoryPicker() ? "지원" : "미지원"} />
           </div>
 
-          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-[4px] bg-white p-4">
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--line-soft)] bg-[#0d141d] p-4">
             <input
               type="checkbox"
               checked={autoScanFolder}
               onChange={(event) => changeAutoScan(event.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#3E6AE1]"
+              className="mt-0.5 h-4 w-4 accent-[var(--orange)]"
             />
             <span>
-              <span className="block text-xs font-medium text-[#171A20]">경기 등록 화면에서 자동으로 새 파일 확인</span>
-              <span className="mt-1 block text-[10px] leading-5 text-[#5C5E62]">
+              <span className="block text-xs font-medium text-white">경기 등록 화면에서 자동으로 새 파일 확인</span>
+              <span className="mt-1 block text-[10px] leading-5 text-[var(--muted)]">
                 폴더 읽기 권한이 유지된 경우에만 자동 실행합니다. 브라우저가 권한 재확인을 요구하면 버튼 한 번만 누르면 됩니다.
               </span>
             </span>
           </label>
 
-          <p className="mb-0 mt-3 text-[9px] leading-4 text-[#5C5E62]">
+          <p className="mb-0 mt-3 text-[9px] leading-4 text-[var(--muted)]">
             브라우저 보안상 Windows 전체 경로 문자열은 표시하지 않고, 선택한 폴더 자체의 접근 권한을 안전하게 저장합니다.
           </p>
         </section>
 
-        <section className="mb-8 rounded-[12px] bg-[#F4F4F4] p-5 md:p-6">
+        <section className="app-panel mb-5 rounded-[16px] p-5 md:p-6">
           <div className="max-w-2xl">
-            <p className="m-0 text-[17px] font-medium text-[#171A20]">내 닉네임 Pool</p>
-            <p className="mt-2 text-[13px] leading-6 text-[#5C5E62]">
+            <p className="m-0 text-[17px] font-medium text-white">내 닉네임 Pool</p>
+            <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">
               현재 또는 예전에 사용한 내 닉네임만 보관합니다. 다른 플레이어 닉네임은 경기 데이터에 저장하지 않는 방향으로 사용합니다.
             </p>
           </div>
@@ -287,7 +287,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={addNickname}
-              className="min-h-10 cursor-pointer rounded-[4px] bg-[#3E6AE1] px-5 text-[13px] font-medium text-white hover:bg-[#345BC2]"
+              className="app-orange-button min-h-10 cursor-pointer rounded-lg px-5 text-[13px] font-bold"
             >
               추가
             </button>
@@ -295,7 +295,7 @@ export default function SettingsPage() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {nicknamePool.length === 0 ? (
-              <span className="text-[12px] text-[#8E8E8E]">등록된 닉네임이 없습니다.</span>
+              <span className="text-[12px] text-[var(--muted)]">등록된 닉네임이 없습니다.</span>
             ) : (
               nicknamePool.map((nickname) => (
                 <button
@@ -303,7 +303,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => removeNickname(nickname)}
                   title="클릭해서 삭제"
-                  className="cursor-pointer rounded-[4px] bg-white px-3 py-2 text-[12px] font-medium text-[#393C41] hover:bg-[#EEEEEE]"
+                  className="cursor-pointer rounded-lg bg-[#0d141d] px-3 py-2 text-[12px] font-medium text-[#c5cfda] hover:bg-[#17212d]"
                 >
                   {nickname} ×
                 </button>
@@ -311,13 +311,13 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <p className="mb-0 mt-4 text-[11px] leading-5 text-[#5C5E62]">
+          <p className="mb-0 mt-4 text-[11px] leading-5 text-[var(--muted)]">
             우선 브라우저에 저장하고, Supabase 사용자 설정이 정리되면 계정별로 동기화할 예정입니다.
           </p>
         </section>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <section className="rounded-[12px] bg-[#F4F4F4] p-5">
+          <section className="app-panel rounded-[16px] p-5">
             <p className="m-0 text-sm font-medium">연결 상태</p>
             <dl className="mt-4 space-y-3 text-xs">
               <Row label="Frontend" value="v0.12" />
@@ -327,24 +327,24 @@ export default function SettingsPage() {
               <Row label="저장 위치" value="브라우저 localStorage" />
               <Row label="Mock 저장 항목" value={String(storageCount)} />
             </dl>
-            <div className="mt-4 rounded-[4px] bg-white p-4">
-              <p className="m-0 text-[10px] leading-5 text-[#5C5E62]">
+            <div className="mt-4 rounded-lg bg-[#0d141d] p-4">
+              <p className="m-0 text-[10px] leading-5 text-[var(--muted)]">
                 실제 Supabase 연결 후에는 경기 원본과 상태가 서버에 저장되고, 이 Mock 저장소는 개발용으로만 남깁니다.
               </p>
             </div>
           </section>
 
-          <section className="rounded-[12px] bg-[#F4F4F4] p-5">
+          <section className="app-panel rounded-[16px] p-5">
             <p className="m-0 text-sm font-medium">Mock 데이터 백업</p>
-            <p className="mt-2 text-xs leading-5 text-[#5C5E62]">
+            <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
               브라우저를 바꾸거나 테스트 데이터를 보관할 때 JSON 파일로 내보내고 다시 가져올 수 있습니다.
             </p>
 
             <div className="mt-5 space-y-2">
-              <button type="button" onClick={exportData} className="w-full cursor-pointer rounded-[4px] bg-[#3E6AE1] px-4 py-3 text-xs font-medium text-white">
+              <button type="button" onClick={exportData} className="app-orange-button w-full cursor-pointer rounded-lg px-4 py-3 text-xs font-bold">
                 JSON 백업 내보내기
               </button>
-              <label className="block cursor-pointer rounded-[4px] bg-white px-4 py-3 text-center text-xs font-medium text-[#171A20] hover:bg-[#EEEEEE]">
+              <label className="block cursor-pointer rounded-lg bg-[#0d141d] px-4 py-3 text-center text-xs font-medium text-white hover:bg-[#17212d]">
                 JSON 백업 가져오기
                 <input type="file" accept=".json,application/json" onChange={importData} className="hidden" />
               </label>
@@ -352,12 +352,12 @@ export default function SettingsPage() {
           </section>
         </div>
 
-        <section className="mt-8 rounded-[12px] bg-[#F4F4F4] p-5">
-          <p className="m-0 text-sm font-medium text-[#393C41]">개발 데이터 초기화</p>
-          <p className="mt-2 text-xs leading-5 text-[#5C5E62]">
+        <section className="app-panel mt-5 rounded-[16px] p-5">
+          <p className="m-0 text-sm font-medium text-[#c5cfda]">개발 데이터 초기화</p>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
             경기 목록, 가설, 폴더 처리 기록, 업로드 대기 manifest를 브라우저에서 모두 삭제합니다.
           </p>
-          <button type="button" onClick={resetData} className="mt-4 cursor-pointer rounded-[4px] bg-white px-4 py-3 text-xs font-medium text-[#393C41] hover:bg-[#EEEEEE]">
+          <button type="button" onClick={resetData} className="mt-4 cursor-pointer rounded-lg bg-[#0d141d] px-4 py-3 text-xs font-medium text-[#c5cfda] hover:bg-[#17212d]">
             모든 Mock 데이터 초기화
           </button>
         </section>
@@ -368,9 +368,9 @@ export default function SettingsPage() {
 
 function FolderStatus({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[4px] bg-white p-3">
-      <p className="m-0 text-[9px] font-medium text-[#5C5E62]">{label}</p>
-      <p className="mb-0 mt-1 truncate text-xs font-medium text-[#171A20]">{value}</p>
+    <div className="rounded-lg border border-[var(--line-soft)] bg-[#0d141d] p-3">
+      <p className="m-0 text-[9px] font-medium text-[var(--muted)]">{label}</p>
+      <p className="mb-0 mt-1 truncate text-xs font-medium text-white">{value}</p>
     </div>
   );
 }
@@ -378,8 +378,8 @@ function FolderStatus({ label, value }: { label: string; value: string }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <dt className="text-[#5C5E62]">{label}</dt>
-      <dd className="m-0 font-medium text-[#171A20]">{value}</dd>
+      <dt className="text-[var(--muted)]">{label}</dt>
+      <dd className="m-0 font-medium text-white">{value}</dd>
     </div>
   );
 }
