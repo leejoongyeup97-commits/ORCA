@@ -34,6 +34,15 @@ function basicAvailability(matches: MatchListItem[], key: HypothesisDataKey) {
       return matches.filter((match) => match.editable.game_mode.trim()).length;
     case "hero":
       return matches.filter((match) => match.editable.my_hero.trim()).length;
+    case "manual_context":
+      return matches.filter(
+        (match) =>
+          match.editable.side !== "unknown" ||
+          match.editable.control_submap.trim() ||
+          match.editable.round_sequence.trim(),
+      ).length;
+    case "patch":
+      return matches.filter((match) => match.editable.patch_label.trim()).length;
     default:
       return 0;
   }
