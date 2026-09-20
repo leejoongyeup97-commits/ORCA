@@ -216,3 +216,17 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - 관련 파일: `be/ocr_benchmark/digit_template_experiment.py`, `be/ocr_benchmark/run_digit_template_benchmark.py`
 - 완료 커밋: `c70e8ab77ec28430bfa9b47cfe178def3d5b3074`, `b6f73b116acbfa740f0e8310f2352bf2c25ab3e0`
 - TODO: 로컬의 10개 benchmark 원본 이미지로 새 runner 실행 후 49.0% Tesseract 기준선과 비교. 기준선을 유의미하게 이길 때만 service OCR 후보로 승격
+
+
+### 2026-09-20 · 숫자 템플릿 학습 누락 수정
+- 상태: DONE
+- 증상: 첫 실행에서 `template training missing digits: 2, 3, 4, 7, 8, 9`로 벤치마크가 중단됨
+- 원인 후보: 실험기가 production과 다른 고정 stat 열을 사용했고, 2x2 morphology 및 엄격한 component 조건으로 얇은 숫자 획이 탈락할 수 있었음
+- 조치:
+  - production과 동일한 `_find_stat_columns` 사용
+  - 얇은 획을 지우던 morphology 제거
+  - projection 기반 digit 분리로 교체
+  - 학습 시 정답 digit 개수를 이용한 강제 분리 fallback 추가
+  - 일부 digit template가 부족해도 즉시 종료하지 않고 coverage 경고 후 전체 벤치마크를 끝까지 실행하도록 변경
+- 관련 커밋: `1bdbde73476a2d3ff1924d47255cb8cc2d5c2081`, `2dbfff2379025e1916d2d02cfb99da2103f6da3f`
+- TODO: Pull 후 동일 명령 재실행하여 전체 600셀 정확도/속도와 training coverage 확인
