@@ -244,6 +244,23 @@ export class MockMatchBackendAdapter implements MatchManagementAdapter {
     return toView(next);
   }
 
+  async setOcrState(
+    matchId: string,
+    status: Extract<MatchImportStatus, "processing_ocr" | "needs_review" | "failed">,
+    ocr: Partial<OcrReviewState>,
+  ): Promise<MatchImportView> {
+    const current = loadAll().find((item) => item.matchId === matchId);
+    if (!current) throw new Error("MOCK_MATCH_NOT_FOUND");
+    const next = updateStored(matchId, {
+      status,
+      ocr: {
+        ...defaultOcr(current),
+        ...ocr,
+      },
+    });
+    return toView(next);
+  }
+
   async resetMatchReview(matchId: string): Promise<MatchImportView> {
     await sleep(140);
     const current = loadAll().find((item) => item.matchId === matchId);
