@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fe-dev
+      - develop
   pull_request:
     paths:
       - "fe/**"
