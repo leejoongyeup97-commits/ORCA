@@ -487,3 +487,4 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 - develop merge commit: `d6cb2bf794628b3864c5f0ea20b994928b729410`
 - TODO: 최종 패키징/배포 단계에서 production 실행에 불필요한 개발 리소스를 정리한다. 대상: OCR 벤치마크 이미지/정답 데이터/디버그 산출물/실험 코드/채택하지 않은 OCR 엔진 및 의존성(PaddleOCR 등). 배포 패키지에는 실제 런타임에 필요한 코드·모델·레퍼런스·의존성만 포함되도록 점검한다.
 - IN_PROGRESS: Team 영웅 인식은 외부 portrait 방식 37%를 폐기하고 scoreboard-native reference 방식으로 전환. leave-one-image-out 검증에서 scorable 83/83 = 100%, image-singleton 17건. production reference builder 추가 후 실제 런타임 연결 예정. be-dev commits: 5462e65373af9dda195fda1b3cc1e763652983fb, 0c8f5b1da0da9f307387bb9e6f5faff9ac0fb6c1
+- IN_PROGRESS: scoreboard-native production hero reference build 정상 완료 확인 (heroes 35 / references 100 / missing images 0). 다음 단계: START_OCR 재시작 후 실제 Team OCR에서 hero_id 반환 및 앱 반영 확인.
