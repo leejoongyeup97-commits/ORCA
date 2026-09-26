@@ -1129,6 +1129,33 @@ def _personal_card_label(img,box):
     confidence=0.90 if sum(1 for v in reads if v==best)>=2 else 0.72
     return best,confidence
 
+
+def _personal_card_label_fast(img,box):
+    """Cheap Korean-only label read used to validate hero identity."""
+    x1,y1,x2,y2=box
+    label_box=(x1,y1+(y2-y1)*0.48,x2,y2)
+    crop=_crop(img,label_box)
+    engine=_get_rapidocr_korean_engine()
+    gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY) if len(crop.shape)==3 else crop
+    images=[
+        (crop,True),
+        (cv2.resize(gray,None,fx=2.5,fy=2.5,interpolation=cv2.INTER_CUBIC),False),
+    ]
+    reads=[]
+    for image,use_det in images:
+        try:
+            result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+            txts=getattr(result,'txts',None) or ()
+            for txt in txts:
+                value=str(txt).strip()
+                if value and re.search(r'[가-힣]',value):
+                    reads.append(value)
+        except Exception:
+            continue
+    if not reads:
+        return ''
+    return max(reads,key=lambda value:(len(re.findall(r'[가-힣]',value)),len(value)))
+
 def _personal_tokens(raw):
     """Extract display-value tokens while keeping comma-formatted integers intact."""
     return re.findall(r'\d{1,2}:\d{2}|\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?%?',raw or '')
@@ -1236,21 +1263,36 @@ def extract_personal(img, hero_key=None):
     panel_text='\n'.join(dict.fromkeys(v for v in panel_parts if v))
     name_hero_key=name_hero_key or resolve_hero_key(hero_summary_raw) or resolve_hero_key(panel_text)
 
-    # Expensive label-based hero inference is now fallback-only. It is still
-    # preserved for screenshots where hero-name OCR cannot identify the hero.
+    # Validate the hero-name OCR with a few cheap metric-label reads. This keeps
+    # the fast path but prevents one bad hero-name read from forcing the wrong
+    # HERO_METRIC_ORDER onto every card.
     hero_metric_inference={"hero_key":None,"confidence":0.0,"matches":[]}
-    if not name_hero_key and len(boxes)>1:
-        pre_labels=[]
+    fast_labels=[]
+    if len(boxes)>1:
+        for box in boxes[1:min(len(boxes),5)]:
+            label=_personal_card_label_fast(img,box)
+            if label:
+                fast_labels.append(label)
+        if fast_labels:
+            hero_metric_inference=infer_hero_from_metric_labels(fast_labels)
+
+    metric_hero_key=hero_metric_inference.get("hero_key")
+
+    # If the cheap validation cannot identify a hero and the name OCR also
+    # failed, use the original expensive all-card fallback.
+    if not metric_hero_key and not name_hero_key and len(boxes)>1:
+        pre_labels=list(fast_labels)
         for box in boxes[1:]:
             label_raw,_=_personal_card_label(img,box)
-            if label_raw:
+            if label_raw and label_raw not in pre_labels:
                 pre_labels.append(label_raw)
             raw_label=_personal_label_from_raw(_card_text(img,box))
             if raw_label and raw_label not in pre_labels:
                 pre_labels.append(raw_label)
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
+        metric_hero_key=hero_metric_inference.get("hero_key")
 
-    metric_hero_key=hero_metric_inference.get("hero_key")
+    # Two unique metric labels are stronger evidence than one hero-name OCR read.
     hero_key=metric_hero_key or name_hero_key
 
     metric_cards=[]
@@ -1442,7 +1484,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.38-dev',
+        'ocr_version':'0.10.39-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
