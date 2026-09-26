@@ -75,7 +75,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/matches/new"
-            className="app-orange-button inline-flex w-fit items-center justify-center rounded-md px-4 py-2.5 text-[12px] font-semibold no-underline"
+            className="app-orange-button w-fit"
           >
             새 경기 등록
           </Link>
