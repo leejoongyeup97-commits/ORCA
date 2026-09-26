@@ -446,6 +446,35 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
         "virus_accuracy": {"aliases": ["바이러스 명중률", "바이러스 밍중클"]},
     },
+    "sierra": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "concussive_charge_kills": {"aliases": ["진동 폭약으로 처치", "폭약으로 처치", "폭이으로저지"]},
+        "final_blows": {"aliases": ["결정타", "정타"]},
+        "tracking_shot_accuracy": {"aliases": ["추적 사격 명중률"]},
+        "pathfinder_kills": {"aliases": ["개척자로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "tracking_kills": {"aliases": ["추적으로 처치"]},
+    },
+    "venture": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "smart_excavator_hits": {"aliases": ["스마트 굴착기 명중"]},
+        "final_blows": {"aliases": ["결정타", "정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률", "적중률"]},
+        "shields_generated": {"aliases": ["생성한 보호막"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "drill_dash_kills": {"aliases": ["드릴 돌진 처치", "드릴 돌진으로 처치"]},
+        "tectonic_shock_kills": {"aliases": ["지각 충격으로 처치"]},
+    },
+    "vendetta": {
+        "final_blows": {"aliases": ["결정타", "정타"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "blade_projectile_kills": {"aliases": ["칼날 투영 처치"]},
+        "whirlwind_dash_kills": {"aliases": ["소용돌이 질주 처치"]},
+        "sundering_blade_kills": {"aliases": ["갈라내는 칼날 처치"]},
+        "critical_hits": {"aliases": ["치명타"]},
+        "blade_projectile_accuracy": {"aliases": ["칼날 투영 명중률"]},
+        "onslaught_uptime": {"aliases": ["맹공 활성 시간 비율"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -495,6 +524,9 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "wreckingball": ["레킹볼", "레킹 볼", "WRECKING BALL"],
     "bastion": ["바스티온", "BASTION"],
     "sombra": ["솜브라", "SOMBRA"],
+    "sierra": ["시에라", "SIERRA"],
+    "venture": ["벤처", "VENTURE"],
+    "vendetta": ["벤데타", "VENDETTA"],
 }
 
 
@@ -684,6 +716,18 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "sombra": [
         "weapon_accuracy","virus_damage","final_blows",
         "solo_kills","low_health_translocates","solo_kills","virus_accuracy","solo_kills",
+    ],
+    "sierra": [
+        "weapon_accuracy","concussive_charge_kills","final_blows",
+        "tracking_shot_accuracy","pathfinder_kills","solo_kills","tracking_kills",
+    ],
+    "venture": [
+        "weapon_accuracy","smart_excavator_hits","final_blows","critical_hit_accuracy",
+        "shields_generated","solo_kills","drill_dash_kills","tectonic_shock_kills",
+    ],
+    "vendetta": [
+        "final_blows","solo_kills","blade_projectile_kills","whirlwind_dash_kills",
+        "sundering_blade_kills","critical_hits","blade_projectile_accuracy","onslaught_uptime",
     ],
 }
 
