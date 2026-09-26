@@ -1124,6 +1124,7 @@ export default function NewMatchPage() {
 
   return (
     <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      {errorDialog && <ErrorDialogModal dialog={errorDialog} onClose={() => setErrorDialog(null)} />}
       <div className="mx-auto max-w-[1320px]">
         <header className="flex flex-col gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -1269,6 +1270,9 @@ function ReviewScreen({
   onApproveAll,
   bulkReviewState,
   uploadState,
+  ocrActivity,
+  errorDialog,
+  onCloseError,
 }: {
   match: DetectedMatch;
   queue: DetectedMatch[];
@@ -1293,6 +1297,9 @@ function ReviewScreen({
   onApproveAll: () => void;
   bulkReviewState: { running: boolean; current: number; total: number };
   uploadState: UploadUiState;
+  ocrActivity: OcrActivityState;
+  errorDialog: ErrorDialogState | null;
+  onCloseError: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validation = validateMatch(match);
@@ -1311,6 +1318,7 @@ function ReviewScreen({
 
   return (
     <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      {errorDialog && <ErrorDialogModal dialog={errorDialog} onClose={onCloseError} />}
       <div className="mx-auto max-w-[1320px]">
 
         <section className="mb-7 border-y border-[var(--line)] py-4">
@@ -1550,6 +1558,10 @@ function ReviewScreen({
                 </div>
               )}
 
+              {ocrActivity.logs.length > 0 && (
+                <OcrActivityPanel state={ocrActivity} />
+              )}
+
               {match.reviewStatus !== "pending_ocr" && match.reviewStatus !== "confirmed" && (
                 <button
                   type="button"
@@ -1709,6 +1721,130 @@ function CompactStatusRow({ label, value, warning = false }: { label: string; va
 
 function RuleRow({ number, title, text }: { number: string; title: string; text: string }) {
   return <div className="grid grid-cols-[28px_48px_1fr] border-b border-[var(--line-soft)] py-2.5"><span className="text-[#666a73]">{number}</span><strong className="font-medium text-[#d5d6d9]">{title}</strong><span>{text}</span></div>;
+}
+
+function OcrActivityPanel({ state }: { state: OcrActivityState }) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-md border border-[var(--line)] bg-[#090b0e]">
+      <div className="border-b border-[var(--line)] px-3 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="m-0 text-[11px] font-semibold text-white">OCR 작업 현황</p>
+            <p className="mb-0 mt-1 text-[9px] text-[var(--muted)]">{state.message || "대기 중"}</p>
+          </div>
+          <div className="text-right">
+            <p className="m-0 text-sm font-semibold text-white">{state.percent}%</p>
+            <p className="mb-0 mt-1 text-[9px] text-[var(--muted)]">
+              {state.total > 0 ? `${state.current}/${state.total} 단계` : "준비 중"}
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#1b2230]">
+          <div
+            className={`h-full transition-all ${state.running ? "bg-[var(--orange)]" : "bg-[#76bf8d]"}`}
+            style={{ width: `${state.percent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="max-h-[190px] overflow-y-auto px-3 py-2 font-mono text-[9px] leading-5">
+        {state.logs.map((log) => (
+          <div key={log.id} className="grid grid-cols-[62px_1fr] gap-2 border-b border-[#15181d] py-1 last:border-b-0">
+            <span className="text-[#596273]">{log.time}</span>
+            <span
+              className={
+                log.level === "error"
+                  ? "text-[#ff9b9b]"
+                  : log.level === "success"
+                    ? "text-[#9fcaae]"
+                    : "text-[#b8c0cc]"
+              }
+            >
+              {log.message}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ErrorDialogModal({
+  dialog,
+  onClose,
+}: {
+  dialog: ErrorDialogState;
+  onClose: () => void;
+}) {
+  const [showRaw, setShowRaw] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyRaw() {
+    try {
+      await navigator.clipboard.writeText(dialog.raw);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = dialog.raw;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={dialog.title}
+        className="w-full max-w-[680px] overflow-hidden rounded-lg border border-[#583438] bg-[#101216] shadow-2xl"
+      >
+        <div className="border-b border-[#382528] px-5 py-4">
+          <p className="m-0 text-[11px] font-medium uppercase tracking-[0.12em] text-[#ff8d8d]">ERROR</p>
+          <h2 className="mb-0 mt-1 text-lg font-semibold text-white">{dialog.title}</h2>
+          <p className="mb-0 mt-2 text-xs leading-5 text-[#c9b6b8]">{dialog.summary}</p>
+        </div>
+
+        {showRaw && (
+          <div className="max-h-[360px] overflow-auto border-b border-[#382528] bg-[#08090b] p-4">
+            <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[10px] leading-5 text-[#e3e5e8]">
+              {dialog.raw || "오류 원문이 없습니다."}
+            </pre>
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-2 px-5 py-4">
+          <button
+            type="button"
+            onClick={() => setShowRaw((value) => !value)}
+            className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-white hover:bg-[#17191e]"
+          >
+            {showRaw ? "오류 원문 닫기" : "오류 메시지 원문 보기"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void copyRaw()}
+            className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-white hover:bg-[#17191e]"
+          >
+            {copied ? "복사됨" : "오류 메시지 복사"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-md bg-[#d75f5f] px-4 py-2 text-[10px] font-semibold text-white hover:brightness-110"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function validateMatch(match: DetectedMatch) {
