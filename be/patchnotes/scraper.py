@@ -509,13 +509,17 @@ def fetch_patchnote(url: str) -> dict:
         if _clean_inline(line).lower() not in chrome_tokens
     ]
 
-    # Remove one standalone publication date or relative-time label near the top.
-    if body_lines and _to_iso_date(body_lines[0]) == published_date:
-        body_lines = body_lines[1:]
-    while body_lines and re.fullmatch(
-        r"^(?:방금\s*전|\d+\s*(?:초|분|시간|일|주|개월|달|년)\s*전)$",
-        _clean_inline(body_lines[0]),
-    ):
+    # Remove leading metadata labels. Nexon may place a relative-time label
+    # before the absolute publication date, so consume both in any order.
+    while body_lines:
+        first_line = _clean_inline(body_lines[0])
+        is_publication_date = _to_iso_date(first_line) == published_date
+        is_relative_time = re.fullmatch(
+            r"^(?:방금\s*전|\d+\s*(?:초|분|시간|일|주|개월|달|년)\s*전)$",
+            first_line,
+        )
+        if not is_publication_date and not is_relative_time:
+            break
         body_lines = body_lines[1:]
 
     # Everything after the share/list controls belongs to the site footer.
