@@ -62,6 +62,14 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
         "self_healing": {"aliases": ["자가 치유"]},
     },
+    "doomfist": {
+        "overhealth_generated": {"aliases": ["생성한 추가 생명력", "추가 생명력"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "rocket_punch_kills": {"aliases": ["로켓 펀치로 처치"]},
+        "meteor_strike_kills": {"aliases": ["파멸의 일격으로 처치", "파멸의 임격으로 처치"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "seismic_slam_kills": {"aliases": ["지진 강타로 처치", "지진 강타로 저지"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -70,6 +78,7 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "ana": ["아나"],
     "genji": ["겐지"],
     "domina": ["도미나"],
+    "doomfist": ["둠피스트", "DOOMFIST"],
 }
 
 
