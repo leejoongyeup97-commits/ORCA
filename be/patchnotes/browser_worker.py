@@ -108,13 +108,13 @@ def collect(limit: int) -> list[dict]:
 def main() -> int:
     try:
         limit = int(sys.argv[1]) if len(sys.argv) > 1 else 20
-        print(json.dumps({"ok": True, "items": collect(limit)}, ensure_ascii=False))
+        print(json.dumps({"ok": True, "items": collect(limit)}, ensure_ascii=True))
         return 0
     except Exception as exc:
         print(
             json.dumps(
                 {"ok": False, "error": f"{type(exc).__name__}: {exc}"},
-                ensure_ascii=False,
+                ensure_ascii=True,
             )
         )
         return 1
