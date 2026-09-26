@@ -249,7 +249,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "dynamite_kills": {"aliases": ["다이너마이트로 처치"]},
         "final_blows": {"aliases": ["결정타"]},
         "scoped_critical_hit_accuracy": {"aliases": ["저격 치명타 명중률"]},
-        "bob_kills": {"aliases": ["B.O.B.으로 처치", "B.O.B. 처치", "밥으로 처치"]},
+        "bob_kills": {"aliases": ["B.O.B.으로 처치", "B.O.B. 처치", "밥으로 처치", "106 평균"]},
         "solo_kills": {"aliases": ["단독 처치", "단독 저지"]},
         "long_range_final_blows": {"aliases": ["장거리 결정타"]},
     },
@@ -269,7 +269,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "final_blows": {"aliases": ["결정타"]},
         "scoped_accuracy": {"aliases": ["저격 명중률"]},
         "cyber_fragment_grenade_damage": {"aliases": ["사이버 파편 수류탄으로 준 피해"]},
-        "self_healing": {"aliases": ["자가 치유"]},
+        "self_healing": {"aliases": ["자가 치유", "Sosa"]},
         "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
         "override_protocol_kills": {"aliases": ["오버라이드 프로토콜로 처치"]},
     },
@@ -283,13 +283,13 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "scoped_critical_hit_kills": {"aliases": ["저격 치명타 처치", "저격치명타처치"]},
     },
     "wuyang": {
-        "accuracy": {"aliases": ["적중률"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "guardian_wave_kills": {"aliases": ["수호의 파도로 처치"]},
-        "players_saved": {"aliases": ["구한 플레이어"]},
+        "water_staff_direct_hits": {"aliases": ["현무 지팡이 직격", "물 지팡이 직격"]},
         "healing_amplified": {"aliases": ["치유 증폭", "회복의 물결 치유 강화"]},
         "tidal_blast_kills": {"aliases": ["해일 폭발로 처치", "하일 폭발로 처치"]},
-        "healing_wave_usage": {"aliases": ["회복의 물결 사용"]},
-        "self_healing": {"aliases": ["자가 치유"]},
+        "direct_hit_accuracy": {"aliases": ["직격 명중률", "직격 적중률"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
     },
 }
 
@@ -419,6 +419,29 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "weapon_accuracy","enemies_ignited","critical_hit_kills",
         "fan_the_flames_accuracy","dancing_blaze_kills","final_blows",
         "critical_hit_damage","ultimate_kills",
+    ],
+    "ashe": [
+        "scoped_accuracy","dynamite_kills","final_blows",
+        "scoped_critical_hit_accuracy","bob_kills","solo_kills","long_range_final_blows",
+    ],
+    "echo": [
+        "weapon_accuracy","sticky_bomb_accuracy","final_blows",
+        "focusing_beam_accuracy","sticky_bomb_kills","solo_kills",
+        "focusing_beam_kills","duplicate_kills",
+    ],
+    "emre": [
+        "weapon_accuracy","siphon_blaster_damage","final_blows","scoped_accuracy",
+        "cyber_fragment_grenade_damage","self_healing","critical_hit_accuracy",
+        "override_protocol_kills",
+    ],
+    "widowmaker": [
+        "scoped_accuracy","recon_assists","final_blows",
+        "scoped_critical_hit_accuracy","venom_mine_kills","solo_kills",
+        "scoped_critical_hit_kills",
+    ],
+    "wuyang": [
+        "weapon_accuracy","guardian_wave_kills","water_staff_direct_hits",
+        "healing_amplified","tidal_blast_kills","direct_hit_accuracy",
     ],
 }
 
