@@ -134,10 +134,10 @@ def _summary_map_from_reads(reads):
 
 
 def _summary_result_reads(img):
-    """Read Summary result text with several crops/PSM modes.
+    """Read Summary result text from several crops once each.
 
-    The large WIN/LOSS label is visually stylized and a single OCR pass can miss
-    one Korean syllable, so keep multiple raw candidates for robust matching.
+    RapidOCR ignores the historical Tesseract PSM argument, so repeating the
+    same crop with PSM 6/7/11 only reruns identical OCR work.
     """
     boxes=[
         (0.670,0.545,0.825,0.640),
@@ -147,13 +147,12 @@ def _summary_result_reads(img):
     reads=[]
     for box in boxes:
         crop=_crop(img,box)
-        for psm in (6,7,11):
-            try:
-                txt=_ocr(crop,psm=psm,lang='kor+eng')
-                if txt:
-                    reads.append(txt)
-            except Exception:
-                pass
+        try:
+            txt=_ocr(crop,psm=7,lang='kor+eng')
+            if txt:
+                reads.append(txt)
+        except Exception:
+            pass
     return reads
 
 
@@ -1022,19 +1021,19 @@ def _card_text(img, box):
     return '\n'.join(dict.fromkeys(v for v in parts if v))
 
 def _personal_card_value(img,box):
-    """Read Personal-card values with a RapidOCR-only ensemble."""
+    """Read Personal-card values with a fast-first RapidOCR ensemble.
+
+    Most cards settle after three cheap reads. Only ambiguous cards run the
+    wider threshold fallback that was previously executed for every card.
+    """
     x1,y1,x2,y2=box
     value_box=(x1+(x2-x1)*0.34,y1,x2,y1+(y2-y1)*0.58)
     crop=_crop(img,value_box)
     engine=_get_rapidocr_engine()
+    gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY) if len(crop.shape)==3 else crop
     variants=[]
-    for scale in (3.0,4.0):
-        gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY) if len(crop.shape)==3 else crop
-        up=cv2.resize(gray,None,fx=scale,fy=scale,interpolation=cv2.INTER_CUBIC)
-        images=[up]
-        for threshold in (130,150,170,190,210):
-            images.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
-            images.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
+
+    def read_images(images):
         for image in images:
             try:
                 result=engine(image,use_det=False,use_cls=False,use_rec=True)
@@ -1044,6 +1043,28 @@ def _personal_card_value(img,box):
                     variants.extend(vals)
             except Exception:
                 continue
+
+    up=cv2.resize(gray,None,fx=3.0,fy=3.0,interpolation=cv2.INTER_CUBIC)
+    read_images([
+        up,
+        cv2.threshold(up,150,255,cv2.THRESH_BINARY)[1],
+        cv2.threshold(up,150,255,cv2.THRESH_BINARY_INV)[1],
+    ])
+
+    if variants:
+        counts={v:variants.count(v) for v in set(variants)}
+        best=max(counts,key=lambda v:(counts[v], ':' in v or '%' in v or ',' in v or '.' in v, len(v)))
+        if counts[best]>=2:
+            return best,variants,0.94
+
+    # Ambiguous/failed fast read: expand the ensemble only for this card.
+    up=cv2.resize(gray,None,fx=4.0,fy=4.0,interpolation=cv2.INTER_CUBIC)
+    fallback=[up]
+    for threshold in (130,170,190,210):
+        fallback.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+        fallback.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
+    read_images(fallback)
+
     if not variants:
         return None,[],0.0
     counts={v:variants.count(v) for v in set(variants)}
@@ -1159,32 +1180,38 @@ def _symmetra_average_charge_from_panel(panel_text):
 
 def extract_personal(img, hero_key=None):
     panel_crop=_crop(img,ROI['personal_panel'])
+    boxes,layout=_detect_personal_cards(img)
+
+    # Fast path: identify the selected hero first. Once the hero is known, the
+    # verified HERO_METRIC_ORDER is authoritative and metric-label OCR is unnecessary.
+    hero_name_raw=_personal_hero_name_text(img)
+    name_hero_key=hero_key or resolve_hero_key(hero_name_raw)
+
+    hero_summary_raw=''
     panel_parts=[]
-    try:
-        panel_parts.extend(_ocr_korean(panel_crop))
-    except Exception:
-        pass
     panel_default=_ocr(panel_crop,6)
     if panel_default:
         panel_parts.append(panel_default)
+
+    if boxes:
+        if name_hero_key:
+            hero_summary_raw=_ocr(_crop(img,boxes[0]),6)
+        else:
+            hero_summary_raw=_card_text(img,boxes[0])
+
+    if not name_hero_key:
+        try:
+            panel_parts.extend(_ocr_korean(panel_crop))
+        except Exception:
+            pass
+
     panel_text='\n'.join(dict.fromkeys(v for v in panel_parts if v))
-    boxes,layout=_detect_personal_cards(img)
+    name_hero_key=name_hero_key or resolve_hero_key(hero_summary_raw) or resolve_hero_key(panel_text)
 
-    # The API only receives screen_type + image, so infer the selected hero from
-    # the hero-summary card before resolving hero-specific metric labels.
-    hero_summary_raw=_card_text(img,boxes[0]) if boxes else ''
-    hero_name_raw=_personal_hero_name_text(img)
-
-    name_hero_key=hero_key or (
-        resolve_hero_key(hero_name_raw)
-        or resolve_hero_key(hero_summary_raw)
-        or resolve_hero_key(panel_text)
-    )
-
-    # Metric inference always runs and only uses hero-unique labels. This prevents
-    # shared stats from forcing an unrelated hero and then triggering bad card-order mapping.
+    # Expensive label-based hero inference is now fallback-only. It is still
+    # preserved for screenshots where hero-name OCR cannot identify the hero.
     hero_metric_inference={"hero_key":None,"confidence":0.0,"matches":[]}
-    if len(boxes)>1:
+    if not name_hero_key and len(boxes)>1:
         pre_labels=[]
         for box in boxes[1:]:
             label_raw,_=_personal_card_label(img,box)
@@ -1196,70 +1223,54 @@ def extract_personal(img, hero_key=None):
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
 
     metric_hero_key=hero_metric_inference.get("hero_key")
-    # Two or more hero-unique metric labels are stronger evidence than the
-    # hero-name OCR, which can read another hero name entirely on this screen.
     hero_key=metric_hero_key or name_hero_key
 
     metric_cards=[]
     metrics=[]
     names=['hero_summary']+[f'metric_{i}' for i in range(1,len(boxes))]
     for name,box in zip(names,boxes):
-        raw=_card_text(img,box)
         isolated_primary,value_reads,value_conf=_personal_card_value(img,box)
-        label_raw,label_conf=_personal_card_label(img,box)
-        vals=_personal_tokens(raw)
-        resolved=resolve_metric_label(label_raw,hero_key)
 
-        # Juno's label crop can bleed into neighboring cards; use the verified
-        # card order as authoritative once Juno is identified.
+        metric_index=-1
+        ordered=None
         if hero_key and name.startswith('metric_'):
             try:
                 metric_index=int(name.split('_',1)[1])-1
             except (ValueError,IndexError):
                 metric_index=-1
             ordered=metric_from_verified_order(hero_key,metric_index)
-            if ordered:
-                resolved={**resolved,**ordered}
-                label_conf=max(label_conf,0.88)
 
-        # If label OCR is unusable, fall back to the verified card order for this hero.
-        # name is metric_N, so metric_1 maps to index 0.
-        if not resolved.get('metric_key') and name.startswith('metric_'):
-            try:
-                metric_index=int(name.split('_',1)[1])-1
-            except (ValueError,IndexError):
-                metric_index=-1
-            ordered=metric_from_verified_order(hero_key,metric_index)
-            if ordered:
-                resolved={**resolved,**ordered}
-                # Verified hero card order is authoritative when the label crop is blank/noisy.
-                label_conf=max(label_conf,0.88)
+        if ordered:
+            # Verified card order is authoritative. Skip Korean label OCR and
+            # whole-card OCR unless the isolated value itself needs a fallback.
+            label_raw=''
+            label_conf=0.92
+            resolved={**resolve_metric_label('',hero_key),**ordered}
+            raw=''
+            if isolated_primary is None or value_conf<0.90:
+                raw=_ocr(_crop(img,box),6)
+            vals=_personal_tokens(raw)
+        else:
+            raw=_card_text(img,box)
+            label_raw,label_conf=_personal_card_label(img,box)
+            vals=_personal_tokens(raw)
+            resolved=resolve_metric_label(label_raw,hero_key)
 
-        # If the dedicated label crop grabbed helper text/noise, retry using the
-        # whole card OCR. This commonly recovers labels such as "결정타".
-        raw_label=_personal_label_from_raw(raw)
-        raw_resolved=resolve_metric_label(raw_label,hero_key) if raw_label else None
-        if (
-            raw_resolved
-            and raw_resolved.get('metric_key')
-            and (
-                not resolved.get('metric_key')
-                or '10분당' in label_raw
-                or raw_resolved.get('label_match_score',0)>resolved.get('label_match_score',0)
-            )
-        ):
-            label_raw=raw_label
-            resolved=raw_resolved
-            label_conf=max(label_conf,0.88)
-
-        if hero_key and name.startswith('metric_'):
-            try:
-                metric_index=int(name.split('_',1)[1])-1
-            except (ValueError,IndexError):
-                metric_index=-1
-            ordered=metric_from_verified_order(hero_key,metric_index)
-            if ordered:
-                resolved={**resolved,**ordered}
+            # If the dedicated label crop grabbed helper text/noise, retry using
+            # the whole card OCR.
+            raw_label=_personal_label_from_raw(raw)
+            raw_resolved=resolve_metric_label(raw_label,hero_key) if raw_label else None
+            if (
+                raw_resolved
+                and raw_resolved.get('metric_key')
+                and (
+                    not resolved.get('metric_key')
+                    or '10분당' in label_raw
+                    or raw_resolved.get('label_match_score',0)>resolved.get('label_match_score',0)
+                )
+            ):
+                label_raw=raw_label
+                resolved=raw_resolved
                 label_conf=max(label_conf,0.88)
 
         raw_primary=_personal_primary_from_raw(raw,label_raw)
@@ -1403,7 +1414,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.37-dev',
+        'ocr_version':'0.10.38-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
