@@ -1042,6 +1042,14 @@ def extract_personal(img, hero_key=None):
             hero_times.append(candidate)
     if hero_times:
         play_time=hero_times[-1]
+    if play_time is None:
+        # Hero-summary OCR sometimes reads the ':' in MM:SS as '1' (e.g. 01:25 -> 01125).
+        for damaged in re.findall(r'\b\d{5}\b', hero_summary_raw):
+            candidate=f"{damaged[:2]}:{damaged[-2:]}"
+            mm,ss=(int(v) for v in candidate.split(':'))
+            if damaged[2]=='1' and ss<60 and mm*60+ss<=45*60:
+                play_time=candidate
+                break
     if play_time is None and metric_cards:
         summary_primary=str(metric_cards[0].get('primary_value') or '')
         if re.fullmatch(r'\d{1,2}:\d{2}',summary_primary):
@@ -1103,7 +1111,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.27-dev',
+        'ocr_version':'0.10.28-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
