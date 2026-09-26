@@ -12,6 +12,23 @@ import {
 
 type TabKey = "scoreboard" | "hero";
 
+function formatStatValue(value: string) {
+  const trimmed = value.trim();
+  if (!/^-?\d+(?:\.\d+)?$/.test(trimmed)) return value;
+
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
+  const [integerPart, decimalPart] = unsigned.split(".");
+  const normalizedInteger = integerPart.replace(/^0+(?=\d)/, "") || "0";
+  const grouped = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  return `${negative ? "-" : ""}${grouped}${decimalPart !== undefined ? `.${decimalPart}` : ""}`;
+}
+
+function stripStatSeparators(value: string) {
+  return value.replace(/,/g, "");
+}
+
 export default function MatchReviewEditor({
   matchId,
   defaultHero,
@@ -365,8 +382,10 @@ function CellInput({
 }) {
   return (
     <input
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
+      value={numeric ? formatStatValue(value) : value}
+      onChange={(event) =>
+        onChange(numeric ? stripStatSeparators(event.target.value) : event.target.value)
+      }
       inputMode={numeric ? "numeric" : "text"}
       placeholder={placeholder}
       className="w-full rounded-lg border border-[var(--line)] bg-[#0a0d12] px-2 py-2 text-[10px] text-white outline-none placeholder:text-[#525c6e] focus:border-[var(--orange)]"
@@ -485,9 +504,13 @@ function HeroDetailEditor({
                       </div>
                       <input
                         className="field-input"
-                        value={metric.value}
+                        value={formatStatValue(metric.value)}
                         onChange={(event) =>
-                          onUpdateMetric(item.id, metric.metric_key, event.target.value)
+                          onUpdateMetric(
+                            item.id,
+                            metric.metric_key,
+                            stripStatSeparators(event.target.value),
+                          )
                         }
                         placeholder="값"
                       />
