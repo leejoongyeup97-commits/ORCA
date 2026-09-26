@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import html as html_lib
+import os
 import re
+import subprocess
 from dataclasses import dataclass, asdict
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
@@ -142,10 +146,83 @@ def _fetch_html(url: str, timeout: float = 15.0) -> str:
         return response.read().decode(charset, errors="replace")
 
 
-def list_patchnotes(limit: int = 20) -> list[dict]:
-    html = _fetch_html(LIST_URL)
+
+
+
+def _find_chrome_executable() -> str | None:
+    candidates = [
+        os.environ.get("ORCA_CHROME_PATH"),
+        str(Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")) / "Google/Chrome/Application/chrome.exe"),
+        str(Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")) / "Google/Chrome/Application/chrome.exe"),
+        str(Path(os.environ.get("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe"),
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            return candidate
+    return None
+
+
+def _fetch_rendered_html(url: str, timeout: float = 25.0) -> str:
+    """Fallback for Nexon pages whose article cards are injected by JavaScript.
+
+    Uses the user's already-installed Chrome in headless mode. No webdriver or
+    extra browser package is required.
+    """
+    _validate_url(url)
+    chrome = _find_chrome_executable()
+    if not chrome:
+        raise RuntimeError(
+            "Chrome executable was not found. Set ORCA_CHROME_PATH if Chrome is installed in a custom location."
+        )
+
+    command = [
+        chrome,
+        "--headless=new",
+        "--disable-gpu",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--virtual-time-budget=5000",
+        "--dump-dom",
+        url,
+    ]
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
+    )
+    if completed.returncode != 0 or not completed.stdout.strip():
+        detail = (completed.stderr or "").strip()
+        raise RuntimeError(f"Chrome DOM render failed ({completed.returncode}): {detail[:500]}")
+    return completed.stdout
+
+
+def _extract_patchnote_urls(raw_html: str) -> list[str]:
+    """Find detail URLs even when they live inside rendered/script markup."""
+    normalized = html_lib.unescape(raw_html).replace(r"\/", "/")
+    matches = re.findall(
+        r"(?:https://overwatch\.nexon\.com)?(/news/patchnotes/\d+/[^\"'<>\s?#]+)",
+        normalized,
+        flags=re.I,
+    )
+    urls: list[str] = []
+    seen: set[str] = set()
+    for path in matches:
+        url = urljoin(BASE_URL, path)
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+    return urls
+
+
+def _items_from_html(raw_html: str, limit: int) -> list[PatchNoteItem]:
     parser = _PageParser()
-    parser.feed(html)
+    parser.feed(raw_html)
 
     seen: set[str] = set()
     items: list[PatchNoteItem] = []
@@ -161,7 +238,7 @@ def list_patchnotes(limit: int = 20) -> list[dict]:
             continue
 
         title_match = re.search(
-            r"(오버워치\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일)",
+            r"(오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일)",
             anchor_text,
         )
         title = _clean_inline(title_match.group(1) if title_match else anchor_text)
@@ -170,18 +247,58 @@ def list_patchnotes(limit: int = 20) -> list[dict]:
 
         seen.add(absolute)
         items.append(PatchNoteItem(title=title, published_date=_to_iso_date(title), url=absolute))
-        if len(items) >= max(1, min(limit, 100)):
-            break
+        if len(items) >= limit:
+            return items
+
+    return items
+
+
+def list_patchnotes(limit: int = 20) -> list[dict]:
+    limit = max(1, min(limit, 100))
+
+    # Fast path: plain HTTP. Some Nexon responses already contain the cards.
+    raw_html = _fetch_html(LIST_URL)
+    items = _items_from_html(raw_html, limit)
+
+    # Current Nexon list can return only a JS shell to urllib. In that case,
+    # render once with the user's installed Chrome and parse the final DOM.
+    if not items:
+        rendered_html = _fetch_rendered_html(LIST_URL)
+        items = _items_from_html(rendered_html, limit)
+
+        # Last fallback: if clickable cards do not expose anchor text cleanly,
+        # discover their URLs from the rendered DOM and read each detail page.
+        if not items:
+            for url in _extract_patchnote_urls(rendered_html)[:limit]:
+                try:
+                    detail = fetch_patchnote(url)
+                except Exception:
+                    continue
+                items.append(
+                    PatchNoteItem(
+                        title=detail.get("title") or "오버워치 패치 노트",
+                        published_date=detail.get("published_date"),
+                        url=url,
+                    )
+                )
 
     return [asdict(item) for item in items]
 
 
 def fetch_patchnote(url: str) -> dict:
-    html = _fetch_html(url)
+    raw_html = _fetch_html(url)
     parser = _PageParser()
-    parser.feed(html)
+    parser.feed(raw_html)
 
     lines = _normalize_lines("".join(parser.text_parts))
+
+    # Detail pages may also arrive as a JS shell. Retry with rendered DOM when
+    # there is no meaningful patch-note body in the plain response.
+    if len(lines) < 8 or not any("패치" in line for line in lines):
+        raw_html = _fetch_rendered_html(url)
+        parser = _PageParser()
+        parser.feed(raw_html)
+        lines = _normalize_lines("".join(parser.text_parts))
     h1 = _clean_inline(" ".join(parser.h1_parts))
     title = h1 or parser.og_title or ""
     if not title:
