@@ -107,6 +107,10 @@ export default function SettingsPage() {
     );
   }
 
+  function requestPatchnoteSync() {
+    setNotice("패치노트 최신화 버튼을 준비했습니다. BE 최신화 API가 연결되면 이 버튼에서 누락 패치를 동기화합니다.");
+  }
+
   function exportData() {
     const payload: ExportPayload = {
       exported_at: new Date().toISOString(),
