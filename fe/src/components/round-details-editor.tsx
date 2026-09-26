@@ -9,12 +9,6 @@ const RESULT_LABELS: Record<MatchResult, string> = {
   unknown: "미확인",
 };
 
-const EXAMPLE_SUBMAPS = [
-  "예시 세부맵 A",
-  "예시 세부맵 B",
-  "예시 세부맵 C",
-];
-
 export default function RoundDetailsEditor({
   rounds,
   submaps,
@@ -28,10 +22,7 @@ export default function RoundDetailsEditor({
   enabled: boolean;
   onChange: (rounds: RoundDetail[]) => void;
 }) {
-  const availableSubmaps =
-    submaps.length > 0
-      ? submaps.map((submap) => submap.submap_name)
-      : EXAMPLE_SUBMAPS;
+  const availableSubmaps = submaps.map((submap) => submap.submap_name);
 
   const canAddRound = !loading && rounds.length < availableSubmaps.length;
 
@@ -51,14 +42,6 @@ export default function RoundDetailsEditor({
         submap: nextSubmap,
         result: "unknown",
       },
-    ]);
-  }
-
-  function loadExampleRounds() {
-    onChange([
-      { order: 1, submap: "예시 세부맵 A", result: "win" },
-      { order: 2, submap: "예시 세부맵 B", result: "loss" },
-      { order: 3, submap: "예시 세부맵 C", result: "win" },
     ]);
   }
 
@@ -108,13 +91,6 @@ export default function RoundDetailsEditor({
           <p className="m-0 text-[12px] leading-6 text-[var(--muted)]">
             현재 맵/모드에 등록된 세부맵 기준 데이터가 없습니다.
           </p>
-          <button
-            type="button"
-            onClick={loadExampleRounds}
-            className="app-secondary-button mt-3 cursor-pointer"
-          >
-            예시 데이터 채우기
-          </button>
         </div>
       ) : rounds.length === 0 ? (
         <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
