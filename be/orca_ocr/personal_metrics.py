@@ -377,7 +377,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     "kiriko": {
         "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
-        "healing_ofuda_accuracy": {"aliases": ["치유의 부적 명중률"]},
+        "kitsune_rush_assists": {"aliases": ["여우길 지원", "여우길지원"]},
         "kunai_kills": {"aliases": ["쿠나이로 처치"]},
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "negative_effects_cleansed": {"aliases": ["부정적인 효과 정화", "부정적인흐과정화"]},
@@ -589,6 +589,19 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "biotic_grenade_kills","healing_amplified","players_saved","enemies_slept",
         "healing_prevented","scoped_accuracy","sleep_dart_accuracy","nano_boost_assists",
     ],
+    "genji": [
+        "ultimates_reflected","final_blows","swift_strike_resets",
+        "dragonblade_kills","solo_kills","reflected_damage",
+    ],
+    "domina": [
+        "weapon_beam_accuracy","environmental_kills","objective_contest_time",
+        "weapon_shot_accuracy","crystal_charge_damage","players_saved",
+        "knockback_kills","self_healing",
+    ],
+    "doomfist": [
+        "overhealth_generated","objective_contest_time","rocket_punch_kills",
+        "meteor_strike_kills","players_saved","seismic_slam_kills",
+    ],
     "dmon": [
         "fusion_repeater_accuracy","limit_break_kills","objective_contest_time",
         "fusion_repeater_kills","damage_amplified","players_saved","surging_strike_kills",
@@ -728,7 +741,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "molten_core_kills","solo_kills","hammer_kills",
     ],
     "kiriko": [
-        "critical_hit_accuracy","players_saved","healing_ofuda_accuracy",
+        "critical_hit_accuracy","kitsune_rush_assists","players_saved",
         "kunai_kills","weapon_accuracy","negative_effects_cleansed",
     ],
     "freja": [
@@ -793,6 +806,43 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "orbital_ray_healing","orbital_ray_assists",
     ],
 }
+
+
+def validate_personal_metric_config() -> None:
+    """Fail fast when a hero's fixed Personal-card mapping becomes inconsistent."""
+    errors=[]
+
+    metric_heroes=set(HERO_METRICS)
+    order_heroes=set(HERO_METRIC_ORDER)
+
+    missing_orders=sorted(metric_heroes-order_heroes)
+    if missing_orders:
+        errors.append("missing HERO_METRIC_ORDER: " + ", ".join(missing_orders))
+
+    extra_orders=sorted(order_heroes-metric_heroes)
+    if extra_orders:
+        errors.append("unknown heroes in HERO_METRIC_ORDER: " + ", ".join(extra_orders))
+
+    common_keys=set(COMMON_METRICS)
+    for hero_key,order in HERO_METRIC_ORDER.items():
+        if not order:
+            errors.append(f"{hero_key}: empty metric order")
+            continue
+
+        duplicates=sorted({key for key in order if order.count(key)>1})
+        if duplicates:
+            errors.append(f"{hero_key}: duplicate metric keys: {', '.join(duplicates)}")
+
+        hero_keys=set(HERO_METRICS.get(hero_key,{}))
+        unknown=[key for key in order if key not in hero_keys and key not in common_keys]
+        if unknown:
+            errors.append(f"{hero_key}: unknown metric keys: {', '.join(unknown)}")
+
+    if errors:
+        raise RuntimeError("Invalid Personal metric configuration | " + " | ".join(errors))
+
+
+validate_personal_metric_config()
 
 
 def metric_from_verified_order(hero_key: str | None, metric_index: int) -> dict[str, Any] | None:
@@ -893,7 +943,16 @@ def infer_hero_from_metric_labels(labels: list[str]) -> dict[str, Any]:
 
     count,total,hero_key,hits=ranked[0]
     second_count=ranked[1][0] if len(ranked)>1 else 0
-    one_strong_unique=(count==1 and hits and hits[0].get("score",0)>=0.97 and len(hits[0].get("alias",""))>=5)
+    # Single-label hero inference is risky in full integration because noisy OCR can
+    # borrow a neighboring hero's label. Keep it only for aliases we explicitly
+    # verified as distinctive enough to identify the hero by themselves.
+    strong_single_aliases={"폭탄 부착률","펄스 폭탄 부착률","aA 폭탄 부착률"}
+    one_strong_unique=(
+        count==1
+        and hits
+        and hits[0].get("score",0)>=0.97
+        and hits[0].get("alias","") in strong_single_aliases
+    )
     confident=(count>=2 and count>second_count) or (one_strong_unique and second_count==0)
     confidence=min(0.99,0.60+0.10*count+0.08*max(0,count-second_count)) if confident else 0.0
 
