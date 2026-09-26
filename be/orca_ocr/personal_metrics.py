@@ -430,6 +430,22 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "grapple_kills": {"aliases": ["갈고리 고정으로 처치"]},
         "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
     },
+    "bastion": {
+        "tactical_grenade_kills": {"aliases": ["전술 수류탄으로 처치", "전술 수류탄으로저지"]},
+        "final_blows": {"aliases": ["결정타", "정타"]},
+        "recon_mode_kills": {"aliases": ["수색 모드로 처치"]},
+        "artillery_kills": {"aliases": ["포격으로 처치"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+        "assault_mode_kills": {"aliases": ["강습 모드로 처치"]},
+    },
+    "sombra": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "virus_damage": {"aliases": ["바이러스로 준 피해", "바이러스로 처치"]},
+        "final_blows": {"aliases": ["결정타", "정타"]},
+        "low_health_translocates": {"aliases": ["낮은 생명력일 때 순간이동", "낮은 성멍력일 때 순간이동"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "virus_accuracy": {"aliases": ["바이러스 명중률", "바이러스 밍중클"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -477,6 +493,8 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "hanzo": ["한조", "HANZO"],
     "orisa": ["오리사", "ORISA"],
     "wreckingball": ["레킹볼", "레킹 볼", "WRECKING BALL"],
+    "bastion": ["바스티온", "BASTION"],
+    "sombra": ["솜브라", "SOMBRA"],
 }
 
 
@@ -658,6 +676,14 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "weapon_accuracy","adaptive_shield_generated","objective_contest_time",
         "critical_hit_accuracy","piledriver_kills","players_saved",
         "grapple_kills","knockback_kills",
+    ],
+    "bastion": [
+        "tactical_grenade_kills","final_blows","recon_mode_kills",
+        "artillery_kills","self_healing","assault_mode_kills",
+    ],
+    "sombra": [
+        "weapon_accuracy","virus_damage","final_blows",
+        "solo_kills","low_health_translocates","solo_kills","virus_accuracy","solo_kills",
     ],
 }
 
