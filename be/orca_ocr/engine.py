@@ -940,6 +940,18 @@ def extract_personal(img, hero_key=None):
         vals=_personal_tokens(raw)
         resolved=resolve_metric_label(label_raw,hero_key)
 
+        # Juno's label crop can bleed into neighboring cards; use the verified
+        # card order as authoritative once Juno is identified.
+        if hero_key=='juno' and name.startswith('metric_'):
+            try:
+                metric_index=int(name.split('_',1)[1])-1
+            except (ValueError,IndexError):
+                metric_index=-1
+            ordered=metric_from_verified_order(hero_key,metric_index)
+            if ordered:
+                resolved={**resolved,**ordered}
+                label_conf=max(label_conf,0.88)
+
         # If label OCR is unusable, fall back to the verified card order for this hero.
         # name is metric_N, so metric_1 maps to index 0.
         if not resolved.get('metric_key') and name.startswith('metric_'):
@@ -1111,7 +1123,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.28-dev',
+        'ocr_version':'0.10.29-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
