@@ -352,7 +352,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "low_health_recalls": {"aliases": ["낮은 생명력 회상", "낮은 생명력에서 시간 역행"]},
         "final_blows": {"aliases": ["결정타"]},
         "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
-        "pulse_bomb_attach_rate": {"aliases": ["폭탄 부착률", "펄스 폭탄 부착률"]},
+        "pulse_bomb_attach_rate": {"aliases": ["폭탄 부착률", "펄스 폭탄 부착률", "aA 폭탄 부착률"]},
         "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
         "pulse_bomb_kills": {"aliases": ["펄스 폭탄으로 처치"]},
     },
