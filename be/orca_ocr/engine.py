@@ -258,7 +258,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.21-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.22-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -343,7 +343,23 @@ def _get_rapidocr_engine():
             raise RuntimeError(
                 'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
             ) from exc
-        _RAPIDOCR_ENGINE=RapidOCR()
+
+        # ORCA screenshots are Korean. RapidOCR's default recognition model is
+        # not Korean, so Korean UI text such as map names can be missed even
+        # while digits are read correctly. Use the Korean PP-OCRv5 recognizer
+        # for all OCR; it also supports English/numeric text.
+        _RAPIDOCR_ENGINE=RapidOCR(
+            params={
+                'Det.engine_type':'onnxruntime',
+                'Det.lang_type':'multi',
+                'Det.model_type':'mobile',
+                'Det.ocr_version':'PP-OCRv5',
+                'Rec.engine_type':'onnxruntime',
+                'Rec.lang_type':'korean',
+                'Rec.model_type':'mobile',
+                'Rec.ocr_version':'PP-OCRv5',
+            }
+        )
     return _RAPIDOCR_ENGINE
 
 def _find_split_team_rows(board):
@@ -783,7 +799,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.20-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.21-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -863,7 +879,7 @@ def extract_team(img):
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.20-dev',
+        'ocr_version':'0.9.21-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
@@ -1290,7 +1306,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.32-dev',
+        'ocr_version':'0.10.33-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
