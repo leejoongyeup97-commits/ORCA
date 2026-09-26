@@ -11,6 +11,8 @@ import type {
   MatchImportView,
   MatchListItem,
   MatchManagementAdapter,
+  MapSubmapOption,
+  RoundDetail,
   UploadTarget,
 } from "./contracts";
 
@@ -462,6 +464,26 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       body: JSON.stringify({ import_status: "needs_review" }),
     });
     return this.getMatchImport(matchId);
+  }
+
+  async listMapSubmaps(mapName: string, gameMode: "control" | "flashpoint"): Promise<MapSubmapOption[]> {
+    if (!mapName.trim()) return [];
+    const r = await supabaseFetch(
+      `/rest/v1/map_submaps?map_name=eq.${encodeURIComponent(mapName.trim())}&game_mode=eq.${gameMode}&is_active=eq.true&select=submap_key,submap_name,sort_order&order=sort_order.asc`,
+    );
+    return (await r.json()) as MapSubmapOption[];
+  }
+
+  async getRoundDetails(matchId: string): Promise<RoundDetail[]> {
+    const r = await supabaseFetch(
+      `/rest/v1/rounds?match_id=eq.${encodeURIComponent(matchId)}&select=round_order,submap,result&order=round_order.asc`,
+    );
+    const rows = (await r.json()) as Array<{ round_order: number; submap: string | null; result: RoundDetail["result"] | null }>;
+    return rows.map((row) => ({
+      order: Number(row.round_order),
+      submap: row.submap ?? "",
+      result: row.result ?? "unknown",
+    }));
   }
 
   async confirmMatch(input: ConfirmMatchInput) {
