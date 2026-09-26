@@ -349,9 +349,10 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     },
     "tracer": {
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "low_health_recalls": {"aliases": ["낮은 생명력 회상", "낮은 생명력에서 시간 역행"]},
         "final_blows": {"aliases": ["결정타"]},
         "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
-        "pulse_bomb_attach_rate": {"aliases": ["폭탄 부착률"]},
+        "pulse_bomb_attach_rate": {"aliases": ["폭탄 부착률", "펄스 폭탄 부착률"]},
         "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
         "pulse_bomb_kills": {"aliases": ["펄스 폭탄으로 처치"]},
     },
@@ -568,7 +569,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "knockback_kills","solo_kills","long_range_final_blows","barrage_kills",
     ],
     "tracer": [
-        "weapon_accuracy","final_blows","critical_hit_accuracy",
+        "weapon_accuracy","low_health_recalls","final_blows","critical_hit_accuracy",
         "pulse_bomb_attach_rate","solo_kills","pulse_bomb_kills",
     ],
     "cassidy": [
@@ -623,8 +624,10 @@ def _label_similarity(a: str, b: str) -> float:
         return 0.0
     if a == b:
         return 1.0
-    if a in b or b in a:
-        return 0.96
+    if b in a:
+        return min(0.99,0.96+0.03*(len(b)/max(1,len(a))))
+    if a in b:
+        return min(0.98,0.95+0.03*(len(a)/max(1,len(b))))
     return SequenceMatcher(None, a, b).ratio()
 
 
@@ -682,7 +685,8 @@ def infer_hero_from_metric_labels(labels: list[str]) -> dict[str, Any]:
 
     count,total,hero_key,hits=ranked[0]
     second_count=ranked[1][0] if len(ranked)>1 else 0
-    confident=count>=2 and count>second_count
+    one_strong_unique=(count==1 and hits and hits[0].get("score",0)>=0.97 and len(hits[0].get("alias",""))>=5)
+    confident=(count>=2 and count>second_count) or (one_strong_unique and second_count==0)
     confidence=min(0.99,0.60+0.10*count+0.08*max(0,count-second_count)) if confident else 0.0
 
     return {
