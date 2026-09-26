@@ -78,23 +78,35 @@ def _ocr_box(img, box, psm=7, lang='kor+eng', whitelist=None):
 
 
 def _summary_map_reads(img):
-    """Read the map title from the heading above the Summary image."""
+    """Read the Summary map title with RapidOCR only.
+
+    The wide crop is intentional: the previous tight crop could miss the title
+    completely on 2560x1440 screenshots.
+    """
     boxes=[
-        (0.665,0.160,0.760,0.210),
-        (0.655,0.155,0.800,0.215),
-        (0.670,0.165,0.745,0.205),
+        (0.670,0.155,0.930,0.220),
+        (0.650,0.145,0.900,0.230),
     ]
     reads=[]
     for box in boxes:
         crop=_crop(img,box)
-        for psm in (7,11,13):
-            try:
-                txt=_ocr(crop,psm=psm,lang='kor+eng')
-                if txt:
-                    reads.extend(line.strip() for line in txt.splitlines() if line.strip())
-            except Exception:
-                pass
-    return reads
+
+        # Proven default RapidOCR path.
+        try:
+            txt=_ocr(crop,psm=7,lang='kor+eng')
+            if txt:
+                reads.extend(line.strip() for line in txt.splitlines() if line.strip())
+        except Exception:
+            pass
+
+        # Korean recognizer is used only as an extra candidate source.
+        try:
+            reads.extend(_ocr_korean(crop))
+        except Exception:
+            pass
+
+    # Preserve order while removing duplicates.
+    return list(dict.fromkeys(v for v in reads if v))
 
 
 def _summary_map_from_reads(reads):
@@ -258,7 +270,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.22-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.23-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -333,6 +345,7 @@ def _find_stat_columns(board):
     return out
 
 _RAPIDOCR_ENGINE=None
+_RAPIDOCR_KO_ENGINE=None
 
 def _get_rapidocr_engine():
     global _RAPIDOCR_ENGINE
@@ -343,24 +356,58 @@ def _get_rapidocr_engine():
             raise RuntimeError(
                 'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
             ) from exc
+        # Keep the default model for the OCR paths that were already verified:
+        # Team numbers, Summary mode/time and Personal metric values/labels.
+        _RAPIDOCR_ENGINE=RapidOCR()
+    return _RAPIDOCR_ENGINE
 
-        # ORCA screenshots are Korean. RapidOCR's default recognition model is
-        # not Korean, so Korean UI text such as map names can be missed even
-        # while digits are read correctly. Use the Korean PP-OCRv5 recognizer
-        # for all OCR; it also supports English/numeric text.
-        _RAPIDOCR_ENGINE=RapidOCR(
+
+def _get_rapidocr_korean_engine():
+    global _RAPIDOCR_KO_ENGINE
+    if _RAPIDOCR_KO_ENGINE is None:
+        try:
+            from rapidocr import RapidOCR
+        except ImportError as exc:
+            raise RuntimeError(
+                'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
+            ) from exc
+        # Dedicated Korean recognizer only for small Korean-only text regions
+        # such as the Summary map title. Do not replace the globally verified
+        # default OCR engine with this model.
+        _RAPIDOCR_KO_ENGINE=RapidOCR(
             params={
-                'Det.engine_type':'onnxruntime',
-                'Det.lang_type':'multi',
-                'Det.model_type':'mobile',
-                'Det.ocr_version':'PP-OCRv5',
                 'Rec.engine_type':'onnxruntime',
                 'Rec.lang_type':'korean',
                 'Rec.model_type':'mobile',
                 'Rec.ocr_version':'PP-OCRv5',
             }
         )
-    return _RAPIDOCR_ENGINE
+    return _RAPIDOCR_KO_ENGINE
+
+
+def _ocr_korean(img):
+    engine=_get_rapidocr_korean_engine()
+    reads=[]
+    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY) if len(img.shape)==3 else img
+    variants=[
+        img,
+        cv2.resize(gray,None,fx=3.0,fy=3.0,interpolation=cv2.INTER_CUBIC),
+    ]
+    variants.append(cv2.threshold(variants[1],0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1])
+    variants.append(cv2.threshold(variants[1],0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1])
+
+    for image in variants:
+        for use_det in (True,False):
+            try:
+                result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                for txt in txts:
+                    value=str(txt).strip()
+                    if value:
+                        reads.append(value)
+            except Exception:
+                continue
+    return reads
 
 def _find_split_team_rows(board):
     """Find blue and red scoreboard rows as two separate five-row sequences."""
@@ -799,7 +846,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.21-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.22-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -879,7 +926,7 @@ def extract_team(img):
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.21-dev',
+        'ocr_version':'0.9.22-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
@@ -1306,7 +1353,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.33-dev',
+        'ocr_version':'0.10.34-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
