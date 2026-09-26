@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import EmptyState from "@/components/empty-state";
 import {
@@ -58,18 +58,12 @@ function MatchStatus({ status, ready = false }: { status: MatchImportStatus; rea
 export default function MatchesPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const initialFilter = searchParams.get("status") as FilterKey | null;
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterKey>(
-    initialFilter && ["all", "action", "awaiting_upload", "pending_ocr", "processing_ocr", "needs_review", "confirmed", "failed"].includes(initialFilter)
-      ? initialFilter
-      : "all",
-  );
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
-  const [seasonFilter, setSeasonFilter] = useState(searchParams.get("season") ?? "all");
-  const [patchFilter, setPatchFilter] = useState(searchParams.get("patch") ?? "all");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [query, setQuery] = useState("");
+  const [seasonFilter, setSeasonFilter] = useState("all");
+  const [patchFilter, setPatchFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
@@ -88,6 +82,20 @@ export default function MatchesPage() {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status") as FilterKey | null;
+    if (
+      status &&
+      ["all", "action", "awaiting_upload", "pending_ocr", "processing_ocr", "needs_review", "confirmed", "failed"].includes(status)
+    ) {
+      setFilter(status);
+    }
+    setQuery(params.get("q") ?? "");
+    setSeasonFilter(params.get("season") ?? "all");
+    setPatchFilter(params.get("patch") ?? "all");
   }, []);
 
   useEffect(() => {
@@ -384,7 +392,7 @@ export default function MatchesPage() {
                     </div>
 
                     <Link
-                      href={`/matches/${match.match_id}?return=${encodeURIComponent(searchParams.toString())}`}
+                      href={`/matches/${match.match_id}?return=${encodeURIComponent(buildFilterQuery(filter, query, seasonFilter, patchFilter))}`}
                       className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-center text-xs font-bold text-white no-underline transition hover:border-[#4b5668] hover:bg-[#19202d]"
                     >
                       상세 / 수정
@@ -398,6 +406,15 @@ export default function MatchesPage() {
       </div>
     </main>
   );
+}
+
+function buildFilterQuery(filter: FilterKey, query: string, season: string, patch: string) {
+  const params = new URLSearchParams();
+  if (filter !== "all") params.set("status", filter);
+  if (query.trim()) params.set("q", query.trim());
+  if (season !== "all") params.set("season", season);
+  if (patch !== "all") params.set("patch", patch);
+  return params.toString();
 }
 
 function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
