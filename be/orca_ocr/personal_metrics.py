@@ -191,6 +191,59 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "whip_shot_accuracy": {"aliases": ["도리깨 투척 명중률"]},
         "overhealth_provided": {"aliases": ["추가 생명력 제공"]},
     },
+    "sojourn": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "charged_shot_kills": {"aliases": ["충전된 사격으로 처치", "sng 사격으로 처치"]},
+        "long_range_final_blows": {"aliases": ["장거리 결정타"]},
+        "charged_shot_accuracy": {"aliases": ["충전된 사격 명중률"]},
+        "disruptor_shot_kills": {"aliases": ["분열 사격으로 처치", "분임 사격으로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "charged_shot_critical_hit_accuracy": {"aliases": ["충전된 사격 치명타 명중률"]},
+        "overclock_kills": {"aliases": ["오버클럭으로 처치"]},
+    },
+    "soldier76": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "long_range_final_blows": {"aliases": ["장거리 결정타"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "helix_rocket_kills": {"aliases": ["나선 로켓으로 처치"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+        "helix_rocket_accuracy": {"aliases": ["나선 로켓 명중률"]},
+        "tactical_visor_kills": {"aliases": ["전술 조준경으로 처치", "전술 조준경으로저지"]},
+    },
+    "sigma": {
+        "weapon_accuracy": {"aliases": ["무기 명중률", "오기 명중률"]},
+        "accretion_accuracy": {"aliases": ["강착 명중률"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "direct_hit_accuracy": {"aliases": ["적중률"]},
+        "overhealth_generated": {"aliases": ["생성한 추가 생명력"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "accretion_kills": {"aliases": ["강착으로 처치"]},
+        "gravity_flux_kills": {"aliases": ["중력 붕괴로 처치"]},
+        "ultimates_negated": {"aliases": ["궁극기 차단"]},
+    },
+    "shion": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "joyride_damage": {"aliases": ["조이라이드로 준 피해", "조이리이드로 준 피하"]},
+        "joyride_kills": {"aliases": ["조이라이드로 처치"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "satsuriku_spree_kills": {"aliases": ["광란의 살육으로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "execution_kills": {"aliases": ["처형으로 처치", "저형으로저시"]},
+        "execution_accuracy": {"aliases": ["처형 명중률"]},
+        "joyride_ground_launch_accuracy": {"aliases": ["조이라이드 지상 발사 명중률"]},
+        "joyride_air_launch_accuracy": {"aliases": ["조이라이드 공중 발사 명중률"]},
+    },
+    "anran": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "enemies_ignited": {"aliases": ["불태운 적"]},
+        "critical_hit_kills": {"aliases": ["치명타 처치"]},
+        "fan_the_flames_accuracy": {"aliases": ["불난 데 부채질 명중률"]},
+        "dancing_blaze_kills": {"aliases": ["춤추는 불꽃으로 처치", "춤추는 불꽂으로 처치"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_damage": {"aliases": ["치명타로 준 피해"]},
+        "ultimate_kills": {"aliases": ["궁극기로 처치"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -213,6 +266,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "mizuki": ["미즈키", "MIZUKI"],
     "baptiste": ["바티스트", "BAPTISTE"],
     "brigitte": ["브리기테", "BRIGITTE"],
+    "sojourn": ["소전", "SOJOURN"],
+    "soldier76": ["솔저: 76", "솔저76", "솔저", "SOLDIER: 76", "SOLDIER 76"],
+    "sigma": ["시그마", "SIGMA"],
+    "shion": ["시온", "SHION"],
+    "anran": ["안란", "ANRAN"],
 }
 
 
@@ -284,6 +342,31 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "brigitte": [
         "inspire_triggers","inspire_uptime","shield_bash_kills",
         "knockback_kills","whip_shot_accuracy","overhealth_provided",
+    ],
+    "sojourn": [
+        "weapon_accuracy","charged_shot_kills","long_range_final_blows",
+        "charged_shot_accuracy","disruptor_shot_kills","solo_kills",
+        "charged_shot_critical_hit_accuracy","overclock_kills",
+    ],
+    "soldier76": [
+        "weapon_accuracy","long_range_final_blows","final_blows",
+        "critical_hit_accuracy","helix_rocket_kills","self_healing",
+        "helix_rocket_accuracy","tactical_visor_kills",
+    ],
+    "sigma": [
+        "weapon_accuracy","accretion_accuracy","objective_contest_time",
+        "direct_hit_accuracy","overhealth_generated","players_saved",
+        "accretion_kills","gravity_flux_kills",
+    ],
+    "shion": [
+        "weapon_accuracy","joyride_damage","joyride_kills",
+        "critical_hit_accuracy","satsuriku_spree_kills","solo_kills",
+        "execution_kills",
+    ],
+    "anran": [
+        "weapon_accuracy","enemies_ignited","critical_hit_kills",
+        "fan_the_flames_accuracy","dancing_blaze_kills","final_blows",
+        "critical_hit_damage","ultimate_kills",
     ],
 }
 
