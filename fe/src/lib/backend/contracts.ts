@@ -88,12 +88,36 @@ export type MatchImportView = {
 
 export type MatchListItem = MatchImportView;
 
+export type ConfirmPlayerInput = {
+  team: "ally" | "enemy";
+  slot: number;
+  is_me: boolean;
+  player_name?: string;
+  hero: string;
+  hero_key: string;
+  eliminations: string;
+  assists: string;
+  deaths: string;
+  damage: string;
+  healing: string;
+  mitigation: string;
+};
+
+export type ConfirmHeroDetailInput = {
+  hero: string;
+  hero_key: string;
+  play_time: string;
+  accuracy?: string;
+  critical?: string;
+  hero_specific: Record<string, string>;
+};
+
 export type ConfirmMatchInput = {
   contract_version: "0.1";
   match_id: string;
   match: Record<string, unknown>;
-  players: unknown[];
-  my_hero_details: unknown[];
+  players: ConfirmPlayerInput[];
+  my_hero_details: ConfirmHeroDetailInput[];
   manual_fields: Record<string, unknown>;
 };
 

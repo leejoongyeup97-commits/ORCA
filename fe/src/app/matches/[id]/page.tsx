@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MatchReviewEditor from "@/components/match-review-editor";
-import { removeReviewDraft, type MatchReviewDraft } from "@/lib/review-draft";
+import {
+  removeReviewDraft,
+  toConfirmHeroDetails,
+  toConfirmPlayers,
+  type MatchReviewDraft,
+} from "@/lib/review-draft";
 import { getStoredOcrBundle, type StoredOcrBundle } from "@/lib/ocr-integration";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -148,8 +153,8 @@ export default function MatchDetailPage() {
         contract_version: "0.1",
         match_id: match.match_id,
         match: saved.editable,
-        players: reviewDraft?.players ?? [],
-        my_hero_details: reviewDraft?.hero_details ?? [],
+        players: reviewDraft ? toConfirmPlayers(reviewDraft) : [],
+        my_hero_details: reviewDraft ? toConfirmHeroDetails(reviewDraft) : [],
         manual_fields: {},
       });
       const confirmed = await getMatchBackendAdapter().getMatchImport(match.match_id);

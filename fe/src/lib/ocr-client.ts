@@ -2,9 +2,37 @@ import type { BackendScreenType } from "@/lib/backend";
 
 export type OcrScreenType = Exclude<BackendScreenType, "unknown">;
 
+export type TeamOcrPlayer = {
+  team?: "blue" | "red";
+  slot?: number;
+  is_me?: boolean;
+  hero_key?: string;
+  hero_id?: string;
+  elims?: number | string;
+  assists?: number | string;
+  deaths?: number | string;
+  damage?: number | string;
+  healing?: number | string;
+  mitigation?: number | string;
+};
+
+export type PersonalOcrMetric = {
+  metric_key: string;
+  scope: string;
+  label_raw: string;
+  value: string | number;
+  confidence: number;
+  needs_review: boolean;
+};
+
 export type OcrExtractResult = Record<string, unknown> & {
   screen_type?: OcrScreenType;
   ocr_version?: string;
+  hero_key?: string;
+  hero_id?: string;
+  play_time?: string;
+  metrics?: PersonalOcrMetric[];
+  players?: TeamOcrPlayer[];
 };
 
 export type OcrHealth = {
