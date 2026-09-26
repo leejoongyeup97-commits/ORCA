@@ -893,7 +893,16 @@ def infer_hero_from_metric_labels(labels: list[str]) -> dict[str, Any]:
 
     count,total,hero_key,hits=ranked[0]
     second_count=ranked[1][0] if len(ranked)>1 else 0
-    one_strong_unique=(count==1 and hits and hits[0].get("score",0)>=0.97 and len(hits[0].get("alias",""))>=5)
+    # Single-label hero inference is risky in full integration because noisy OCR can
+    # borrow a neighboring hero's label. Keep it only for aliases we explicitly
+    # verified as distinctive enough to identify the hero by themselves.
+    strong_single_aliases={"폭탄 부착률","펄스 폭탄 부착률","aA 폭탄 부착률"}
+    one_strong_unique=(
+        count==1
+        and hits
+        and hits[0].get("score",0)>=0.97
+        and hits[0].get("alias","") in strong_single_aliases
+    )
     confident=(count>=2 and count>second_count) or (one_strong_unique and second_count==0)
     confidence=min(0.99,0.60+0.10*count+0.08*max(0,count-second_count)) if confident else 0.0
 
