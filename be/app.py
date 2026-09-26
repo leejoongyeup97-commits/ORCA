@@ -7,7 +7,6 @@ import sys
 import time
 from datetime import datetime
 from orca_ocr.engine import extract, get_tesseract_status
-from orca_ocr.paddle_experiment import extract_team_paddle
 
 app = FastAPI(title="ORCA OCR API", version="0.2.10")
 app.add_middleware(
@@ -26,25 +25,6 @@ def health():
         return {"ok": ok, "service": "orca-ocr", "version": "0.2.10", "tesseract": status}
     except Exception as exc:
         return {"ok": False, "service": "orca-ocr", "version": "0.2.10", "tesseract_error": str(exc)}
-
-@app.post("/extract-team-paddle")
-async def extract_team_paddle_image(file: UploadFile = File(...)):
-    """Isolated A/B endpoint. Existing /extract behavior is unchanged."""
-    filename = file.filename or "(unknown)"
-    try:
-        raw = await file.read()
-        img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("OpenCV could not decode the uploaded image")
-        t0 = time.perf_counter()
-        result = extract_team_paddle(img)
-        elapsed = time.perf_counter() - t0
-        print(f"[ORCA OCR] PADDLE SUCCESS | file={filename} | elapsed={elapsed:.1f}s", flush=True)
-        return result
-    except Exception as exc:
-        traceback.print_exc(file=sys.stderr)
-        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
-
 
 @app.post("/extract")
 async def extract_image(screen_type: str = Form(...), file: UploadFile = File(...)):
