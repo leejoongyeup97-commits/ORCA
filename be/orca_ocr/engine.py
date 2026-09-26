@@ -920,6 +920,9 @@ def extract_personal(img, hero_key=None):
             label_raw,_=_personal_card_label(img,box)
             if label_raw:
                 pre_labels.append(label_raw)
+            raw_label=_personal_label_from_raw(_card_text(img,box))
+            if raw_label and raw_label not in pre_labels:
+                pre_labels.append(raw_label)
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
 
     metric_hero_key=hero_metric_inference.get("hero_key")
@@ -1085,7 +1088,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.22-dev',
+        'ocr_version':'0.10.23-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
