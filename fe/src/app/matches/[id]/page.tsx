@@ -224,9 +224,9 @@ export default function MatchDetailPage() {
   if (error || !match || !form) {
     return (
       <main className="min-h-screen px-5 py-16">
-        <div className="mx-auto max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-8 text-center">
+        <div className="mx-auto max-w-xl rounded-md border border-[var(--line)] bg-transparent p-8 text-center">
           <p className="m-0 text-sm font-bold text-white">{error || "경기를 찾지 못했습니다."}</p>
-          <Link href="/matches" className="mt-4 inline-block text-xs font-bold text-[#9bbcff] no-underline hover:text-white">← 경기 목록으로</Link>
+          <Link href="/matches" className="mt-4 inline-block text-xs font-bold text-[#aeb4bf] no-underline hover:text-white">← 경기 목록으로</Link>
         </div>
       </main>
     );
@@ -238,15 +238,15 @@ export default function MatchDetailPage() {
   const canRerunOcr = ["pending_ocr", "needs_review", "failed"].includes(match.status);
 
   return (
-    <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-[1240px]">
-        <section className="mb-6">
-          <Link href="/matches" className="mb-3 inline-block text-xs font-bold text-[#9bbcff] no-underline hover:text-white">← 경기 목록으로</Link>
+    <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1320px]">
+        <section className="mb-6 border-b border-[var(--line)] pb-6">
+          <Link href="/matches" className="mb-3 inline-block text-xs font-bold text-[#aeb4bf] no-underline hover:text-white">← 경기 목록으로</Link>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <p className="m-0 text-sm font-semibold text-[var(--orange)]">경기 상세</p>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusMeta.className}`}>{statusMeta.label}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusMeta.className}`}>{statusMeta.label}</span>
               </div>
               <h1 className="m-0 break-all text-2xl font-bold tracking-[-0.03em] md:text-3xl">{match.match_id}</h1>
               <p className="mt-2 text-xs text-[var(--muted)]">등록 {formatDate(match.detected_at)} · 이미지 {match.files.length}장</p>
@@ -254,21 +254,21 @@ export default function MatchDetailPage() {
 
             <div className="flex flex-wrap gap-2">
               {canRerunOcr && (
-                <button type="button" disabled={busy !== null} onClick={rerunOcr} className="cursor-pointer rounded-xl border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-4 py-2.5 text-xs font-bold text-[#9bc6ff] disabled:opacity-40">
+                <button type="button" disabled={busy !== null} onClick={rerunOcr} className="cursor-pointer rounded-md border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-4 py-2.5 text-xs font-bold text-[#aeb4bf] disabled:opacity-40">
                   {busy === "ocr" ? "OCR 실행 중..." : "OCR 다시 실행"}
                 </button>
               )}
               {canConfirm && (
-                <button type="button" disabled={busy !== null} onClick={confirmMatch} className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black disabled:opacity-40">
+                <button type="button" disabled={busy !== null} onClick={confirmMatch} className="cursor-pointer rounded-md bg-[var(--orange)] px-4 py-2.5 text-xs font-semibold text-black disabled:opacity-40">
                   {busy === "confirm" ? "확정 중..." : "검수 확정"}
                 </button>
               )}
               {isConfirmed && (
-                <button type="button" disabled={busy !== null} onClick={reopenReview} className="cursor-pointer rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40">
+                <button type="button" disabled={busy !== null} onClick={reopenReview} className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40">
                   다시 검수
                 </button>
               )}
-              <button type="button" disabled={busy !== null} onClick={deleteMatch} className="cursor-pointer rounded-xl border border-[#543237] bg-[#241216] px-4 py-2.5 text-xs font-bold text-[#ff9b9b] disabled:opacity-40">
+              <button type="button" disabled={busy !== null} onClick={deleteMatch} className="cursor-pointer rounded-md border border-[#543237] bg-[#241216] px-4 py-2.5 text-xs font-bold text-[#ff9b9b] disabled:opacity-40">
                 {busy === "delete" ? "삭제 중..." : "삭제"}
               </button>
             </div>
@@ -276,10 +276,10 @@ export default function MatchDetailPage() {
         </section>
 
         {notice && (
-          <div className="mb-5 rounded-xl border border-[#303847] bg-[#0d1118] px-4 py-3 text-xs leading-5 text-[#c8d0dc]">{notice}</div>
+          <div className="mb-5 rounded-md border border-[#303847] bg-transparent px-4 py-3 text-xs leading-5 text-[#c8d0dc]">{notice}</div>
         )}
 
-        <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <section className="mb-7 grid grid-cols-2 border-b border-[var(--line)] md:grid-cols-5">
           <CountCard label="요약" value={counts.summary} />
           <CountCard label="팀" value={counts.team} />
           <CountCard label="개인" value={counts.personal} />
@@ -287,15 +287,15 @@ export default function MatchDetailPage() {
           <CountCard label="미분류" value={counts.unknown} warning={counts.unknown > 0} />
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <section className="space-y-5">
-            <form onSubmit={saveFields} className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 md:p-6">
+        <div className="grid gap-8 xl:grid-cols-[1fr_300px]">
+          <section className="space-y-8">
+            <form onSubmit={saveFields} className="border-t border-[var(--line)] pt-4">
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <p className="m-0 text-sm font-bold">경기 정보 수정</p>
                   <p className="mt-1 text-[10px] text-[var(--muted)]">OCR 결과가 들어오면 이 값을 검수하고 수정합니다.</p>
                 </div>
-                <button type="submit" disabled={busy !== null} className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40">
+                <button type="submit" disabled={busy !== null} className="cursor-pointer rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40">
                   {busy === "save" ? "저장 중..." : "수정 저장"}
                 </button>
               </div>
@@ -355,7 +355,7 @@ export default function MatchDetailPage() {
             />
 
             {ocrBundle && (
-              <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+              <section className="overflow-hidden border-t border-[var(--line)]">
                 <div className="border-b border-[var(--line)] px-5 py-4">
                   <p className="m-0 text-sm font-bold">실제 OCR 처리 결과</p>
                   <p className="mt-1 text-[10px] text-[var(--muted)]">
@@ -365,12 +365,12 @@ export default function MatchDetailPage() {
                 <div className="divide-y divide-[var(--line)]">
                   {ocrBundle.files.map((file, index) => (
                     <div key={`${file.filename}-${index}`} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[80px_1fr_auto] sm:items-center">
-                      <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-black text-white">{file.screen_type}</span>
+                      <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-semibold text-white">{file.screen_type}</span>
                       <div className="min-w-0">
                         <p className="m-0 truncate font-bold text-white">{file.filename}</p>
                         {!file.ok && file.error && <p className="mt-1 truncate text-[9px] text-[#ff9b9b]">{file.error}</p>}
                       </div>
-                      <span className={`text-[10px] font-black ${file.ok ? "text-[#8ee9aa]" : "text-[#ff9b9b]"}`}>
+                      <span className={`text-[10px] font-semibold ${file.ok ? "text-[#8ee9aa]" : "text-[#ff9b9b]"}`}>
                         {file.ok ? "OCR 성공" : "OCR 실패"}
                       </span>
                     </div>
@@ -379,7 +379,7 @@ export default function MatchDetailPage() {
               </section>
             )}
 
-            <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+            <section className="overflow-hidden border-t border-[var(--line)]">
               <div className="border-b border-[var(--line)] px-5 py-4">
                 <p className="m-0 text-sm font-bold">스크린샷 메타데이터</p>
                 <p className="mt-1 text-[10px] text-[var(--muted)]">현재는 원본 이미지를 영구 저장하지 않고, 등록 시 OCR 서버에 전달한 뒤 파일 메타데이터를 유지합니다.</p>
@@ -387,8 +387,8 @@ export default function MatchDetailPage() {
               <div className="divide-y divide-[var(--line)]">
                 {match.files.map((file, index) => (
                   <div key={file.client_file_id} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[42px_90px_1fr_auto] sm:items-center">
-                    <span className="text-[10px] font-black text-[var(--muted)]">#{index + 1}</span>
-                    <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-black text-white">{file.screen_type}</span>
+                    <span className="text-[10px] font-semibold text-[var(--muted)]">#{index + 1}</span>
+                    <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-semibold text-white">{file.screen_type}</span>
                     <div className="min-w-0">
                       <p className="m-0 truncate font-bold text-white">{file.original_name}</p>
                       <p className="mt-1 truncate text-[9px] text-[var(--muted)]">SHA {file.sha256.slice(0, 16)}…</p>
@@ -400,8 +400,8 @@ export default function MatchDetailPage() {
             </section>
           </section>
 
-          <aside className="space-y-5">
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+          <aside className="space-y-8">
+            <section className="border-t border-[var(--line)] pt-4">
               <p className="m-0 text-sm font-bold">OCR / 검수 흐름</p>
               <div className="mt-4 space-y-3">
                 <Step active={match.status === "pending_ocr"} done={!["awaiting_upload", "pending_ocr"].includes(match.status)} number="1" title="OCR 대기" />
@@ -411,8 +411,8 @@ export default function MatchDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[rgba(102,169,255,0.25)] bg-[rgba(102,169,255,0.06)] p-5">
-              <p className="m-0 text-sm font-bold text-[#9bc6ff]">OCR 결과</p>
+            <section className="border-t border-[var(--line)] pt-4">
+              <p className="m-0 text-sm font-bold text-[#aeb4bf]">OCR 결과</p>
               <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
                 {match.ocr.message || "아직 OCR 결과가 없습니다."}
               </p>
@@ -422,7 +422,7 @@ export default function MatchDetailPage() {
               </dl>
             </section>
 
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+            <section className="border-t border-[var(--line)] pt-4">
               <p className="m-0 text-sm font-bold">현재 값 요약</p>
               <dl className="mt-4 space-y-3 text-xs">
                 <InfoRow label="맵" value={form.map_name || "미확인"} />
@@ -452,17 +452,17 @@ function Field({ label, children, wide = false }: { label: string; children: Rea
 
 function CountCard({ label, value, warning = false }: { label: string; value: number; warning?: boolean }) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+    <div className="rounded-md border border-[var(--line)] bg-transparent p-4">
       <p className="m-0 text-[10px] text-[var(--muted)]">{label}</p>
-      <p className={`mb-0 mt-1 text-xl font-black ${warning ? "text-[#ff9b9b]" : "text-white"}`}>{value}</p>
+      <p className={`mb-0 mt-1 text-xl font-semibold ${warning ? "text-[#ff9b9b]" : "text-white"}`}>{value}</p>
     </div>
   );
 }
 
 function Step({ number, title, active, done }: { number: string; title: string; active: boolean; done: boolean }) {
   return (
-    <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${active ? "border-[rgba(249,158,26,0.4)] bg-[var(--orange-soft)]" : "border-[var(--line)] bg-[#0d1118]"}`}>
-      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-black ${done ? "bg-[rgba(121,227,156,0.13)] text-[#8ee9aa]" : active ? "bg-[var(--orange)] text-black" : "bg-[#171e2a] text-[var(--muted)]"}`}>
+    <div className={`flex items-center gap-3 rounded-md border px-3 py-3 ${active ? "border-[rgba(249,158,26,0.4)] bg-[var(--orange-soft)]" : "border-[var(--line)] bg-transparent"}`}>
+      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-semibold ${done ? "bg-[rgba(121,227,156,0.13)] text-[#8ee9aa]" : active ? "bg-[var(--orange)] text-black" : "bg-[#171e2a] text-[var(--muted)]"}`}>
         {done ? "✓" : number}
       </span>
       <span className={`text-xs font-bold ${active ? "text-white" : "text-[var(--muted)]"}`}>{title}</span>
