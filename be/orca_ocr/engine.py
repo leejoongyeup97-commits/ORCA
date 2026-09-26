@@ -950,6 +950,8 @@ def extract_personal(img, hero_key=None):
             ordered=metric_from_verified_order(hero_key,metric_index)
             if ordered:
                 resolved={**resolved,**ordered}
+                # Verified hero card order is authoritative when the label crop is blank/noisy.
+                label_conf=max(label_conf,0.88)
 
         # If the dedicated label crop grabbed helper text/noise, retry using the
         # whole card OCR. This commonly recovers labels such as "결정타".
@@ -1088,7 +1090,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.24-dev',
+        'ocr_version':'0.10.25-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
