@@ -20,6 +20,7 @@ import {
   type MapSubmapOption,
   type MatchImportView,
   type MatchResult,
+  type OcrExecutionProgress,
   type MatchSide,
   type RoundDetail,
 } from "@/lib/backend";
@@ -88,6 +89,7 @@ export default function MatchDetailPage() {
   const [error, setError] = useState("");
   const [reviewDraft, setReviewDraft] = useState<MatchReviewDraft | null>(null);
   const [ocrBundle, setOcrBundle] = useState<StoredOcrBundle | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<OcrExecutionProgress | null>(null);
   const [roundDetails, setRoundDetails] = useState<RoundDetail[]>([]);
   const [submapOptions, setSubmapOptions] = useState<MapSubmapOption[]>([]);
   const [submapLoading, setSubmapLoading] = useState(false);
@@ -252,15 +254,30 @@ export default function MatchDetailPage() {
     if (!match) return;
     setBusy("ocr");
     setNotice("");
+    setOcrProgress(null);
     try {
-      const updated = await getMatchBackendAdapter().runMockOcr(match.match_id);
+      const updated = await getMatchBackendAdapter().runMockOcr(match.match_id, {
+        onProgress: setOcrProgress,
+      });
       setMatch(updated);
       setForm(updated.editable);
       setPlayedAtLocal(toLocalDateTime(updated.editable.played_at));
       setOcrBundle(getStoredOcrBundle(match.match_id));
       setNotice("OCR을 다시 실행했습니다.");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "OCR 재실행에 실패했습니다.");
+      const message = error instanceof Error ? error.message : "OCR 재실행에 실패했습니다.";
+      setOcrProgress((previous) => ({
+        stage: "file_error",
+        current: previous?.current ?? 0,
+        total: previous?.total ?? Math.max(1, match.files.length),
+        percent: previous?.percent ?? 0,
+        success_count: previous?.success_count ?? 0,
+        error_count: Math.max(1, previous?.error_count ?? 0),
+        message,
+        filename: previous?.filename,
+        screen_type: previous?.screen_type,
+      }));
+      setNotice(message);
     } finally {
       setBusy(null);
     }
@@ -342,6 +359,10 @@ export default function MatchDetailPage() {
 
         {notice && (
           <div className="mb-5 rounded-md border border-[#303847] bg-transparent px-4 py-3 text-xs leading-5 text-[#c8d0dc]">{notice}</div>
+        )}
+
+        {ocrProgress && (
+          <OcrProgressPanel progress={ocrProgress} running={busy === "ocr"} />
         )}
 
         <section className="mb-7 grid grid-cols-2 border-b border-[var(--line)] md:grid-cols-5">
@@ -562,5 +583,81 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <dt className="text-[var(--muted)]">{label}</dt>
       <dd className="m-0 text-right font-bold text-white">{value}</dd>
     </div>
+  );
+}
+
+
+function OcrProgressPanel({
+  progress,
+  running,
+}: {
+  progress: OcrExecutionProgress;
+  running: boolean;
+}) {
+  const activeNumber =
+    progress.stage === "file_start"
+      ? Math.min(progress.total, progress.current + 1)
+      : Math.min(progress.total, progress.current);
+  const remaining = Math.max(
+    0,
+    progress.total - progress.success_count - progress.error_count,
+  );
+  const failed = progress.stage === "file_error";
+  const complete = progress.stage === "completed";
+
+  return (
+    <section className="mb-7 border-y border-[var(--line)] py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="m-0 text-[15px] font-semibold text-white">
+              {running ? "OCR 다시 실행 중" : failed ? "OCR 재실행 중단" : "OCR 재실행 결과"}
+            </h2>
+            {running && (
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--orange)]" />
+            )}
+          </div>
+          <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+            {progress.message}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="m-0 text-[15px] font-semibold text-white">
+            {activeNumber} / {progress.total}
+          </p>
+          <p className="mt-1 text-[12px] text-[var(--muted)]">{progress.percent}%</p>
+        </div>
+      </div>
+
+      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#1b1d21]">
+        <div
+          className="h-full bg-[var(--orange)] transition-[width] duration-300"
+          style={{ width: `${progress.percent}%` }}
+        />
+      </div>
+
+      {(progress.filename || progress.screen_type) && (
+        <div className="mt-4 grid gap-1 text-[12px] sm:grid-cols-[120px_1fr]">
+          <span className="text-[var(--muted)]">현재 처리</span>
+          <span className="min-w-0 truncate text-[#d7d9dd]">
+            {progress.screen_type ? `${progress.screen_type} · ` : ""}
+            {progress.filename || "-"}
+          </span>
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--line-soft)] pt-3 text-[12px]">
+        <span className="text-[var(--muted)]">
+          성공 <strong className="ml-1 font-semibold text-[#9fcaae]">{progress.success_count}</strong>
+        </span>
+        <span className="text-[var(--muted)]">
+          실패 <strong className={`ml-1 font-semibold ${progress.error_count > 0 ? "text-[#d98b91]" : "text-white"}`}>{progress.error_count}</strong>
+        </span>
+        <span className="text-[var(--muted)]">
+          남음 <strong className="ml-1 font-semibold text-white">{remaining}</strong>
+        </span>
+        {complete && <span className="font-medium text-[#9fcaae]">완료</span>}
+      </div>
+    </section>
   );
 }
