@@ -149,7 +149,7 @@ export default function InsightsPage() {
       <div className="mx-auto max-w-[1320px]">
         <section className="mb-6 border-b border-[var(--line)] pb-6">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">인사이트</p>
-          <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">최근 변화와 다음 검증 포인트</h1>
+          <h1 className="m-0 text-[30px] font-semibold tracking-[-0.03em]">최근 변화와 다음 검증 포인트</h1>
           <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--muted)]">
             현재 데이터에서 관찰되는 변화와 아직 부족한 데이터를 분리해서 보여줍니다. 원인으로 단정하지 않고 다음 검증 방향을 안내합니다.
           </p>
@@ -176,7 +176,7 @@ export default function InsightsPage() {
                       <p className="m-0 text-[13px] font-semibold text-white">현재 요약</p>
                       <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">{summaryText}</p>
                     </div>
-                    <span className="hidden rounded-md border border-[rgba(102,169,255,0.2)] bg-transparent px-3 py-2 text-[10px] font-semibold text-[#aeb4bf] sm:block">
+                    <span className="hidden rounded-md border border-[rgba(102,169,255,0.2)] bg-transparent px-3 py-2 text-[11px] font-semibold text-[#aeb4bf] sm:block">
                       자동 요약
                     </span>
                   </div>
@@ -185,7 +185,7 @@ export default function InsightsPage() {
                 <section className="overflow-hidden border-t border-[var(--line)]">
                   <div className="border-b border-[var(--line-soft)] px-1 py-3">
                     <p className="m-0 text-sm font-bold">맵별 관찰값</p>
-                    <p className="mt-1 text-[10px] text-[var(--muted)]">최소 3경기 이상 있는 맵만 표시합니다.</p>
+                    <p className="mt-1 text-[11px] text-[var(--muted)]">최소 3경기 이상 있는 맵만 표시합니다.</p>
                   </div>
 
                   {observedMaps.length === 0 ? (
@@ -197,7 +197,7 @@ export default function InsightsPage() {
                           <div className="flex items-center justify-between gap-4">
                             <div>
                               <p className="m-0 text-xs font-bold text-white">{item.name}</p>
-                              <p className="mt-1 text-[10px] text-[var(--muted)]">{item.games}경기</p>
+                              <p className="mt-1 text-[11px] text-[var(--muted)]">{item.games}경기</p>
                             </div>
                             <span className="text-[12px] font-semibold text-[#cfd2d8]">{item.rate}%</span>
                           </div>
@@ -214,9 +214,9 @@ export default function InsightsPage() {
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="m-0 text-sm font-bold">데이터 완성도</p>
-                      <p className="mt-1 text-[10px] text-[var(--muted)]">확정 경기 중 기본 필드 입력 비율</p>
+                      <p className="mt-1 text-[11px] text-[var(--muted)]">확정 경기 중 기본 필드 입력 비율</p>
                     </div>
-                    <Link href="/matches" className="text-[10px] font-bold text-[#aeb4bf] no-underline hover:text-white">경기 수정 →</Link>
+                    <Link href="/matches" className="text-[11px] font-bold text-[#aeb4bf] no-underline hover:text-white">경기 수정 →</Link>
                   </div>
 
                   <div className="grid gap-0 border-t border-[var(--line-soft)] sm:grid-cols-2">
@@ -232,9 +232,9 @@ export default function InsightsPage() {
                 <section className="rounded-md border border-[var(--line)] bg-transparent p-5">
                   <p className="m-0 text-sm font-bold">가설 준비 상태</p>
                   <div className="mt-4 border-t border-[var(--line)] py-4">
-                    <p className="m-0 text-[10px] text-[var(--muted)]">현재 기본 데이터만으로 검증 대기 가능한 가설</p>
+                    <p className="m-0 text-[11px] text-[var(--muted)]">현재 기본 데이터만으로 검증 대기 가능한 가설</p>
                     <p className="mb-0 mt-2 text-3xl font-semibold text-white">{readyBasicHypotheses}</p>
-                    <p className="mb-0 mt-1 text-[10px] text-[var(--muted)]">전체 {PREDEFINED_HYPOTHESES.length}개 Library</p>
+                    <p className="mb-0 mt-1 text-[11px] text-[var(--muted)]">전체 {PREDEFINED_HYPOTHESES.length}개 Library</p>
                   </div>
                   <Link href="/hypotheses" className="mt-3 inline-block rounded-md border border-[var(--line)] px-3 py-2 text-[11px] font-medium text-white no-underline hover:bg-[#17181b]">
                     가설 Library 보기
@@ -243,7 +243,7 @@ export default function InsightsPage() {
 
                 <section className="rounded-md border border-[var(--line)] bg-transparent p-5">
                   <p className="m-0 text-sm font-bold">다음으로 필요한 데이터</p>
-                  <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">우선 검증 가설을 열기 위해 아직 없는 입력입니다.</p>
+                  <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">우선 검증 가설을 열기 위해 아직 없는 입력입니다.</p>
 
                   <div className="mt-4 space-y-3">
                     {missingHighPriority.length === 0 ? (
@@ -252,7 +252,7 @@ export default function InsightsPage() {
                       missingHighPriority.map(({ hypothesis, missing }) => (
                         <div key={hypothesis.id} className="border-b border-r border-[var(--line-soft)] px-1 py-3">
                           <p className="m-0 text-[11px] font-bold text-white">{hypothesis.title}</p>
-                          <p className="mb-0 mt-2 text-[9px] leading-4 text-[var(--muted)]">
+                          <p className="mb-0 mt-2 text-[11px] leading-4 text-[var(--muted)]">
                             필요: {missing.map((key) => HYPOTHESIS_DATA_LABELS[key]).join(" · ")}
                           </p>
                         </div>
@@ -296,8 +296,8 @@ function Completeness({ label, value }: { label: string; value: number }) {
   return (
     <div className="border-b border-r border-[var(--line-soft)] px-1 py-3">
       <div className="flex items-center justify-between gap-4">
-        <span className="text-[10px] font-bold text-white">{label}</span>
-        <span className="text-[10px] font-semibold text-[#aeb4bf]">{value}%</span>
+        <span className="text-[11px] font-bold text-white">{label}</span>
+        <span className="text-[11px] font-semibold text-[#aeb4bf]">{value}%</span>
       </div>
       <div className="mt-2 h-1 overflow-hidden rounded-sm bg-[#1b1d21]">
         <div className="h-full bg-[var(--orange)]" style={{ width: `${value}%` }} />
