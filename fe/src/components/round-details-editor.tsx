@@ -9,6 +9,12 @@ const RESULT_LABELS: Record<MatchResult, string> = {
   unknown: "미확인",
 };
 
+const EXAMPLE_SUBMAPS = [
+  "예시 세부맵 A",
+  "예시 세부맵 B",
+  "예시 세부맵 C",
+];
+
 export default function RoundDetailsEditor({
   rounds,
   submaps,
@@ -116,15 +122,17 @@ export default function RoundDetailsEditor({
                 className="field-input"
               >
                 <option value="">세부맵 선택</option>
-                {submaps.length > 0 ? (
-                  submaps.map((submap) => (
-                    <option key={submap.submap_key} value={submap.submap_name}>
-                      {submap.submap_name}
-                    </option>
-                  ))
-                ) : round.submap ? (
-                  <option value={round.submap}>{round.submap}</option>
-                ) : null}
+                {submaps.length > 0
+                  ? submaps.map((submap) => (
+                      <option key={submap.submap_key} value={submap.submap_name}>
+                        {submap.submap_name}
+                      </option>
+                    ))
+                  : EXAMPLE_SUBMAPS.map((submap) => (
+                      <option key={submap} value={submap}>
+                        {submap}
+                      </option>
+                    ))}
               </select>
 
               <select
