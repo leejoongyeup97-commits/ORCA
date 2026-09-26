@@ -440,12 +440,12 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     },
     "sombra": {
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
-        "virus_damage": {"aliases": ["바이러스로 준 피해"]},
-        "virus_kills": {"aliases": ["바이러스로 처치"]},
+        "virus_damage": {"aliases": ["바이러스로 준 피해", "바이러스로 처치"]},
         "final_blows": {"aliases": ["결정타", "정타"]},
         "enemies_hacked": {"aliases": ["해킹한 적"]},
         "low_health_translocates": {"aliases": ["낮은 생명력일 때 순간이동", "낮은 성멍력일 때 순간이동"]},
-        "emp_kills": {"aliases": ["EMP로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "emp_kills": {"aliases": ["EMP로 처치", "EMP& 처치"]},
         "virus_accuracy": {"aliases": ["바이러스 명중률", "바이러스 밍중클"]},
     },
     "sierra": {
@@ -717,7 +717,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     ],
     "sombra": [
         "weapon_accuracy","virus_damage","final_blows",
-        "enemies_hacked","low_health_translocates","emp_kills","virus_accuracy","virus_kills",
+        "enemies_hacked","low_health_translocates","solo_kills","virus_accuracy","emp_kills",
     ],
     "sierra": [
         "weapon_accuracy","concussive_charge_kills","final_blows",
