@@ -6,7 +6,7 @@ import traceback
 import sys
 import time
 from datetime import datetime
-from orca_ocr.engine import extract, get_rapidocr_status
+from orca_ocr.engine import extract, get_rapidocr_status, get_hero_reference_status
 
 app = FastAPI(title="ORCA OCR API", version="0.2.11")
 app.add_middleware(
@@ -21,8 +21,15 @@ app.add_middleware(
 def health():
     try:
         status = get_rapidocr_status()
-        ok = status.get("ready") is True
-        return {"ok": ok, "service": "orca-ocr", "version": "0.2.11", "rapidocr": status}
+        hero_refs = get_hero_reference_status()
+        ok = status.get("ready") is True and hero_refs.get("ready") is True
+        return {
+            "ok": ok,
+            "service": "orca-ocr",
+            "version": "0.2.11",
+            "rapidocr": status,
+            "hero_references": hero_refs,
+        }
     except Exception as exc:
         return {"ok": False, "service": "orca-ocr", "version": "0.2.11", "rapidocr_error": str(exc)}
 
