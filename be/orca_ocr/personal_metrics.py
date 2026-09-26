@@ -286,7 +286,8 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "guardian_wave_kills": {"aliases": ["수호의 파도로 처치"]},
         "water_staff_direct_hits": {"aliases": ["현무 지팡이 직격", "물 지팡이 직격"]},
-        "healing_amplified": {"aliases": ["치유 증폭", "회복의 물결 치유 강화"]},
+        "healing_wave_healing_amplified": {"aliases": ["회복의 물결 치유 강화"]},
+        "healing_amplified": {"aliases": ["치유 증폭"]},
         "tidal_blast_kills": {"aliases": ["해일 폭발로 처치", "하일 폭발로 처치"]},
         "direct_hit_accuracy": {"aliases": ["직격 명중률", "직격 적중률"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
@@ -441,7 +442,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     ],
     "wuyang": [
         "weapon_accuracy","guardian_wave_kills","water_staff_direct_hits",
-        "healing_amplified","tidal_blast_kills","direct_hit_accuracy","healing_amplified",
+        "healing_wave_healing_amplified","tidal_blast_kills","direct_hit_accuracy","healing_amplified",
     ],
 }
 
