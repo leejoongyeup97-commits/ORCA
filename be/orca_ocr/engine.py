@@ -121,7 +121,27 @@ def _summary_map_from_reads(reads):
     candidates=[]
     blocked={'요약','팀','개인','플레이한 영웅','최종 평가','승리','패배'}
     for raw in reads or []:
-        cleaned=re.sub(r'^[^0-9A-Za-z가-힣]+|[^0-9A-Za-z가-힣 ]+    """Read Summary result text with several crops/PSM modes.
+        cleaned=re.sub(r'^[^0-9A-Za-z가-힣]+|[^0-9A-Za-z가-힣 ]+$','',raw).strip()
+        if not cleaned or cleaned in blocked:
+            continue
+        korean=len(re.findall(r'[가-힣]',cleaned))
+        latin=len(re.findall(r'[A-Za-z]',cleaned))
+        if korean+latin<2 or len(cleaned)>28:
+            continue
+        score=(1 if korean else 0, korean+latin, -len(cleaned))
+        candidates.append((score,cleaned))
+    if not candidates:
+        return None
+    candidates.sort(reverse=True,key=lambda item:item[0])
+    best=candidates[0][1]
+    compact=re.sub(r'\s+','',best)
+    if compact=='사모아':
+        return '사모아'
+    return best
+
+
+def _summary_result_reads(img):
+    """Read Summary result text with several crops/PSM modes.
 
     The large WIN/LOSS label is visually stylized and a single OCR pass can miss
     one Korean syllable, so keep multiple raw candidates for robust matching.
