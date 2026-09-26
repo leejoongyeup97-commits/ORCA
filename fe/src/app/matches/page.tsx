@@ -172,7 +172,7 @@ export default function MatchesPage() {
           </div>
           <Link
             href="/matches/new"
-            className="app-orange-button w-fit rounded-md px-4 py-2.5 text-[12px] font-semibold no-underline"
+            className="app-orange-button w-fit"
           >
             + 경기 등록
           </Link>

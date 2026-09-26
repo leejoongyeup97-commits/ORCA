@@ -156,7 +156,7 @@ export default function InsightsPage() {
         </section>
 
         {loading ? (
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-6 py-16 text-center text-sm text-[var(--muted)]">
+          <div className="rounded-md border border-[var(--line)] bg-transparent px-6 py-16 text-center text-sm text-[var(--muted)]">
             인사이트를 계산하는 중...
           </div>
         ) : (
@@ -176,7 +176,7 @@ export default function InsightsPage() {
                       <p className="m-0 text-[13px] font-semibold text-white">현재 요약</p>
                       <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">{summaryText}</p>
                     </div>
-                    <span className="hidden rounded-xl border border-[rgba(102,169,255,0.2)] bg-[#0d1118] px-3 py-2 text-[10px] font-black text-[#9bc6ff] sm:block">
+                    <span className="hidden rounded-md border border-[rgba(102,169,255,0.2)] bg-transparent px-3 py-2 text-[10px] font-semibold text-[#aeb4bf] sm:block">
                       자동 요약
                     </span>
                   </div>
@@ -216,7 +216,7 @@ export default function InsightsPage() {
                       <p className="m-0 text-sm font-bold">데이터 완성도</p>
                       <p className="mt-1 text-[10px] text-[var(--muted)]">확정 경기 중 기본 필드 입력 비율</p>
                     </div>
-                    <Link href="/matches" className="text-[10px] font-bold text-[#9bc6ff] no-underline hover:text-white">경기 수정 →</Link>
+                    <Link href="/matches" className="text-[10px] font-bold text-[#aeb4bf] no-underline hover:text-white">경기 수정 →</Link>
                   </div>
 
                   <div className="grid gap-0 border-t border-[var(--line-soft)] sm:grid-cols-2">
@@ -229,11 +229,11 @@ export default function InsightsPage() {
               </section>
 
               <aside className="space-y-5">
-                <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+                <section className="rounded-md border border-[var(--line)] bg-transparent p-5">
                   <p className="m-0 text-sm font-bold">가설 준비 상태</p>
                   <div className="mt-4 border-t border-[var(--line)] py-4">
                     <p className="m-0 text-[10px] text-[var(--muted)]">현재 기본 데이터만으로 검증 대기 가능한 가설</p>
-                    <p className="mb-0 mt-2 text-3xl font-black text-white">{readyBasicHypotheses}</p>
+                    <p className="mb-0 mt-2 text-3xl font-semibold text-white">{readyBasicHypotheses}</p>
                     <p className="mb-0 mt-1 text-[10px] text-[var(--muted)]">전체 {PREDEFINED_HYPOTHESES.length}개 Library</p>
                   </div>
                   <Link href="/hypotheses" className="mt-3 inline-block rounded-md border border-[var(--line)] px-3 py-2 text-[11px] font-medium text-white no-underline hover:bg-[#17181b]">
@@ -241,7 +241,7 @@ export default function InsightsPage() {
                   </Link>
                 </section>
 
-                <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+                <section className="rounded-md border border-[var(--line)] bg-transparent p-5">
                   <p className="m-0 text-sm font-bold">다음으로 필요한 데이터</p>
                   <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">우선 검증 가설을 열기 위해 아직 없는 입력입니다.</p>
 
@@ -282,7 +282,7 @@ function Metric({
   success?: boolean;
   warning?: boolean;
 }) {
-  const color = success ? "text-[#8ee9aa]" : warning ? "text-[#ff9b9b]" : accent ? "text-[#9bc6ff]" : "text-white";
+  const color = success ? "text-[#8ee9aa]" : warning ? "text-[#ff9b9b]" : accent ? "text-[#aeb4bf]" : "text-white";
 
   return (
     <div className="border-r border-[var(--line)] px-4 py-5 first:pl-0 last:border-r-0">
@@ -297,7 +297,7 @@ function Completeness({ label, value }: { label: string; value: number }) {
     <div className="border-b border-r border-[var(--line-soft)] px-1 py-3">
       <div className="flex items-center justify-between gap-4">
         <span className="text-[10px] font-bold text-white">{label}</span>
-        <span className="text-[10px] font-black text-[#9bc6ff]">{value}%</span>
+        <span className="text-[10px] font-semibold text-[#aeb4bf]">{value}%</span>
       </div>
       <div className="mt-2 h-1 overflow-hidden rounded-sm bg-[#1b1d21]">
         <div className="h-full bg-[var(--orange)]" style={{ width: `${value}%` }} />

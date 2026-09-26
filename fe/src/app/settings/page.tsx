@@ -188,7 +188,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={folderBusy}
                 onClick={chooseScreenshotFolder}
-                className="app-orange-button cursor-pointer rounded-md px-3 py-2 text-[11px] font-medium disabled:cursor-wait disabled:opacity-50"
+                className="app-orange-button cursor-pointer disabled:cursor-wait"
               >
                 {folderBusy ? "폴더 연결 중..." : folderName ? "폴더 변경" : "폴더 지정"}
               </button>

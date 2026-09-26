@@ -27,6 +27,29 @@ export type StoredOcrBundle = {
   files: StoredOcrFileResult[];
 };
 
+export type OcrProgressEvent = {
+  stage:
+    | "starting"
+    | "file_start"
+    | "file_success"
+    | "file_error"
+    | "file_skipped"
+    | "finalizing"
+    | "completed";
+  level: "info" | "success" | "error";
+  message: string;
+  current: number;
+  total: number;
+  percent: number;
+  filename?: string;
+  screen_type?: BackendScreenType;
+  error?: string;
+};
+
+export type OcrRunOptions = {
+  onProgress?: (event: OcrProgressEvent) => void;
+};
+
 const STORAGE_PREFIX = "ow-insight-ocr-results:";
 
 function asString(value: unknown) {
@@ -72,6 +95,9 @@ function summaryPatch(result: OcrExtractResult): Partial<EditableMatchFields> {
     patch.result = rawResult as MatchResult;
   }
 
+  const mapName = asString(result.map_name).trim();
+  if (mapName) patch.map_name = mapName;
+
   const mode = asString(result.mode).trim();
   if (mode) patch.game_mode = mode;
 
@@ -96,23 +122,63 @@ export async function runRealOcrForMatch(
   adapter: MatchManagementAdapter,
   matchId: string,
   files: OcrSourceFile[],
+  options: OcrRunOptions = {},
 ) {
+  const totalSteps = Math.max(2, files.length + 2);
+  const emit = (
+    event: Omit<OcrProgressEvent, "percent" | "total"> & { total?: number },
+  ) => {
+    const total = event.total ?? totalSteps;
+    const percent = Math.max(
+      0,
+      Math.min(100, Math.round((event.current / Math.max(1, total)) * 100)),
+    );
+    options.onProgress?.({ ...event, total, percent });
+  };
+
+  emit({
+    stage: "starting",
+    level: "info",
+    message: "OCR 작업을 시작합니다.",
+    current: 0,
+  });
   await adapter.setOcrState(matchId, "processing_ocr", {
     message: "실제 OCR 서버에서 이미지를 읽고 있습니다.",
   });
 
   const results: StoredOcrFileResult[] = [];
 
-  for (const item of files) {
+  for (let index = 0; index < files.length; index += 1) {
+    const item = files[index];
+    const step = index + 1;
+
     if (item.screen_type === "unknown") {
+      const error = "미분류 이미지는 OCR에서 제외했습니다.";
       results.push({
         filename: item.file.name,
         screen_type: item.screen_type,
         ok: false,
-        error: "미분류 이미지는 OCR에서 제외했습니다.",
+        error,
+      });
+      emit({
+        stage: "file_skipped",
+        level: "info",
+        message: `[${step}/${files.length}] 미분류 이미지 제외 · ${item.file.name}`,
+        current: step,
+        filename: item.file.name,
+        screen_type: item.screen_type,
       });
       continue;
     }
+
+    emit({
+      stage: "file_start",
+      level: "info",
+      message: `[${step}/${files.length}] ${item.screen_type} OCR 처리 중 · ${item.file.name}`,
+      current: index,
+      filename: item.file.name,
+      screen_type: item.screen_type,
+    });
 
     try {
       const result = await extractScreenshot(item.screen_type as OcrScreenType, item.file);
@@ -122,15 +188,40 @@ export async function runRealOcrForMatch(
         ok: true,
         result,
       });
+      emit({
+        stage: "file_success",
+        level: "success",
+        message: `[${step}/${files.length}] ${item.screen_type} OCR 완료 · ${item.file.name}`,
+        current: step,
+        filename: item.file.name,
+        screen_type: item.screen_type,
+      });
     } catch (error) {
+      const rawError = error instanceof Error ? error.message : String(error);
       results.push({
         filename: item.file.name,
         screen_type: item.screen_type,
         ok: false,
-        error: error instanceof Error ? error.message : "OCR 처리 실패",
+        error: rawError || "OCR 처리 실패",
+      });
+      emit({
+        stage: "file_error",
+        level: "error",
+        message: `[${step}/${files.length}] ${item.screen_type} OCR 실패 · ${item.file.name}`,
+        current: step,
+        filename: item.file.name,
+        screen_type: item.screen_type,
+        error: rawError || "OCR 처리 실패",
       });
     }
   }
+
+  emit({
+    stage: "finalizing",
+    level: "info",
+    message: "OCR 결과를 검수 데이터로 정리하고 있습니다.",
+    current: files.length + 1,
+  });
 
   const generatedAt = new Date().toISOString();
   const bundle: StoredOcrBundle = {
@@ -172,9 +263,25 @@ export async function runRealOcrForMatch(
       ? `실제 OCR 완료 · ${successCount}/${attemptedCount} 화면 성공${successCount < attemptedCount ? " · 일부 실패" : ""}`
       : "OCR 서버 처리에 실패했습니다. OCR 서버 상태를 확인해 주세요.";
 
-  return adapter.setOcrState(matchId, status, {
+  const view = await adapter.setOcrState(matchId, status, {
     generated_at: generatedAt,
     overall_confidence: confidence,
     message,
   });
+
+  emit({
+    stage: "completed",
+    level: status === "failed" ? "error" : "success",
+    message,
+    current: totalSteps,
+    error:
+      status === "failed"
+        ? results
+            .filter((item) => !item.ok && item.error)
+            .map((item) => `${item.filename}: ${item.error}`)
+            .join("\n\n")
+        : undefined,
+  });
+
+  return view;
 }
