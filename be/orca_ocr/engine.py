@@ -923,10 +923,9 @@ def extract_personal(img, hero_key=None):
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
 
     metric_hero_key=hero_metric_inference.get("hero_key")
-    if name_hero_key and metric_hero_key and name_hero_key!=metric_hero_key:
-        hero_key=None
-    else:
-        hero_key=metric_hero_key or name_hero_key
+    # Two or more hero-unique metric labels are stronger evidence than the
+    # hero-name OCR, which can read another hero name entirely on this screen.
+    hero_key=metric_hero_key or name_hero_key
 
     metric_cards=[]
     metrics=[]
@@ -1048,7 +1047,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.14-dev',
+        'ocr_version':'0.10.15-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
