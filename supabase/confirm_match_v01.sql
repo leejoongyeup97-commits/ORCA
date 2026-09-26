@@ -8,12 +8,36 @@ create extension if not exists pgcrypto;
 create table if not exists public.seasons (
   id uuid primary key default gen_random_uuid(),
   season_key text not null unique,
+  season_number integer,
   season_name text not null,
   starts_at timestamptz not null,
   ends_at timestamptz,
   created_at timestamptz not null default now(),
   check (ends_at is null or ends_at > starts_at)
 );
+
+alter table public.seasons add column if not exists season_number integer;
+
+-- Backward-safe migration if seasons were inserted before season_number existed.
+update public.seasons
+set season_number = substring(season_key from '^season_([0-9]+)$')::integer
+where season_number is null
+  and season_key ~ '^season_[0-9]+$';
+
+do $orca$
+begin
+  if exists (select 1 from public.seasons where season_number is null) then
+    raise exception
+      'SEASON_NUMBER_MIGRATION_REQUIRED: every existing season must have season_number';
+  end if;
+
+  alter table public.seasons
+    alter column season_number set not null;
+end;
+$orca$;
+
+create unique index if not exists seasons_season_number_uidx
+  on public.seasons (season_number);
 
 create table if not exists public.patches (
   id uuid primary key default gen_random_uuid()
@@ -62,6 +86,99 @@ $orca$;
 
 create index if not exists seasons_period_idx
   on public.seasons (starts_at desc);
+
+-- Admin helper for season registration.
+-- Example (KST): select public.add_orca_season(21, '2026-10-13 12:00:00+09');
+--
+-- The next season's starts_at is always the previous season's ends_at.
+-- Existing matches are backfilled automatically after registration.
+create or replace function public.add_orca_season(
+  p_season_number integer,
+  p_starts_at timestamptz,
+  p_season_name text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $orca$
+declare
+  v_id uuid;
+  v_key text;
+  v_name text;
+  v_ends_at timestamptz;
+begin
+  if p_season_number is null or p_season_number <= 0 then
+    raise exception 'INVALID_SEASON_NUMBER';
+  end if;
+
+  if p_starts_at is null then
+    raise exception 'INVALID_SEASON_START';
+  end if;
+
+  v_key := 'season_' || p_season_number::text;
+  v_name := coalesce(nullif(btrim(p_season_name), ''), p_season_number::text || '시즌');
+
+  insert into public.seasons (
+    season_key, season_number, season_name, starts_at, ends_at
+  ) values (
+    v_key, p_season_number, v_name, p_starts_at, null
+  )
+  on conflict (season_number) do update
+  set
+    season_key = excluded.season_key,
+    season_name = excluded.season_name,
+    starts_at = excluded.starts_at
+  returning id into v_id;
+
+  -- Recalculate every season boundary from chronological start times.
+  with ordered as (
+    select
+      id,
+      lead(starts_at) over (order by starts_at, season_number) as next_start
+    from public.seasons
+  )
+  update public.seasons s
+  set ends_at = o.next_start
+  from ordered o
+  where s.id = o.id
+    and s.ends_at is distinct from o.next_start;
+
+  select ends_at
+    into v_ends_at
+  from public.seasons
+  where id = v_id;
+
+  -- Backfill season context for all existing matches.
+  update public.matches m
+  set
+    season_id = s.id,
+    editable = coalesce(m.editable, '{}'::jsonb)
+      || jsonb_build_object('season', s.season_name)
+  from public.seasons s
+  where m.played_at is not null
+    and s.starts_at <= m.played_at
+    and (s.ends_at is null or m.played_at < s.ends_at)
+    and (
+      m.season_id is distinct from s.id
+      or coalesce(m.editable->>'season', '') is distinct from s.season_name
+    );
+
+  return jsonb_build_object(
+    'id', v_id,
+    'season_key', v_key,
+    'season_number', p_season_number,
+    'season_name', v_name,
+    'starts_at', p_starts_at,
+    'ends_at', v_ends_at
+  );
+end;
+$orca$;
+
+-- Season registration is an admin/service operation, not a client action.
+revoke all on function public.add_orca_season(integer,timestamptz,text) from public;
+grant execute on function public.add_orca_season(integer,timestamptz,text) to service_role;
+
 create index if not exists patches_effective_from_idx
   on public.patches (effective_from desc);
 create index if not exists matches_season_id_idx
