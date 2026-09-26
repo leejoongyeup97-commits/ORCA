@@ -64,25 +64,19 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [ORCA] OCR response:
+echo [ORCA] Personal OCR summary:
 echo ------------------------------------------------------------
-".venv\Scripts\python.exe" -m json.tool "%OUT%"
+".venv\Scripts\python.exe" -c "import json,sys; d=json.load(open(sys.argv[1],encoding='utf-8')); print('hero_key:',d.get('hero_key')); print('hero_name_raw:',d.get('hero_name_raw')); print('play_time:',d.get('play_time')); print('hero_summary_raw:',repr(d.get('hero_summary_raw')) if d.get('play_time') is None else '(hidden)'); [print(f\"{m.get('metric_key') or 'UNKNOWN'}: {m.get('value')}  [review={str(m.get('needs_review')).lower()}]  label={m.get('label_raw')}\") for m in d.get('metrics',[])]" "%OUT%"
 set "RC=%ERRORLEVEL%"
 echo ------------------------------------------------------------
 
 if not "%RC%"=="0" (
   echo.
-  echo [ORCA] The server response was not valid JSON.
-  type "%OUT%"
+  echo [ORCA] Could not summarize response. Raw JSON follows:
+  ".venv\Scripts\python.exe" -m json.tool "%OUT%"
 )
 
 if exist "%OUT%" del "%OUT%" >nul 2>nul
 
-echo.
-echo Check these fields:
-echo   hero_key
-echo   metrics[].metric_key
-echo   metrics[].value
-echo   metrics[].needs_review
 echo.
 pause
