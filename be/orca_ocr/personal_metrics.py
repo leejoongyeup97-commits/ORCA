@@ -337,6 +337,50 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "lifeline_usage": {"aliases": ["생명줄 사용"]},
     },
+    "pharah": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "flight_uptime": {"aliases": ["비행 시간 비율"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "direct_hit_accuracy": {"aliases": ["직격 명중률", "적중률"]},
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "long_range_final_blows": {"aliases": ["장거리 결정타"]},
+        "barrage_kills": {"aliases": ["포화로 처치", "화로 처치"]},
+    },
+    "tracer": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "pulse_bomb_attach_rate": {"aliases": ["폭탄 부착률"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "pulse_bomb_kills": {"aliases": ["펄스 폭탄으로 처치"]},
+    },
+    "cassidy": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "flashbang_kills": {"aliases": ["섬광탄으로 처치"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "high_noon_kills": {"aliases": ["황야의 무법자로 처치", "항이의무범자로 저지"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "critical_hit_kills": {"aliases": ["치명타 처치"]},
+    },
+    "torbjorn": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "turret_kills": {"aliases": ["포탑으로 처치"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "molten_core_kills": {"aliases": ["초고열 용광로로 처치", "용광로로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "hammer_kills": {"aliases": ["망치로 처치"]},
+    },
+    "kiriko": {
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "healing_ofuda_accuracy": {"aliases": ["치유의 부적 명중률"]},
+        "kunai_kills": {"aliases": ["쿠나이로 처치"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "negative_effects_cleansed": {"aliases": ["부정적인 효과 정화", "부정적인흐과정화"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -374,6 +418,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "zarya": ["자리야", "ZARYA"],
     "junkerqueen": ["정커퀸", "JUNKER QUEEN"],
     "jetpackcat": ["제트팩 캣", "JETPACK CAT"],
+    "pharah": ["파라", "PHARAH"],
+    "tracer": ["트레이서", "TRACER"],
+    "cassidy": ["캐서디", "CASSIDY"],
+    "torbjorn": ["토르비욘", "토르비온", "TORBJORN", "TORBJÖRN"],
+    "kiriko": ["키리코", "KIRIKO"],
 }
 
 
@@ -513,6 +562,26 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "jetpackcat": [
         "knockback_kills","purr_support","players_saved","lifeline_healing",
         "abduction_kills","weapon_accuracy","lifeline_usage",
+    ],
+    "pharah": [
+        "weapon_accuracy","flight_uptime","final_blows","direct_hit_accuracy",
+        "knockback_kills","solo_kills","long_range_final_blows","barrage_kills",
+    ],
+    "tracer": [
+        "weapon_accuracy","final_blows","critical_hit_accuracy",
+        "pulse_bomb_attach_rate","solo_kills","pulse_bomb_kills",
+    ],
+    "cassidy": [
+        "weapon_accuracy","flashbang_kills","final_blows","critical_hit_accuracy",
+        "high_noon_kills","solo_kills","critical_hit_kills",
+    ],
+    "torbjorn": [
+        "weapon_accuracy","turret_kills","final_blows","critical_hit_accuracy",
+        "molten_core_kills","solo_kills","hammer_kills",
+    ],
+    "kiriko": [
+        "critical_hit_accuracy","players_saved","healing_ofuda_accuracy",
+        "kunai_kills","weapon_accuracy","negative_effects_cleansed",
     ],
 }
 
