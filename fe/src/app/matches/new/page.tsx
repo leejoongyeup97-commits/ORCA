@@ -1195,12 +1195,12 @@ export default function NewMatchPage() {
 
             <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
               <p className="m-0 text-sm font-bold text-[#8ee9aa]">고정 폴더 연결 흐름</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">검수 완료 후 Draft 생성 → 이미지 처리 → 로컬 OCR 서버 호출 → OCR 결과를 경기 상세 검수 화면에 자동으로 채웁니다.</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">이미지 분류 검수 → 바로 OCR 실행 → 같은 경기 등록 화면에서 OCR 값 검수 → 최종 저장 순서로 이어집니다.</p>
             </section>
 
             <section className="rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.06)] p-5">
               <p className="m-0 text-sm font-bold text-[#9bc6ff]">현재 단계</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">경기 저장은 아직 Mock Adapter이지만 OCR은 localhost:8001의 실제 Python OCR 서버를 호출합니다. Supabase 저장은 다음 연결 단계입니다.</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">OCR은 localhost:8001의 실제 Python OCR 서버를 호출하고, Supabase 모드에서는 검수한 최종값을 confirmMatch로 저장합니다.</p>
             </section>
           </aside>
         </div>
@@ -1484,7 +1484,15 @@ function ReviewScreen({
                   </div>
                 </div>
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${match.reviewStatus === "ready_to_upload" ? "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
-                  {match.reviewStatus === "pending_ocr" ? "PENDING OCR" : match.reviewStatus === "uploading" ? "UPLOADING" : match.reviewStatus === "ready_to_upload" ? "READY" : "REVIEW"}
+                  {match.reviewStatus === "confirmed"
+                    ? "SAVED"
+                    : match.reviewStatus === "pending_ocr"
+                      ? "OCR REVIEW"
+                      : match.reviewStatus === "uploading"
+                        ? "UPLOADING"
+                        : match.reviewStatus === "ready_to_upload"
+                          ? "READY"
+                          : "REVIEW"}
                 </span>
               </div>
 
@@ -1524,7 +1532,7 @@ function ReviewScreen({
                     : "분류 검수 완료 · OCR 실행"}
                 </button>
               )}
-              {match.reviewStatus !== "pending_ocr" && validation.valid && (
+              {match.reviewStatus !== "pending_ocr" && match.reviewStatus !== "confirmed" && validation.valid && (
                 <button
                   type="button"
                   onClick={onReady}
