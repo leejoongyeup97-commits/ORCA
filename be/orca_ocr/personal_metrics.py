@@ -50,7 +50,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "swift_strike_resets": {"aliases": ["질풍참 초기화", "질풍참 조기화"]},
         "dragonblade_kills": {"aliases": ["용검으로 처치"]},
         "solo_kills": {"aliases": ["단독 처치"]},
-        "reflected_damage": {"aliases": ["반사한 피해", "반사 피해", "baw 피해", "baw피해"]},
+        "reflected_damage": {"aliases": ["반사한 피해", "반사 피해", "baw 피해", "baw피해", "fba 피해", "fba피해"]},
     },
 }
 
