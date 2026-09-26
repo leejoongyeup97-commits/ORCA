@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MatchReviewEditor from "@/components/match-review-editor";
 import RoundDetailsEditor from "@/components/round-details-editor";
+import MatchWorkflow from "@/components/match-workflow";
+import OcrProgressPanel from "@/components/ocr-progress-panel";
 import {
   removeReviewDraft,
   toConfirmHeroDetails,
@@ -12,7 +14,9 @@ import {
 } from "@/lib/review-draft";
 import { getStoredOcrBundle, type StoredOcrBundle } from "@/lib/ocr-integration";
 import { normalizeSideForGameMode } from "@/lib/match-rules";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { buildReviewChecks } from "@/lib/match-review-readiness";
+import { rerunMatchOcrFromSavedFolder } from "@/lib/match-ocr-rerun";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   getMatchBackendAdapter,
   type EditableMatchFields,
@@ -93,6 +97,8 @@ export default function MatchDetailPage() {
   const [roundDetails, setRoundDetails] = useState<RoundDetail[]>([]);
   const [submapOptions, setSubmapOptions] = useState<MapSubmapOption[]>([]);
   const [submapLoading, setSubmapLoading] = useState(false);
+  const [pendingDeleteUntil, setPendingDeleteUntil] = useState<number | null>(null);
+  const deleteTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!matchId) return;
@@ -164,6 +170,14 @@ export default function MatchDetailPage() {
       mounted = false;
     };
   }, [form?.game_mode, form?.map_name]);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current !== null) {
+        window.clearTimeout(deleteTimerRef.current);
+      }
+    };
+  }, []);
 
   const counts = useMemo(() => {
     if (!match) return { summary: 0, team: 0, personal: 0, replay: 0, unknown: 0 };
@@ -250,31 +264,44 @@ export default function MatchDetailPage() {
     }
   }
 
-  async function rerunOcr() {
+  async function executeOcrRerun(onlyFilenames?: string[]) {
     if (!match) return;
+
     setBusy("ocr");
     setNotice("");
     setOcrProgress(null);
+
     try {
-      const updated = await getMatchBackendAdapter().runMockOcr(match.match_id, {
-        onProgress: setOcrProgress,
-      });
+      const updated = await rerunMatchOcrFromSavedFolder(
+        getMatchBackendAdapter(),
+        match,
+        {
+          onlyFilenames,
+          mergeWithExisting: Boolean(onlyFilenames?.length),
+          onProgress: setOcrProgress,
+        },
+      );
+
       setMatch(updated);
       setForm(updated.editable);
       setPlayedAtLocal(toLocalDateTime(updated.editable.played_at));
       setOcrBundle(getStoredOcrBundle(match.match_id));
-      setNotice("OCR을 다시 실행했습니다.");
+      setNotice(
+        onlyFilenames?.length
+          ? `선택한 파일 OCR을 다시 실행했습니다: ${onlyFilenames[0]}`
+          : "실제 OCR을 다시 실행했습니다.",
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "OCR 재실행에 실패했습니다.";
       setOcrProgress((previous) => ({
         stage: "file_error",
         current: previous?.current ?? 0,
-        total: previous?.total ?? Math.max(1, match.files.length),
+        total: previous?.total ?? Math.max(1, onlyFilenames?.length ?? match.files.length),
         percent: previous?.percent ?? 0,
         success_count: previous?.success_count ?? 0,
         error_count: Math.max(1, previous?.error_count ?? 0),
         message,
-        filename: previous?.filename,
+        filename: previous?.filename ?? onlyFilenames?.[0],
         screen_type: previous?.screen_type,
       }));
       setNotice(message);
@@ -283,10 +310,17 @@ export default function MatchDetailPage() {
     }
   }
 
-  async function deleteMatch() {
+  async function rerunOcr() {
+    await executeOcrRerun();
+  }
+
+  async function retryOcrFile(filename: string) {
+    await executeOcrRerun([filename]);
+  }
+
+  async function performDelete() {
     if (!match) return;
-    const ok = window.confirm("이 경기를 삭제할까요? Mock 데이터에서 완전히 제거됩니다.");
-    if (!ok) return;
+    setPendingDeleteUntil(null);
     setBusy("delete");
     try {
       await getMatchBackendAdapter().deleteMatchImport(match.match_id);
@@ -297,6 +331,29 @@ export default function MatchDetailPage() {
       setNotice("삭제에 실패했습니다.");
       setBusy(null);
     }
+  }
+
+  function requestDelete() {
+    if (!match || pendingDeleteUntil !== null) return;
+    const ok = window.confirm("이 경기를 삭제할까요? 5초 동안 실행 취소할 수 있습니다.");
+    if (!ok) return;
+
+    const until = Date.now() + 5000;
+    setPendingDeleteUntil(until);
+    setNotice("5초 후 경기를 삭제합니다. 취소하려면 ‘삭제 취소’를 누르세요.");
+    deleteTimerRef.current = window.setTimeout(() => {
+      deleteTimerRef.current = null;
+      void performDelete();
+    }, 5000);
+  }
+
+  function undoDelete() {
+    if (deleteTimerRef.current !== null) {
+      window.clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    setPendingDeleteUntil(null);
+    setNotice("삭제를 취소했습니다.");
   }
 
   if (loading) {
@@ -318,6 +375,9 @@ export default function MatchDetailPage() {
   const canConfirm = match.status === "needs_review";
   const isConfirmed = match.status === "confirmed";
   const canRerunOcr = ["pending_ocr", "needs_review", "failed"].includes(match.status);
+  const reviewChecks = buildReviewChecks(match, reviewDraft, roundDetails);
+  const reviewReadyCount = reviewChecks.filter((check) => check.ok).length;
+  const reviewReady = reviewChecks.length > 0 && reviewReadyCount === reviewChecks.length;
 
   return (
     <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
@@ -328,7 +388,9 @@ export default function MatchDetailPage() {
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <p className="m-0 text-sm font-semibold text-[var(--orange)]">경기 상세</p>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusMeta.className}`}>{statusMeta.label}</span>
+                <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${statusMeta.className}`}>
+                  {match.status === "needs_review" && reviewReady ? "확정 가능" : statusMeta.label}
+                </span>
               </div>
               <h1 className="m-0 break-all text-2xl font-bold tracking-[-0.03em] md:text-3xl">{match.match_id}</h1>
               <p className="mt-2 text-xs text-[var(--muted)]">등록 {formatDate(match.detected_at)} · 이미지 {match.files.length}장</p>
@@ -341,8 +403,8 @@ export default function MatchDetailPage() {
                 </button>
               )}
               {canConfirm && (
-                <button type="button" disabled={busy !== null} onClick={confirmMatch} className="cursor-pointer rounded-md bg-[var(--orange)] px-4 py-2.5 text-xs font-semibold text-black disabled:opacity-40">
-                  {busy === "confirm" ? "확정 중..." : "검수 확정"}
+                <button type="button" disabled={busy !== null} onClick={confirmMatch} className="app-orange-button cursor-pointer">
+                  {busy === "confirm" ? "확정 중..." : reviewReady ? "검수 확정" : `검수 확정 · ${reviewReadyCount}/${reviewChecks.length}`}
                 </button>
               )}
               {isConfirmed && (
@@ -350,12 +412,20 @@ export default function MatchDetailPage() {
                   다시 검수
                 </button>
               )}
-              <button type="button" disabled={busy !== null} onClick={deleteMatch} className="cursor-pointer rounded-md border border-[#543237] bg-[#241216] px-4 py-2.5 text-xs font-bold text-[#ff9b9b] disabled:opacity-40">
-                {busy === "delete" ? "삭제 중..." : "삭제"}
-              </button>
+              {pendingDeleteUntil !== null ? (
+                <button type="button" onClick={undoDelete} className="app-danger-button cursor-pointer">
+                  삭제 취소
+                </button>
+              ) : (
+                <button type="button" disabled={busy !== null} onClick={requestDelete} className="app-danger-button cursor-pointer">
+                  {busy === "delete" ? "삭제 중..." : "삭제"}
+                </button>
+              )}
             </div>
           </div>
         </section>
+
+        <MatchWorkflow status={match.status} />
 
         {notice && (
           <div className="mb-5 rounded-md border border-[#303847] bg-transparent px-4 py-3 text-xs leading-5 text-[#c8d0dc]">{notice}</div>
@@ -387,13 +457,13 @@ export default function MatchDetailPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="플레이 시간">
+                <Field label="플레이 시간" changed={playedAtLocal !== toLocalDateTime(match.editable.played_at)}>
                   <input value={playedAtLocal} onChange={(e) => setPlayedAtLocal(e.target.value)} type="datetime-local" className="field-input" />
                 </Field>
-                <Field label="맵">
+                <Field label="맵" changed={form.map_name !== match.editable.map_name}>
                   <input value={form.map_name} onChange={(e) => setForm({ ...form, map_name: e.target.value })} placeholder="예: 왕의 길" className="field-input" />
                 </Field>
-                <Field label="게임 모드">
+                <Field label="게임 모드" changed={form.game_mode !== match.editable.game_mode}>
                   <input
                     value={form.game_mode}
                     onChange={(e) => {
@@ -408,7 +478,7 @@ export default function MatchDetailPage() {
                     className="field-input"
                   />
                 </Field>
-                <Field label="결과">
+                <Field label="결과" changed={form.result !== match.editable.result}>
                   <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value as MatchResult })} className="field-input">
                     {(Object.keys(RESULT_LABELS) as MatchResult[]).map((result) => <option key={result} value={result}>{RESULT_LABELS[result]}</option>)}
                   </select>
@@ -419,7 +489,7 @@ export default function MatchDetailPage() {
                 <Field label="패치 · 자동 판별">
                   <input value={form.patch_label} readOnly placeholder="DB에서 경기 시간 기준 자동 판별" className="field-input cursor-default text-[var(--muted)]" />
                 </Field>
-                <Field label="공격 / 수비">
+                <Field label="공격 / 수비" changed={form.side !== match.editable.side}>
                   <select
                     value={normalizeSideForGameMode(form.game_mode, form.side)}
                     disabled={normalizeSideForGameMode(form.game_mode, form.side) === "neutral"}
@@ -432,16 +502,16 @@ export default function MatchDetailPage() {
                     <option value="neutral">해당 없음</option>
                   </select>
                 </Field>
-                <Field label="쟁탈 세부 맵">
+                <Field label="쟁탈 세부 맵" changed={form.control_submap !== match.editable.control_submap}>
                   <input value={form.control_submap} onChange={(e) => setForm({ ...form, control_submap: e.target.value })} placeholder="예: 부산 · 시내" className="field-input" />
                 </Field>
-                <Field label="세트 진행 순서">
+                <Field label="세트 진행 순서" changed={form.round_sequence !== match.editable.round_sequence}>
                   <input value={form.round_sequence} onChange={(e) => setForm({ ...form, round_sequence: e.target.value })} placeholder="예: 승 → 패 → 승" className="field-input" />
                 </Field>
-                <Field label="경기 시간">
+                <Field label="경기 시간" changed={form.match_duration !== match.editable.match_duration}>
                   <input value={form.match_duration} onChange={(e) => setForm({ ...form, match_duration: e.target.value })} placeholder="예: 14:32" className="field-input" />
                 </Field>
-                <Field label="메모" wide>
+                <Field label="메모" wide changed={form.notes !== match.editable.notes}>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="특이사항이나 수동 메모" rows={4} className="field-input resize-y" />
                 </Field>
               </div>
@@ -472,7 +542,7 @@ export default function MatchDetailPage() {
                 </div>
                 <div className="divide-y divide-[var(--line)]">
                   {ocrBundle.files.map((file, index) => (
-                    <div key={`${file.filename}-${index}`} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[80px_1fr_auto] sm:items-center">
+                    <div key={`${file.filename}-${index}`} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[80px_1fr_auto_auto] sm:items-center">
                       <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[11px] font-semibold text-white">{file.screen_type}</span>
                       <div className="min-w-0">
                         <p className="m-0 truncate font-bold text-white">{file.filename}</p>
@@ -481,6 +551,16 @@ export default function MatchDetailPage() {
                       <span className={`text-[11px] font-semibold ${file.ok ? "text-[#8ee9aa]" : "text-[#ff9b9b]"}`}>
                         {file.ok ? "OCR 성공" : "OCR 실패"}
                       </span>
+                      {!file.ok && (
+                        <button
+                          type="button"
+                          disabled={busy !== null}
+                          onClick={() => void retryOcrFile(file.filename)}
+                          className="app-secondary-button cursor-pointer"
+                        >
+                          이 파일만 재시도
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -510,13 +590,27 @@ export default function MatchDetailPage() {
 
           <aside className="space-y-8">
             <section className="border-t border-[var(--line)] pt-4">
-              <p className="m-0 text-sm font-bold">OCR / 검수 흐름</p>
-              <div className="mt-4 space-y-3">
-                <Step active={match.status === "pending_ocr"} done={!["awaiting_upload", "pending_ocr"].includes(match.status)} number="1" title="OCR 대기" />
-                <Step active={match.status === "processing_ocr"} done={["needs_review", "confirmed"].includes(match.status)} number="2" title="OCR 처리" />
-                <Step active={match.status === "needs_review"} done={match.status === "confirmed"} number="3" title="사용자 검수" />
-                <Step active={match.status === "confirmed"} done={match.status === "confirmed"} number="4" title="확정 완료" />
+              <div className="flex items-center justify-between gap-3">
+                <p className="m-0 text-[15px] font-semibold text-white">확정 준비</p>
+                <span className={`text-[12px] font-semibold ${reviewReady ? "text-[#9fcaae]" : "text-[var(--muted)]"}`}>
+                  {reviewReadyCount} / {reviewChecks.length}
+                </span>
               </div>
+              <div className="mt-3 border-t border-[var(--line-soft)]">
+                {reviewChecks.map((check) => (
+                  <div key={check.key} className="flex items-center justify-between gap-3 border-b border-[var(--line-soft)] py-2.5 text-[12px]">
+                    <span className="text-[#c7c9ce]">{check.label}</span>
+                    <span className={check.ok ? "font-semibold text-[#9fcaae]" : "font-medium text-[var(--warning)]"}>
+                      {check.ok ? "완료" : "확인 필요"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {!reviewReady && (
+                <p className="mt-3 text-[11px] leading-5 text-[var(--muted)]">
+                  기존 기능을 막지는 않습니다. 다만 위 항목을 모두 확인한 뒤 확정하는 것을 권장합니다.
+                </p>
+              )}
             </section>
 
             <section className="border-t border-[var(--line)] pt-4">
@@ -548,10 +642,23 @@ export default function MatchDetailPage() {
   );
 }
 
-function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) {
+function Field({
+  label,
+  children,
+  wide = false,
+  changed = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  wide?: boolean;
+  changed?: boolean;
+}) {
   return (
     <label className={wide ? "md:col-span-2" : ""}>
-      <span className="mb-2 block text-[11px] font-bold text-[var(--muted)]">{label}</span>
+      <span className="mb-2 flex items-center gap-2 text-[12px] font-medium text-[var(--muted)]">
+        {label}
+        {changed && <span className="text-[11px] font-medium text-[var(--orange-2)]">수정됨</span>}
+      </span>
       {children}
     </label>
   );
@@ -566,17 +673,6 @@ function CountCard({ label, value, warning = false }: { label: string; value: nu
   );
 }
 
-function Step({ number, title, active, done }: { number: string; title: string; active: boolean; done: boolean }) {
-  return (
-    <div className={`flex items-center gap-3 rounded-md border px-3 py-3 ${active ? "border-[rgba(249,158,26,0.4)] bg-[var(--orange-soft)]" : "border-[var(--line)] bg-transparent"}`}>
-      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-semibold ${done ? "bg-[rgba(121,227,156,0.13)] text-[#8ee9aa]" : active ? "bg-[var(--orange)] text-black" : "bg-[#171e2a] text-[var(--muted)]"}`}>
-        {done ? "✓" : number}
-      </span>
-      <span className={`text-xs font-bold ${active ? "text-white" : "text-[var(--muted)]"}`}>{title}</span>
-    </div>
-  );
-}
-
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
@@ -587,77 +683,3 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 
-function OcrProgressPanel({
-  progress,
-  running,
-}: {
-  progress: OcrExecutionProgress;
-  running: boolean;
-}) {
-  const activeNumber =
-    progress.stage === "file_start"
-      ? Math.min(progress.total, progress.current + 1)
-      : Math.min(progress.total, progress.current);
-  const remaining = Math.max(
-    0,
-    progress.total - progress.success_count - progress.error_count,
-  );
-  const failed = progress.stage === "file_error";
-  const complete = progress.stage === "completed";
-
-  return (
-    <section className="mb-7 border-y border-[var(--line)] py-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="m-0 text-[15px] font-semibold text-white">
-              {running ? "OCR 다시 실행 중" : failed ? "OCR 재실행 중단" : "OCR 재실행 결과"}
-            </h2>
-            {running && (
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--orange)]" />
-            )}
-          </div>
-          <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
-            {progress.message}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="m-0 text-[15px] font-semibold text-white">
-            {activeNumber} / {progress.total}
-          </p>
-          <p className="mt-1 text-[12px] text-[var(--muted)]">{progress.percent}%</p>
-        </div>
-      </div>
-
-      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#1b1d21]">
-        <div
-          className="h-full bg-[var(--orange)] transition-[width] duration-300"
-          style={{ width: `${progress.percent}%` }}
-        />
-      </div>
-
-      {(progress.filename || progress.screen_type) && (
-        <div className="mt-4 grid gap-1 text-[12px] sm:grid-cols-[120px_1fr]">
-          <span className="text-[var(--muted)]">현재 처리</span>
-          <span className="min-w-0 truncate text-[#d7d9dd]">
-            {progress.screen_type ? `${progress.screen_type} · ` : ""}
-            {progress.filename || "-"}
-          </span>
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--line-soft)] pt-3 text-[12px]">
-        <span className="text-[var(--muted)]">
-          성공 <strong className="ml-1 font-semibold text-[#9fcaae]">{progress.success_count}</strong>
-        </span>
-        <span className="text-[var(--muted)]">
-          실패 <strong className={`ml-1 font-semibold ${progress.error_count > 0 ? "text-[#d98b91]" : "text-white"}`}>{progress.error_count}</strong>
-        </span>
-        <span className="text-[var(--muted)]">
-          남음 <strong className="ml-1 font-semibold text-white">{remaining}</strong>
-        </span>
-        {complete && <span className="font-medium text-[#9fcaae]">완료</span>}
-      </div>
-    </section>
-  );
-}
