@@ -982,6 +982,16 @@ def extract_personal(img, hero_key=None):
             resolved=raw_resolved
             label_conf=max(label_conf,0.88)
 
+        if hero_key=='juno' and name.startswith('metric_'):
+            try:
+                metric_index=int(name.split('_',1)[1])-1
+            except (ValueError,IndexError):
+                metric_index=-1
+            ordered=metric_from_verified_order(hero_key,metric_index)
+            if ordered:
+                resolved={**resolved,**ordered}
+                label_conf=max(label_conf,0.88)
+
         raw_primary=_personal_primary_from_raw(raw,label_raw)
         # Trust the isolated numeric OCR when repeated reads agree. It excludes
         # icons/helper text and is more reliable than whole-card OCR in cases such
@@ -1123,7 +1133,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.29-dev',
+        'ocr_version':'0.10.30-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
