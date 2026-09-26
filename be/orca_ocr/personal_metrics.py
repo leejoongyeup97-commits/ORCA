@@ -479,6 +479,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     },
     "moira": {
         "biotic_orb_kills": {"aliases": ["생체 구슬로 처치"]},
+        "biotic_orb_healing": {"aliases": ["생체 구슬로 치유"]},
         "enemy_coalescence_efficiency": {"aliases": ["적 융화 활용도"]},
         "coalescence_kills": {"aliases": ["융화로 처치"]},
         "coalescence_healing": {"aliases": ["융화로 치유"]},
@@ -487,9 +488,14 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "ally_coalescence_efficiency": {"aliases": ["아군 융화 활용도"]},
     },
     "juno": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "players_saved": {"aliases": ["구한 플레이어", "보호한 플레이어"]},
+        "pulsar_torpedoes_damage": {"aliases": ["펄사 어뢰로 준 피해", "펄사 어뢰 피해"]},
+        "pulsar_torpedoes_healing": {"aliases": ["펄사 어뢰로 치유", "펄사 어뢰 치유"]},
+        "damage_amplified": {"aliases": ["증폭한 피해", "공격력 증폭"]},
         "orbital_ray_assists": {"aliases": ["궤도 광선 지원", "기도공선지원"]},
         "orbital_ray_healing": {"aliases": ["궤도 광선으로 치유", "기도 공선으로 치유"]},
-        "weapon_accuracy": {"aliases": ["무기 명중률"]},
     },
     "illari": {
         "secondary_fire_accuracy": {"aliases": ["보조 발사 명중률", "보조발사 명중률"]},
@@ -766,6 +772,20 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "vendetta": [
         "solo_kills","blade_projectile_kills","final_blows","whirlwind_dash_kills",
         "sundering_blade_kills","critical_hits","blade_projectile_accuracy","onslaught_uptime",
+    ],
+    "moira": [
+        "biotic_orb_kills","enemy_coalescence_efficiency","players_saved",
+        "biotic_orb_healing","coalescence_kills","secondary_fire_accuracy",
+        "ally_coalescence_efficiency",
+    ],
+    "illari": [
+        "secondary_fire_accuracy","solo_kills","players_saved",
+        "healing_pylon_uptime","sunstruck_detonations",
+        "primary_fire_accuracy","healing_pylon_healing",
+    ],
+    "zenyatta": [
+        "charged_shot_accuracy","transcendence_efficiency","players_saved",
+        "charged_shot_kills","self_healing","weapon_accuracy","damage_amplified",
     ],
 }
 
