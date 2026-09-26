@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import MatchReviewEditor from "@/components/match-review-editor";
 import RoundDetailsEditor from "@/components/round-details-editor";
 import MatchWorkflow from "@/components/match-workflow";
@@ -81,6 +81,9 @@ function referenceGameMode(value: string): "control" | "flashpoint" | null {
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnQuery = searchParams.get("return") ?? "";
+  const matchesHref = returnQuery ? `/matches?${returnQuery}` : "/matches";
   const rawId = params?.id;
   const matchId = Array.isArray(rawId) ? rawId[0] : rawId;
 
@@ -325,7 +328,7 @@ export default function MatchDetailPage() {
     try {
       await getMatchBackendAdapter().deleteMatchImport(match.match_id);
       removeReviewDraft(match.match_id);
-      router.push("/matches");
+      router.push(matchesHref);
       router.refresh();
     } catch {
       setNotice("삭제에 실패했습니다.");
@@ -365,7 +368,7 @@ export default function MatchDetailPage() {
       <main className="min-h-screen px-5 py-16">
         <div className="mx-auto max-w-xl rounded-md border border-[var(--line)] bg-transparent p-8 text-center">
           <p className="m-0 text-sm font-bold text-white">{error || "경기를 찾지 못했습니다."}</p>
-          <Link href="/matches" className="mt-4 inline-block text-xs font-bold text-[#aeb4bf] no-underline hover:text-white">← 경기 목록으로</Link>
+          <Link href={matchesHref} className="mt-4 inline-block text-xs font-bold text-[#aeb4bf] no-underline hover:text-white">← 경기 목록으로</Link>
         </div>
       </main>
     );
@@ -383,7 +386,7 @@ export default function MatchDetailPage() {
     <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
       <div className="mx-auto max-w-[1320px]">
         <section className="mb-6 border-b border-[var(--line)] pb-6">
-          <Link href="/matches" className="mb-3 inline-block text-xs font-bold text-[#aeb4bf] no-underline hover:text-white">← 경기 목록으로</Link>
+          <Link href={matchesHref} className="mb-3 inline-block text-xs font-bold text-[#aeb4bf] no-underline hover:text-white">← 경기 목록으로</Link>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
