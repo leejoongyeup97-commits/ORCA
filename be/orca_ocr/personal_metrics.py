@@ -52,6 +52,16 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "solo_kills": {"aliases": ["단독 처치"]},
         "reflected_damage": {"aliases": ["반사한 피해", "반사 피해", "baw 피해", "baw피해", "fba 피해", "fba피해"]},
     },
+    "domina": {
+        "weapon_beam_accuracy": {"aliases": ["무기 광선 명중률"]},
+        "environmental_kills": {"aliases": ["환경 요소로 처치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "weapon_shot_accuracy": {"aliases": ["무기 사격 명중률"]},
+        "crystal_charge_damage": {"aliases": ["수정 발사 피해"]},
+        "players_saved": {"aliases": ["보호한 플레이어"]},
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -59,6 +69,7 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "symmetra": ["시메트라"],
     "ana": ["아나"],
     "genji": ["겐지"],
+    "domina": ["도미나"],
 }
 
 
