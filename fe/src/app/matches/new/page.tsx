@@ -1177,7 +1177,7 @@ export default function NewMatchPage() {
               {matches.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="mr-1 text-[11px] text-[var(--muted)]">{matches.length}건</span>
-                  <button type="button" onClick={openBatchReview} className="cursor-pointer rounded-md border border-[var(--line)] bg-[#151619] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#1a1b1f]">전체 검수</button>
+                  <button type="button" onClick={openBatchReview} className="cursor-pointer rounded-md border border-[var(--line)] bg-[#151619] px-3 py-2 text-[12px] font-medium text-white hover:bg-[#1a1b1f]">전체 검수</button>
                   <button type="button" disabled={bulkReviewState.running} onClick={() => void approveAllWithoutReview()} className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] text-[var(--muted)] hover:text-white disabled:opacity-50">
                     {bulkReviewState.running ? `${bulkReviewState.current}/${bulkReviewState.total} 처리 중` : "일괄 진행"}
                   </button>
@@ -1199,7 +1199,7 @@ export default function NewMatchPage() {
                     <article key={match.id} className="grid gap-4 border-b border-[var(--line-soft)] px-1 py-4 last:border-b-0 hover:bg-[#101114] sm:grid-cols-[56px_160px_1fr_auto] sm:items-center sm:px-2">
                       <span className="text-[11px] text-[var(--muted)]">#{String(index + 1).padStart(2, "0")}</span>
                       <div><p className="m-0 text-[12px] font-medium text-white">{formatDate(match.startedAt)}</p><p className="mt-1 truncate text-[11px] text-[var(--muted)]">{match.localMatchKey.slice(0, 22)}</p></div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--muted)]">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[var(--muted)]">
                         <span>요약 <strong className="font-medium text-[#c8cad0]">{summary}</strong></span>
                         <span>팀 <strong className="font-medium text-[#c8cad0]">{team}</strong></span>
                         <span>개인 <strong className="font-medium text-[#c8cad0]">{personal}</strong></span>
@@ -1207,7 +1207,7 @@ export default function NewMatchPage() {
                         {unknown > 0 && <span className="text-[var(--warning)]">미분류 {unknown}</span>}
                         <span className={validation.valid ? "text-[#8fb89d]" : "text-[var(--warning)]"}>{validation.valid ? "검수 가능" : "확인 필요"}</span>
                       </div>
-                      <button type="button" onClick={() => openReview(match)} className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#d5d6d9] hover:bg-[#17181b] hover:text-white">{match.reviewStatus === "unreviewed" ? "검수" : "다시 보기"}</button>
+                      <button type="button" onClick={() => openReview(match)} className="app-secondary-button cursor-pointer">{match.reviewStatus === "unreviewed" ? "검수" : "다시 보기"}</button>
                     </article>
                   );
                 })}
@@ -1222,7 +1222,7 @@ export default function NewMatchPage() {
 
           <aside className="space-y-7">
             <section>
-              <h2 className="m-0 text-[13px] font-semibold text-white">이번 분류</h2>
+              <h2 className="m-0 text-[15px] font-semibold text-white">이번 분류</h2>
               <dl className="mt-3 border-t border-[var(--line)]">
                 <CompactStatusRow label="요약" value={`${counts.summary}장`} />
                 <CompactStatusRow label="팀" value={`${counts.team}장`} />
@@ -1232,8 +1232,8 @@ export default function NewMatchPage() {
               </dl>
             </section>
             <section>
-              <h2 className="m-0 text-[13px] font-semibold text-white">분류 기준</h2>
-              <div className="mt-3 border-t border-[var(--line)] text-[11px] leading-5 text-[var(--muted)]">
+              <h2 className="m-0 text-[15px] font-semibold text-white">분류 기준</h2>
+              <div className="mt-3 border-t border-[var(--line)] text-[12px] leading-6 text-[var(--muted)]">
                 <RuleRow number="01" title="요약" text="새 경기 시작" />
                 <RuleRow number="02" title="팀" text="10인 스코어보드" />
                 <RuleRow number="03" title="개인" text="영웅 상세 통계" />
@@ -1330,9 +1330,9 @@ function ReviewScreen({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className="rounded-sm bg-[#17181b] px-2 py-1 text-[11px] font-medium text-[#c7c9ce]">BATCH REVIEW</span>
+                <span className="rounded-sm bg-[#17181b] px-2 py-1 text-[12px] font-medium text-[#c7c9ce]">BATCH REVIEW</span>
                 <span className="text-xs font-bold text-white">{currentIndex + 1} / {queue.length}</span>
-                <span className="text-[11px] text-[var(--muted)]">완료 {reviewedCount}건</span>
+                <span className="text-[12px] text-[var(--muted)]">완료 {reviewedCount}건</span>
               </div>
               <div className="mt-3 h-1 w-full max-w-[360px] overflow-hidden rounded-sm bg-[#1b1d21]">
                 <div
@@ -1347,7 +1347,7 @@ function ReviewScreen({
                 type="button"
                 disabled={bulkReviewState.running}
                 onClick={onApproveAll}
-                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#b7d5c1] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[12px] font-medium text-[#b7d5c1] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
               >
                 {bulkReviewState.running
                   ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}`
@@ -1357,7 +1357,7 @@ function ReviewScreen({
                 type="button"
                 disabled={currentIndex <= 0 || bulkReviewState.running}
                 onClick={onPrevious}
-                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#d5d6d9] disabled:cursor-not-allowed disabled:opacity-30"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[12px] font-medium text-[#d5d6d9] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 ← 이전 경기
               </button>
@@ -1365,7 +1365,7 @@ function ReviewScreen({
                 type="button"
                 disabled={currentIndex >= queue.length - 1 || bulkReviewState.running}
                 onClick={onNext}
-                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#d5d6d9] disabled:cursor-not-allowed disabled:opacity-30"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[12px] font-medium text-[#d5d6d9] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 다음 경기 →
               </button>
@@ -1506,7 +1506,7 @@ function ReviewScreen({
                           <option key={type} value={type}>{TYPE_META[type].label} · {TYPE_META[type].description}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => onToggleExcluded(file.id)} className={`cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-medium ${file.excluded ? "border-[rgba(121,227,156,0.25)] text-[#9fcaae]" : "border-[#503336] text-[#ff9b9b]"}`}>
+                      <button type="button" onClick={() => onToggleExcluded(file.id)} className={`cursor-pointer rounded-lg border px-3 py-2 text-[12px] font-medium ${file.excluded ? "border-[rgba(121,227,156,0.25)] text-[#9fcaae]" : "border-[#503336] text-[#ff9b9b]"}`}>
                         {file.excluded ? "복원" : "제외"}
                       </button>
                     </div>
@@ -1523,8 +1523,8 @@ function ReviewScreen({
             <section className={`border-t border-[var(--line)] pt-4 ${validation.valid ? "border-[var(--line)] bg-transparent" : "border-[var(--line)] bg-transparent"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className={`m-0 text-sm font-bold ${validation.valid ? "text-[#9fcaae]" : "text-[var(--orange)]"}`}>{validation.valid ? "검수 조건 충족" : "확인할 항목이 있습니다"}</p>
-                  <div className="mt-3 space-y-2 text-xs text-[var(--muted)]">
+                  <p className={`m-0 text-[15px] font-semibold ${validation.valid ? "text-[#9fcaae]" : "text-[var(--orange)]"}`}>{validation.valid ? "검수 조건 충족" : "확인할 항목이 있습니다"}</p>
+                  <div className="mt-3 space-y-2.5 text-[13px] leading-6 text-[var(--muted)]">
                     <ValidationRow ok={perType.summary === 1} text={`요약 ${perType.summary}장 · 정확히 1장 필요`} />
                     <ValidationRow ok={perType.team === 1} text={`팀 ${perType.team}장 · 정확히 1장 필요`} />
                     <ValidationRow ok={perType.unknown === 0} text={`미분류 ${perType.unknown}장 · 0장이어야 완료 가능`} />
@@ -1532,7 +1532,7 @@ function ReviewScreen({
                     <ValidationRow ok text={`리플레이 ${perType.replay}장 · 선택`} neutral />
                   </div>
                 </div>
-                <span className={`rounded-sm px-2 py-1 text-[11px] font-medium ${match.reviewStatus === "ready_to_upload" ? "bg-transparent text-[#9fcaae]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
+                <span className={`rounded-sm px-2 py-1 text-[12px] font-medium ${match.reviewStatus === "ready_to_upload" ? "bg-transparent text-[#9fcaae]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
                   {match.reviewStatus === "confirmed"
                     ? "SAVED"
                     : match.reviewStatus === "pending_ocr"
@@ -1721,11 +1721,11 @@ function InlineMetric({ label, value, accent = false }: { label: string; value: 
 }
 
 function CompactStatusRow({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) {
-  return <div className="flex items-center justify-between border-b border-[var(--line-soft)] py-2.5 text-[11px]"><dt className="text-[var(--muted)]">{label}</dt><dd className={`m-0 font-medium ${warning ? "text-[var(--warning)]" : "text-[#d5d6d9]"}`}>{value}</dd></div>;
+  return <div className="flex items-center justify-between border-b border-[var(--line-soft)] py-3 text-[12px]"><dt className="text-[var(--muted)]">{label}</dt><dd className={`m-0 font-medium ${warning ? "text-[var(--warning)]" : "text-[#d5d6d9]"}`}>{value}</dd></div>;
 }
 
 function RuleRow({ number, title, text }: { number: string; title: string; text: string }) {
-  return <div className="grid grid-cols-[28px_48px_1fr] border-b border-[var(--line-soft)] py-2.5"><span className="text-[#666a73]">{number}</span><strong className="font-medium text-[#d5d6d9]">{title}</strong><span>{text}</span></div>;
+  return <div className="grid grid-cols-[30px_54px_1fr] border-b border-[var(--line-soft)] py-3 text-[12px]"><span className="text-[#666a73]">{number}</span><strong className="font-medium text-[#d5d6d9]">{title}</strong><span>{text}</span></div>;
 }
 
 function OcrActivityPanel({ state }: { state: OcrActivityState }) {
@@ -1828,14 +1828,14 @@ function ErrorDialogModal({
           <button
             type="button"
             onClick={() => setShowRaw((value) => !value)}
-            className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-white hover:bg-[#17191e]"
+            className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[12px] font-medium text-white hover:bg-[#17191e]"
           >
             {showRaw ? "오류 원문 닫기" : "오류 메시지 원문 보기"}
           </button>
           <button
             type="button"
             onClick={() => void copyRaw()}
-            className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-white hover:bg-[#17191e]"
+            className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[12px] font-medium text-white hover:bg-[#17191e]"
           >
             {copied ? "복사됨" : "오류 메시지 복사"}
           </button>
@@ -1887,7 +1887,7 @@ function typeClass(type: ScreenType) {
 }
 
 function TypePill({ type, count }: { type: ScreenType; count: number }) {
-  return <span className={`rounded-sm px-2 py-1 text-[11px] font-medium ${typeClass(type)}`}>{TYPE_META[type].label} {count}</span>;
+  return <span className={`rounded-sm px-2 py-1 text-[12px] font-medium ${typeClass(type)}`}>{TYPE_META[type].label} {count}</span>;
 }
 
 function MetricCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {

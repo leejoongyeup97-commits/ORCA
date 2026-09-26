@@ -12,6 +12,18 @@ export type MatchResult = "win" | "loss" | "draw" | "unknown";
 
 export type MatchSide = "attack" | "defense" | "neutral" | "unknown";
 
+export type RoundDetail = {
+  order: number;
+  submap: string;
+  result: MatchResult;
+};
+
+export type MapSubmapOption = {
+  submap_key: string;
+  submap_name: string;
+  sort_order: number;
+};
+
 export type EditableMatchFields = {
   played_at: string;
   map_name: string;
@@ -144,4 +156,6 @@ export interface MatchManagementAdapter extends MatchBackendAdapter {
     ocr: Partial<OcrReviewState>,
   ): Promise<MatchImportView>;
   resetMatchReview(matchId: string): Promise<MatchImportView>;
+  listMapSubmaps(mapName: string, gameMode: "control" | "flashpoint"): Promise<MapSubmapOption[]>;
+  getRoundDetails(matchId: string): Promise<RoundDetail[]>;
 }
