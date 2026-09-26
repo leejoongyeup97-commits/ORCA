@@ -8,6 +8,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.seasons (
   id uuid primary key default gen_random_uuid(),
   season_key text not null unique,
+  season_year integer,
   season_number integer,
   season_name text not null,
   starts_at timestamptz not null,
@@ -16,28 +17,31 @@ create table if not exists public.seasons (
   check (ends_at is null or ends_at > starts_at)
 );
 
+alter table public.seasons add column if not exists season_year integer;
 alter table public.seasons add column if not exists season_number integer;
 
--- Backward-safe migration if seasons were inserted before season_number existed.
+-- Backward-safe migration for both legacy "season_20" and current "2026:4" keys.
 update public.seasons
-set season_number = substring(season_key from '^season_([0-9]+)$')::integer
-where season_number is null
-  and season_key ~ '^season_[0-9]+$';
+set
+  season_year = case
+    when season_key ~ '^[0-9]{4}:[0-9]+$'
+      then split_part(season_key, ':', 1)::integer
+    else season_year
+  end,
+  season_number = case
+    when season_key ~ '^[0-9]{4}:[0-9]+$'
+      then split_part(season_key, ':', 2)::integer
+    when season_key ~ '^season_[0-9]+$'
+      then substring(season_key from '^season_([0-9]+)$')::integer
+    else season_number
+  end
+where season_year is null or season_number is null;
 
-do $orca$
-begin
-  if exists (select 1 from public.seasons where season_number is null) then
-    raise exception
-      'SEASON_NUMBER_MIGRATION_REQUIRED: every existing season must have season_number';
-  end if;
-
-  alter table public.seasons
-    alter column season_number set not null;
-end;
-$orca$;
-
-create unique index if not exists seasons_season_number_uidx
-  on public.seasons (season_number);
+-- season_number can repeat across different years (for example 2026:4, 2027:4).
+drop index if exists public.seasons_season_number_uidx;
+create unique index if not exists seasons_year_number_uidx
+  on public.seasons (season_year, season_number)
+  where season_year is not null and season_number is not null;
 
 create table if not exists public.patches (
   id uuid primary key default gen_random_uuid()
@@ -88,12 +92,14 @@ create index if not exists seasons_period_idx
   on public.seasons (starts_at desc);
 
 -- Admin helper for season registration.
--- Example (KST): select public.add_orca_season(21, '2026-10-13 12:00:00+09');
+-- Example (KST): select public.add_orca_season('2026:4', '2026-10-13 12:00:00+09');
 --
 -- The next season's starts_at is always the previous season's ends_at.
 -- Existing matches are backfilled automatically after registration.
+drop function if exists public.add_orca_season(integer,timestamptz,text);
+
 create or replace function public.add_orca_season(
-  p_season_number integer,
+  p_season_key text,
   p_starts_at timestamptz,
   p_season_name text default null
 )
@@ -104,29 +110,37 @@ set search_path = public
 as $orca$
 declare
   v_id uuid;
-  v_key text;
+  v_year integer;
+  v_number integer;
   v_name text;
   v_ends_at timestamptz;
 begin
-  if p_season_number is null or p_season_number <= 0 then
-    raise exception 'INVALID_SEASON_NUMBER';
+  if p_season_key is null or btrim(p_season_key) !~ '^[0-9]{4}:[0-9]+$' then
+    raise exception 'INVALID_SEASON_KEY: expected YYYY:N (example 2026:4)';
   end if;
 
   if p_starts_at is null then
     raise exception 'INVALID_SEASON_START';
   end if;
 
-  v_key := 'season_' || p_season_number::text;
-  v_name := coalesce(nullif(btrim(p_season_name), ''), p_season_number::text || '시즌');
+  v_year := split_part(btrim(p_season_key), ':', 1)::integer;
+  v_number := split_part(btrim(p_season_key), ':', 2)::integer;
+
+  if v_number <= 0 then
+    raise exception 'INVALID_SEASON_NUMBER';
+  end if;
+
+  v_name := coalesce(nullif(btrim(p_season_name), ''), btrim(p_season_key) || ' 시즌');
 
   insert into public.seasons (
-    season_key, season_number, season_name, starts_at, ends_at
+    season_key, season_year, season_number, season_name, starts_at, ends_at
   ) values (
-    v_key, p_season_number, v_name, p_starts_at, null
+    btrim(p_season_key), v_year, v_number, v_name, p_starts_at, null
   )
-  on conflict (season_number) do update
+  on conflict (season_key) do update
   set
-    season_key = excluded.season_key,
+    season_year = excluded.season_year,
+    season_number = excluded.season_number,
     season_name = excluded.season_name,
     starts_at = excluded.starts_at
   returning id into v_id;
@@ -135,7 +149,7 @@ begin
   with ordered as (
     select
       id,
-      lead(starts_at) over (order by starts_at, season_number) as next_start
+      lead(starts_at) over (order by starts_at, season_year, season_number) as next_start
     from public.seasons
   )
   update public.seasons s
@@ -166,8 +180,9 @@ begin
 
   return jsonb_build_object(
     'id', v_id,
-    'season_key', v_key,
-    'season_number', p_season_number,
+    'season_key', btrim(p_season_key),
+    'season_year', v_year,
+    'season_number', v_number,
     'season_name', v_name,
     'starts_at', p_starts_at,
     'ends_at', v_ends_at
@@ -176,8 +191,8 @@ end;
 $orca$;
 
 -- Season registration is an admin/service operation, not a client action.
-revoke all on function public.add_orca_season(integer,timestamptz,text) from public;
-grant execute on function public.add_orca_season(integer,timestamptz,text) to service_role;
+revoke all on function public.add_orca_season(text,timestamptz,text) from public;
+grant execute on function public.add_orca_season(text,timestamptz,text) to service_role;
 
 create index if not exists patches_effective_from_idx
   on public.patches (effective_from desc);
