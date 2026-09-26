@@ -416,9 +416,16 @@ function HeroDetailEditor({
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="m-0 text-xs font-bold text-white">영웅 #{index + 1}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="m-0 text-xs font-bold text-white">영웅 #{index + 1}</p>
+                  {!item.hero_key && (
+                    <span className="rounded-md bg-[rgba(255,184,92,0.14)] px-1.5 py-0.5 text-[8px] font-bold text-[#ffc779]">
+                      hero_key 검수 필요
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-[9px] text-[var(--muted)]">
-                  OCR metrics[]를 그대로 검수합니다. metric_key는 저장용 고정 key입니다.
+                  표시명은 metric_key 기준 고정 라벨을 사용합니다. OCR 원문 라벨은 디버깅용으로만 보관합니다.
                 </p>
               </div>
               {items.length > 1 && (
