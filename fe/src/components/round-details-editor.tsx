@@ -51,24 +51,15 @@ export default function RoundDetailsEditor({
     );
   }
 
-  if (!enabled) {
-    return (
-      <section className="border-t border-[var(--line)] pt-4">
-        <h2 className="m-0 text-[15px] font-semibold text-white">세트 상세</h2>
-        <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">
-          쟁탈 또는 플래시포인트 경기에서 세트별 세부맵과 결과를 기록합니다.
-        </p>
-      </section>
-    );
-  }
+  if (!enabled) return null;
 
   return (
-    <section className="border-t border-[var(--line)] pt-4">
+    <section className="md:col-span-2 border-t border-[var(--line)] pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="m-0 text-[15px] font-semibold text-white">세트 상세</h2>
+          <h2 className="m-0 text-[15px] font-semibold text-white">세트별 세부맵 · 결과</h2>
           <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">
-            DB의 세부맵 기준 데이터를 사용합니다. 세트 순서는 위에서 아래 순서로 저장됩니다.
+            세부맵을 선택하고 각 세트의 승패를 기록하세요. 진행 순서는 위에서 아래로 자동 저장됩니다.
           </p>
         </div>
         <button
@@ -89,7 +80,7 @@ export default function RoundDetailsEditor({
         </p>
       ) : rounds.length === 0 ? (
         <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
-          아직 세트가 없습니다. ‘세트 추가’를 눌러 기록을 시작하세요.
+          아직 입력된 세트가 없습니다. ‘세트 추가’를 눌러 1세트부터 기록하세요.
         </p>
       ) : (
         <div className="mt-4 border-t border-[var(--line)]">
@@ -98,7 +89,7 @@ export default function RoundDetailsEditor({
               key={`${index}-${round.order}`}
               className="grid gap-3 border-b border-[var(--line-soft)] py-3 md:grid-cols-[72px_1fr_180px_auto] md:items-center"
             >
-              <span className="text-[12px] font-medium text-[#c9cbd0]">{index + 1}세트</span>
+              <span className="text-[12px] font-semibold text-white">{index + 1}세트</span>
 
               <select
                 value={round.submap}
