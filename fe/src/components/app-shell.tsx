@@ -44,14 +44,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
-      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[#0a1119]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-[1600px] items-center gap-5 px-4 md:px-6">
+      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--bg)]/95 backdrop-blur">
+        <div className="mx-auto flex h-[60px] max-w-[1600px] items-center gap-5 px-4 md:px-6">
           <Link href="/" className="flex min-w-fit items-center gap-3 text-white no-underline">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[rgba(255,139,61,0.35)] bg-[var(--orange-soft)] text-sm font-black text-[var(--orange)]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-md border border-[var(--line)] bg-[#111214] text-sm font-bold text-[var(--orange-2)]">
               OR
             </span>
             <span className="leading-tight">
-              <span className="block text-[17px] font-extrabold tracking-[0.02em]">ORCA</span>
+              <span className="block text-[15px] font-semibold tracking-[0.02em]">ORCA</span>
               <span className="hidden text-[10px] text-[var(--muted)] lg:block">Overwatch Result Correlation Analysis</span>
             </span>
           </Link>
@@ -63,10 +63,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-[13px] font-semibold no-underline ${
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-[12px] font-medium no-underline ${
                     active
-                      ? "border-[rgba(255,107,26,0.42)] bg-[var(--orange-soft)] text-[var(--orange-2)]"
-                      : "border-transparent text-[#aeb9c7] hover:bg-[#121b26] hover:text-white"
+                      ? "border-[var(--line)] bg-[#17181b] text-white"
+                      : "border-transparent text-[#8f939c] hover:bg-[#121316] hover:text-white"
                   }`}
                 >
                   <span className="text-sm">{item.icon}</span>
@@ -77,21 +77,21 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <span className="hidden rounded-lg border border-[var(--line)] bg-[#101823] px-3 py-2 text-[11px] text-[var(--muted)] xl:block">
+            <span className="hidden rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] text-[var(--muted)] xl:block">
               ● {session ? session.user.email : config.configured ? "로그인 필요" : "Mock mode"}
             </span>
             {session ? (
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#121b26] px-3 py-2 text-[12px] font-semibold text-white hover:border-[#39495d]"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-[#111214] px-3 py-2 text-[12px] font-semibold text-white hover:border-[#39495d]"
               >
                 로그아웃
               </button>
             ) : (
               <Link
                 href="/login"
-                className="rounded-lg border border-[var(--line)] bg-[#121b26] px-3 py-2 text-[12px] font-semibold text-white no-underline hover:border-[#39495d]"
+                className="rounded-md border border-[var(--line)] bg-[#111214] px-3 py-2 text-[12px] font-semibold text-white no-underline hover:border-[#39495d]"
               >
                 계정
               </Link>
@@ -117,7 +117,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      <div className="min-h-[calc(100vh-72px)]">{children}</div>
+      <div className="min-h-[calc(100vh-60px)]">{children}</div>
     </div>
   );
 }
