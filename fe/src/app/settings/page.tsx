@@ -245,6 +245,24 @@ export default function SettingsPage() {
           </p>
         </section>
 
+        <section className="mb-8 border-t border-[var(--line)] pt-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="m-0 text-sm font-medium text-white">패치노트 데이터</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                넥슨 공식 패치노트에서 DB에 없는 최신 패치를 찾아 추가합니다. 현재는 버튼 UI만 준비된 상태입니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={requestPatchnoteSync}
+              className="app-orange-button cursor-pointer"
+            >
+              패치노트 최신화
+            </button>
+          </div>
+        </section>
+
         <div className="grid gap-10 md:grid-cols-2">
           <section className="border-t border-[var(--line)] pt-4">
             <p className="m-0 text-sm font-medium">연결 상태</p>
