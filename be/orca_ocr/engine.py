@@ -965,7 +965,17 @@ def extract_personal(img, hero_key=None):
         # Trust the isolated numeric OCR when repeated reads agree. It excludes
         # icons/helper text and is more reliable than whole-card OCR in cases such
         # as Ana 3 -> 104, saved players 4 -> 0, slept enemies 6 -> 4, scoped 73% -> 0.
-        if isolated_primary is not None and value_conf>=0.90:
+        if (
+            raw_primary is not None
+            and ',' in raw_primary
+            and isolated_primary is not None
+            and raw_primary.replace(',','').endswith(isolated_primary.replace(',',''))
+        ):
+            # Isolated value OCR can clip the leading thousands digit
+            # (e.g. 2,183 -> 183). Whole-card OCR preserves comma-formatted totals.
+            primary=raw_primary
+            value_conf=max(value_conf,0.90)
+        elif isolated_primary is not None and value_conf>=0.90:
             primary=isolated_primary
         else:
             primary=raw_primary if raw_primary is not None else isolated_primary
@@ -1025,7 +1035,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.6-dev',
+        'ocr_version':'0.10.7-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
