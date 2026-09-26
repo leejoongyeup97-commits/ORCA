@@ -816,6 +816,7 @@ export default function NewMatchPage() {
         matchId: completed.matchId,
       });
 
+      resetOcrActivity("실제 OCR 서버 연결을 준비하고 있습니다.");
       const ocrView = await runRealOcrForMatch(
         adapter,
         completed.matchId,
@@ -823,6 +824,7 @@ export default function NewMatchPage() {
           screen_type: item.type,
           file: item.file,
         })),
+        { onProgress: handleOcrProgress },
       );
 
       patchMatch(match.id, (current) => ({
@@ -848,13 +850,19 @@ export default function NewMatchPage() {
       return ocrView.status !== "failed";
     } catch (error) {
       patchMatch(match.id, (current) => ({ ...current, reviewStatus: "ready_to_upload" }));
+      setOcrActivity((current) => ({ ...current, running: false }));
       setUploadState({
         phase: "error",
         current: 0,
         total: activeFiles.length,
         message: error instanceof Error ? error.message : "업로드 중 오류가 발생했습니다.",
       });
-      setReviewNotice("업로드에 실패했습니다. 다시 시도할 수 있습니다.");
+      setReviewNotice("업로드 또는 OCR 처리에 실패했습니다. 다시 시도할 수 있습니다.");
+      openErrorDialog(
+        "경기 등록 처리 오류",
+        "업로드 또는 OCR 처리 중 오류가 발생했습니다.",
+        error,
+      );
       return false;
     }
   }
@@ -968,6 +976,11 @@ export default function NewMatchPage() {
         matchId: match.backendMatchId,
       });
       setReviewNotice("OCR 검수값 저장에 실패했습니다. 값을 확인하고 다시 시도해 주세요.");
+      openErrorDialog(
+        "OCR 검수 저장 오류",
+        "검수한 OCR 데이터를 저장하는 중 오류가 발생했습니다.",
+        error,
+      );
     }
   }
 
@@ -986,6 +999,7 @@ export default function NewMatchPage() {
       message: "OCR을 다시 실행하고 있습니다...",
       matchId: match.backendMatchId,
     });
+    resetOcrActivity("OCR 재실행을 준비하고 있습니다.");
 
     try {
       const ocrView = await runRealOcrForMatch(
@@ -995,6 +1009,7 @@ export default function NewMatchPage() {
           screen_type: item.type,
           file: item.file,
         })),
+        { onProgress: handleOcrProgress },
       );
 
       patchMatch(match.id, (current) => ({
@@ -1017,6 +1032,7 @@ export default function NewMatchPage() {
           : "OCR 재실행이 완료되었습니다.",
       );
     } catch (error) {
+      setOcrActivity((current) => ({ ...current, running: false }));
       setUploadState({
         phase: "error",
         current: activeFiles.length,
@@ -1025,6 +1041,11 @@ export default function NewMatchPage() {
         matchId: match.backendMatchId,
       });
       setReviewNotice("OCR 재실행에 실패했습니다.");
+      openErrorDialog(
+        "OCR 재실행 오류",
+        "OCR을 다시 실행하는 중 오류가 발생했습니다.",
+        error,
+      );
     }
   }
 
@@ -1094,6 +1115,9 @@ export default function NewMatchPage() {
         onApproveAll={() => approveAllWithoutReview()}
         bulkReviewState={bulkReviewState}
         uploadState={uploadState}
+        ocrActivity={ocrActivity}
+        errorDialog={errorDialog}
+        onCloseError={() => setErrorDialog(null)}
       />
     );
   }
