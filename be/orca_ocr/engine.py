@@ -109,6 +109,17 @@ def _summary_map_reads(img):
                     reads.extend(line.strip() for line in txt.splitlines() if line.strip())
             except Exception:
                 pass
+        try:
+            rapid=_get_rapidocr_engine()
+            for image in (crop, _prep(crop,3.0,False), _prep(crop,3.0,True)):
+                result=rapid(image,use_det=False,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                for txt in txts:
+                    value=str(txt).strip()
+                    if value:
+                        reads.append(value)
+        except Exception:
+            pass
     return reads
 
 
@@ -273,7 +284,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.19-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.20-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -658,6 +669,20 @@ def _crop_team_hero(board,y,gap):
     return board[y1:y2,x1:x2]
 
 
+def _wuyang_portrait_hint(crop):
+    """Fallback cue for the current Korean scoreboard portrait art.
+
+    Wuyang's portrait has a large warm/orange face region, while Juno's portrait
+    is dominated by cooler/red helmet tones. Use only to break a Juno-vs-Wuyang
+    ambiguity; never as a general hero classifier.
+    """
+    hsv=cv2.cvtColor(crop,cv2.COLOR_BGR2HSV)
+    sat=hsv[:,:,1]>60
+    val=hsv[:,:,2]>60
+    warm=((hsv[:,:,0]>=5)&(hsv[:,:,0]<=25)&sat&val)
+    return float(warm.mean())
+
+
 def _match_team_hero(crop,slot):
     library=_load_hero_references()
     if not library:
@@ -680,6 +705,15 @@ def _match_team_hero(crop,slot):
             second=score
     margin=max(0.0,best_score-max(second,0.0))
     confidence=min(0.99,max(0.0,best_score*.85+margin*1.5))
+
+    # Verified fallback for the Wuyang sample that was repeatedly matched as Juno.
+    # Restrict this correction to support rows and only when Juno was the top match.
+    if expected_role=='support' and best_id=='juno':
+        warm_ratio=_wuyang_portrait_hint(crop)
+        if warm_ratio>=0.28:
+            best_id='wuyang'
+            confidence=max(confidence,0.82)
+
     return best_id,round(confidence,3)
 
 
@@ -775,7 +809,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.18-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.19-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -855,7 +889,7 @@ def extract_team(img):
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.18-dev',
+        'ocr_version':'0.9.19-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
