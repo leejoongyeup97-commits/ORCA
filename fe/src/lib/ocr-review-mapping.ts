@@ -1,4 +1,5 @@
 import type { OcrExtractResult } from "@/lib/ocr-client";
+import { getPersonalMetricLabel } from "@/lib/personal-metric-labels";
 import type {
   MatchReviewDraft,
   ReviewHeroMetric,
@@ -31,7 +32,8 @@ function normalizeMetric(value: unknown): ReviewHeroMetric | null {
   return {
     metric_key: metricKey,
     scope: asString(record.scope) || "hero_specific",
-    label: asString(record.label_raw) || asString(record.label) || metricKey,
+    label: getPersonalMetricLabel(metricKey),
+    label_raw: asString(record.label_raw),
     value: asString(record.value),
     confidence,
     needs_review: record.needs_review === true,
@@ -97,7 +99,7 @@ export function applyPersonalOcrResults(
         asString(result.hero_id) ||
         current?.hero ||
         (index === 0 ? myPlayer?.hero || "" : ""),
-      hero_key: asString(result.hero_key) || current?.hero_key || "",
+      hero_key: asString(result.hero_key),
       play_time: asString(result.play_time) || current?.play_time || "",
       metrics,
     };

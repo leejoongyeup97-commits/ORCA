@@ -130,33 +130,33 @@ export default function HypothesesPage() {
   const confirmedCount = matches.filter((match) => match.status === "confirmed").length;
 
   return (
-    <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-[1280px]">
-        <section className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1320px]">
+        <section className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="mb-2 text-sm font-semibold text-[var(--orange)]">가설 Registry</p>
-            <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">미리 준비된 가설 Library</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">가설 Registry</p>
+            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">미리 준비된 가설 Library</h1>
+            <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--muted)]">
               사용자가 가설을 직접 쓰는 화면이 아닙니다. ORCA가 처음부터 검증할 질문을 등록해두고,
               데이터가 쌓이면 자동으로 검증 가능한 가설부터 올립니다.
             </p>
           </div>
-          <div className="rounded-2xl border border-[rgba(249,158,26,0.25)] bg-[rgba(249,158,26,0.05)] px-4 py-3">
-            <p className="m-0 text-[10px] font-bold text-[var(--orange)]">현재 규칙</p>
+          <div className="max-w-[360px] border-l border-[var(--line)] pl-4">
+            <p className="m-0 text-[10px] font-medium text-[var(--muted)]">현재 규칙</p>
             <p className="mb-0 mt-1 text-xs text-[var(--muted)]">
               발견과 검증을 분리하고, 표본이 부족하면 결론을 내리지 않습니다.
             </p>
           </div>
         </section>
 
-        <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <section className="mb-6 grid grid-cols-2 border-b border-[var(--line)] lg:grid-cols-4">
           <Metric label="사전 가설" value={String(rows.length)} />
           <Metric label="우선 검증" value={String(highCount)} accent />
           <Metric label="검증 대기" value={String(candidateCount)} success />
           <Metric label="확정 경기" value={String(confirmedCount)} />
         </section>
 
-        <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+        <section className="mb-6 border-y border-[var(--line)] py-3">
           <div className="grid gap-3 xl:grid-cols-[1fr_auto_auto] xl:items-center">
             <input
               value={query}
@@ -202,45 +202,45 @@ export default function HypothesesPage() {
             조건에 맞는 가설이 없습니다.
           </div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="border-t border-[var(--line)]">
             {visible.map((item) => {
               const category = HYPOTHESIS_CATEGORY_META[item.category];
               const priorityMeta = PRIORITY_META[item.priority];
               const readinessMeta = READINESS_META[item.state];
 
               return (
-                <article key={item.id} className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[#171e2a] px-2.5 py-1 text-[9px] font-black text-[#b8c0cf]">
+                <article key={item.id} className="grid gap-4 border-b border-[var(--line)] py-5 xl:grid-cols-[180px_1fr_180px]">
+                  <div className="flex flex-wrap content-start items-center gap-1.5">
+                    <span className="rounded-sm bg-[#151619] px-2 py-1 text-[9px] font-medium text-[#a9adb5]">
                       {category.label}
                     </span>
-                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${priorityMeta.className}`}>
+                    <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${priorityMeta.className}`}>
                       {priorityMeta.label}
                     </span>
-                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${readinessMeta.className}`}>
+                    <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${readinessMeta.className}`}>
                       {readinessMeta.label}
                     </span>
                   </div>
 
-                  <h2 className="mb-0 mt-4 text-base font-black text-white">{item.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#c9d0dc]">{item.question}</p>
+                  <h2 className="m-0 text-[14px] font-semibold text-white">{item.title}</h2>
+                  <p className="mt-1 text-[12px] leading-5 text-[#c7c9ce]">{item.question}</p>
 
-                  <div className="mt-4 rounded-xl border border-[var(--line)] bg-[#0d1118] p-3">
-                    <p className="m-0 text-[9px] font-black tracking-[0.08em] text-[var(--muted)]">RULE</p>
-                    <p className="mb-0 mt-1 break-words font-mono text-[10px] leading-5 text-[#9bc6ff]">{item.rule}</p>
+                  <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
+                    <p className="m-0 text-[9px] font-medium tracking-[0.08em] text-[var(--muted)]">RULE</p>
+                    <p className="mb-0 mt-1 break-words font-mono text-[10px] leading-5 text-[#aeb4bf]">{item.rule}</p>
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <div className="mb-2 flex items-center justify-between gap-4 text-[10px]">
                       <span className="text-[var(--muted)]">최소 표본 {item.minSamples}경기</span>
                       <span className="font-bold text-white">{item.available} / {item.minSamples}</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[#171e2a]">
-                      <div className="h-full rounded-full bg-[var(--orange)] transition-all" style={{ width: `${item.progress}%` }} />
+                    <div className="h-1 overflow-hidden rounded-sm bg-[#1b1d21]">
+                      <div className="h-full bg-[var(--orange)] transition-all" style={{ width: `${item.progress}%` }} />
                     </div>
                   </div>
 
-                  <div className="mt-4 border-t border-[var(--line)] pt-3">
+                  <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
                     <p className="m-0 text-[9px] font-black text-[var(--muted)]">필요 데이터</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {item.requiredData.map((key) => {
@@ -249,10 +249,10 @@ export default function HypothesesPage() {
                         return (
                           <span
                             key={key}
-                            className={`rounded-md border px-2 py-1 text-[9px] font-bold ${
+                            className={`rounded-sm border px-2 py-1 text-[9px] font-medium ${
                               ready
-                                ? "border-[rgba(121,227,156,0.18)] bg-[rgba(121,227,156,0.06)] text-[#8ee9aa]"
-                                : "border-[var(--line)] bg-[#0a0d12] text-[var(--muted)]"
+                                ? "border-[#2f4236] bg-transparent text-[#8fb89d]"
+                                : "border-[var(--line)] bg-transparent text-[var(--muted)]"
                             }`}
                           >
                             {HYPOTHESIS_DATA_LABELS[key]}
@@ -267,9 +267,9 @@ export default function HypothesesPage() {
           </div>
         )}
 
-        <section className="mt-5 rounded-2xl border border-[rgba(102,169,255,0.25)] bg-[rgba(102,169,255,0.05)] p-5">
-          <p className="m-0 text-sm font-bold text-[#9bc6ff]">자동 생성 가설은 따로 들어옵니다</p>
-          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+        <section className="mt-7 border-t border-[var(--line)] pt-4">
+          <p className="m-0 text-[12px] font-semibold text-white">자동 생성 가설은 따로 들어옵니다</p>
+          <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">
             이 화면의 항목은 사람이 미리 생각할 수 있는 사전 Library입니다. 나중에 ML이 특이 패턴을 발견하면
             별도의 candidate 가설로 추가하고, 새 경기에서 다시 검증하는 구조로 연결합니다.
           </p>
@@ -293,9 +293,9 @@ function Metric({
   const valueClass = success ? "text-[#8ee9aa]" : accent ? "text-[var(--orange)]" : "text-white";
 
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+    <div className="border-r border-[var(--line)] px-4 py-5 first:pl-0 last:border-r-0">
       <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
-      <p className={`mb-0 mt-2 text-2xl font-black ${valueClass}`}>{value}</p>
+      <p className={`mb-0 mt-2 text-[24px] font-semibold tracking-[-0.03em] ${valueClass}`}>{value}</p>
     </div>
   );
 }
@@ -305,10 +305,10 @@ function SelectButton({ active, onClick, children }: { active: boolean; onClick:
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
+      className={`cursor-pointer rounded-md border px-3 py-2 text-[10px] font-medium transition ${
         active
-          ? "border-[rgba(249,158,26,0.42)] bg-[var(--orange-soft)] text-[var(--orange)]"
-          : "border-[var(--line)] bg-[#0d1118] text-[var(--muted)] hover:text-white"
+          ? "border-[#3b3e45] bg-[#17181b] text-white"
+          : "border-transparent bg-transparent text-[var(--muted)] hover:bg-[#121316] hover:text-white"
       }`}
     >
       {children}
@@ -331,10 +331,10 @@ function CategoryButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
+      className={`cursor-pointer rounded-md border px-3 py-2 text-[10px] font-medium transition ${
         active
-          ? "border-[#4e5e76] bg-[#192230] text-white"
-          : "border-[var(--line)] bg-[#0d1118] text-[var(--muted)] hover:text-white"
+          ? "border-[#3b3e45] bg-[#17181b] text-white"
+          : "border-transparent bg-transparent text-[var(--muted)] hover:bg-[#121316] hover:text-white"
       }`}
     >
       {label} <span className="ml-1 opacity-60">{count}</span>

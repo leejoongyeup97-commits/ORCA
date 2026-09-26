@@ -1000,207 +1000,120 @@ export default function NewMatchPage() {
   }
 
   return (
-    <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-[1240px]">
+    <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1320px]">
+        <header className="flex flex-col gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Import</p>
+            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] text-white md:text-[32px]">경기 등록</h1>
+            <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">지정한 스크린샷 폴더에서 새 이미지만 찾아 경기 단위로 묶습니다.</p>
+          </div>
+          <button type="button" disabled={status === "scanning"} onClick={() => void autoClassify("manual")}
+            className="app-orange-button w-fit rounded-md px-4 py-2.5 text-[12px] font-semibold disabled:cursor-wait disabled:opacity-60">
+            {status === "scanning" ? "분류 중..." : "새 경기 찾기"}
+          </button>
+        </header>
 
-        <section className="mb-7">
-          <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 등록</p>
-          <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">스크린샷 폴더에서 경기를 자동으로 찾습니다</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            설정에서 오버워치 스크린샷 폴더를 한 번 지정해두면 됩니다. 이후에는 같은 폴더에서 새 파일만 찾아 요약 화면을 기준으로 경기별로 묶습니다.
-          </p>
+        <section className="grid border-b border-[var(--line)] md:grid-cols-[1fr_auto]">
+          <div className="py-4 md:pr-6">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px]">
+              <span className="text-[var(--muted)]">폴더 <strong className="ml-1 font-medium text-white">{folderName || "미연결"}</strong></span>
+              <span className="text-[var(--muted)]">마지막 처리 <strong className="ml-1 font-medium text-white">{lastProcessed || "없음"}</strong></span>
+              {folderName && <button type="button" onClick={resetCurrentFolder} className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-[var(--muted)] hover:text-white">처리 기록 초기화</button>}
+            </div>
+            <p className={`mb-0 mt-3 text-[12px] leading-5 ${status === "error" ? "text-[var(--danger)]" : status === "done" ? "text-[#9fcaae]" : "text-[var(--muted)]"}`}>{message}</p>
+          </div>
+          <div className="flex items-center border-t border-[var(--line)] py-4 md:border-l md:border-t-0 md:pl-6">
+            <span className="text-[11px] text-[var(--muted)]">기준</span>
+            <span className="ml-2 text-[11px] font-medium text-white">요약 화면 = 새 경기 시작</span>
+          </div>
         </section>
 
-        <div className="grid gap-5 lg:grid-cols-[1.45fr_0.75fr]">
-          <section className="space-y-5">
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 md:p-6">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[var(--orange-soft)] px-2.5 py-1 text-[10px] font-black text-[var(--orange)]">LOCAL AUTO IMPORT</span>
-                    {folderName && <span className="text-xs text-[var(--muted)]">고정 폴더 · {folderName}</span>}
-                  </div>
-                  <h2 className="m-0 text-xl font-bold">새 경기 자동 분류</h2>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">요약 → 팀 → 개인 상세 → 리플레이 순서가 섞여 있어도 화면 모양으로 구분합니다.</p>
+        {scanSummary && (
+          <section className="grid grid-cols-2 border-b border-[var(--line)] md:grid-cols-4">
+            <InlineMetric label="새 이미지" value={`${scanSummary.newFiles}장`} />
+            <InlineMetric label="발견 경기" value={`${scanSummary.detectedMatches}건`} accent />
+            <InlineMetric label="중복 제외" value={`${scanSummary.skippedDuplicates}장`} />
+            <InlineMetric label="요약 이전" value={`${scanSummary.unclassifiedBeforeSummary}장`} />
+          </section>
+        )}
+
+        <div className="grid gap-8 pt-8 xl:grid-cols-[1fr_280px]">
+          <section>
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="m-0 text-[14px] font-semibold text-white">발견된 경기</h2>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">분류 결과를 확인한 뒤 OCR 검수로 이어집니다.</p>
+              </div>
+              {matches.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="mr-1 text-[11px] text-[var(--muted)]">{matches.length}건</span>
+                  <button type="button" onClick={openBatchReview} className="cursor-pointer rounded-md border border-[var(--line)] bg-[#151619] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#1a1b1f]">전체 검수</button>
+                  <button type="button" disabled={bulkReviewState.running} onClick={() => void approveAllWithoutReview()} className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] text-[var(--muted)] hover:text-white disabled:opacity-50">
+                    {bulkReviewState.running ? `${bulkReviewState.current}/${bulkReviewState.total} 처리 중` : "일괄 진행"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={status === "scanning"}
-                  onClick={() => void autoClassify("manual")}
-                  className="min-w-[180px] rounded-xl bg-[var(--orange)] px-6 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-                >
-                  {status === "scanning" ? "분류 중..." : "자동 분류하기"}
-                </button>
-              </div>
-
-              <div className={`mt-5 rounded-xl border px-4 py-3.5 text-sm ${status === "error" ? "border-[#6b3131] bg-[#281515] text-[#ff9b9b]" : status === "done" ? "border-[rgba(121,227,156,0.25)] bg-[rgba(121,227,156,0.06)] text-[#bceacb]" : "border-[#303847] bg-[#0d1118] text-[var(--muted)]"}`}>
-                {message}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--muted)]">
-                <span>마지막 처리: <strong className="text-white">{lastProcessed || "없음"}</strong></span>
-                <span>기준: <strong className="text-white">요약 화면 = 새 경기 시작</strong></span>
-                {folderName && (
-                  <button type="button" onClick={resetCurrentFolder} className="cursor-pointer border-0 bg-transparent p-0 text-xs text-[#9bbcff] hover:text-white">처리 기록 초기화</button>
-                )}
-              </div>
-            </section>
-
-            {scanSummary && (
-              <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <MetricCard label="새 이미지" value={`${scanSummary.newFiles}장`} />
-                <MetricCard label="발견 경기" value={`${scanSummary.detectedMatches}건`} accent />
-                <MetricCard label="중복 제외" value={`${scanSummary.skippedDuplicates}장`} />
-                <MetricCard label="요약 이전" value={`${scanSummary.unclassifiedBeforeSummary}장`} />
-              </section>
-            )}
+              )}
+            </div>
 
             {matches.length > 0 ? (
-              <section className="space-y-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="m-0 text-sm font-bold">이번에 발견된 경기</p>
-                    <p className="mt-1 text-xs text-[var(--muted)]">이제 경기마다 뒤로 갈 필요 없이 전체 검수에서 순서대로 확인할 수 있습니다.</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[var(--muted)]">{matches.length}건</span>
-                    <button
-                      type="button"
-                      onClick={openBatchReview}
-                      className="cursor-pointer rounded-xl bg-[var(--orange)] px-4 py-2.5 text-xs font-black text-black hover:brightness-110"
-                    >
-                      전체 검수 시작
-                    </button>
-                    <button
-                      type="button"
-                      disabled={bulkReviewState.running}
-                      onClick={() => void approveAllWithoutReview()}
-                      className="cursor-pointer rounded-xl border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-4 py-2.5 text-xs font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
-                    >
-                      {bulkReviewState.running ? `전체 OCR 중 ${bulkReviewState.current}/${bulkReviewState.total}` : "분류 검수 건너뛰고 전체 OCR"}
-                    </button>
-                  </div>
-                </div>
-
-                {matches.map((match, matchIndex) => {
-                  const active = match.files.filter((item) => !item.excluded);
-                  const perType = {
-                    summary: active.filter((item) => item.type === "summary").length,
-                    team: active.filter((item) => item.type === "team").length,
-                    personal: active.filter((item) => item.type === "personal").length,
-                    replay: active.filter((item) => item.type === "replay").length,
-                    unknown: active.filter((item) => item.type === "unknown").length,
-                  };
+              <div className="border-y border-[var(--line)]">
+                {matches.map((match, index) => {
                   const validation = validateMatch(match);
+                  const active = match.files.filter((file) => !file.excluded);
+                  const summary = active.filter((file) => file.type === "summary").length;
+                  const team = active.filter((file) => file.type === "team").length;
+                  const personal = active.filter((file) => file.type === "personal").length;
+                  const replay = active.filter((file) => file.type === "replay").length;
+                  const unknown = active.filter((file) => file.type === "unknown").length;
                   return (
-                    <article key={match.id} className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
-                      <div className="flex flex-col gap-3 border-b border-[var(--line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--orange-soft)] text-xs font-black text-[var(--orange)]">{matchIndex + 1}</span>
-                            <h3 className="m-0 text-sm font-bold">{match.id}</h3>
-                            {match.reviewStatus === "ready_to_upload" && (
-                              <span className="rounded-full bg-[rgba(121,227,156,0.12)] px-2 py-1 text-[9px] font-black text-[#8ee9aa]">업로드 준비</span>
-                            )}
-                            {match.reviewStatus === "uploading" && (
-                              <span className="rounded-full bg-[rgba(249,158,26,0.14)] px-2 py-1 text-[9px] font-black text-[var(--orange)]">업로드 중</span>
-                            )}
-                            {match.reviewStatus === "pending_ocr" && (
-                              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2 py-1 text-[9px] font-black text-[#8fc1ff]">OCR 검수</span>
-                            )}
-                            {match.reviewStatus === "confirmed" && (
-                              <span className="rounded-full bg-[rgba(121,227,156,0.12)] px-2 py-1 text-[9px] font-black text-[#8ee9aa]">저장 완료</span>
-                            )}
-                          </div>
-                          <p className="ml-9 mt-1 text-xs text-[var(--muted)]">시작 {formatDate(match.startedAt)} · 이미지 {active.length}장</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <TypePill type="summary" count={perType.summary} />
-                          <TypePill type="team" count={perType.team} />
-                          <TypePill type="personal" count={perType.personal} />
-                          <TypePill type="replay" count={perType.replay} />
-                          {perType.unknown > 0 && <TypePill type="unknown" count={perType.unknown} />}
-                        </div>
+                    <article key={match.id} className="grid gap-4 border-b border-[var(--line-soft)] px-1 py-4 last:border-b-0 hover:bg-[#101114] sm:grid-cols-[56px_160px_1fr_auto] sm:items-center sm:px-2">
+                      <span className="text-[11px] text-[var(--muted)]">#{String(index + 1).padStart(2, "0")}</span>
+                      <div><p className="m-0 text-[12px] font-medium text-white">{formatDate(match.startedAt)}</p><p className="mt-1 truncate text-[10px] text-[var(--muted)]">{match.localMatchKey.slice(0, 22)}</p></div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[var(--muted)]">
+                        <span>요약 <strong className="font-medium text-[#c8cad0]">{summary}</strong></span>
+                        <span>팀 <strong className="font-medium text-[#c8cad0]">{team}</strong></span>
+                        <span>개인 <strong className="font-medium text-[#c8cad0]">{personal}</strong></span>
+                        <span>리플레이 <strong className="font-medium text-[#c8cad0]">{replay}</strong></span>
+                        {unknown > 0 && <span className="text-[var(--warning)]">미분류 {unknown}</span>}
+                        <span className={validation.valid ? "text-[#8fb89d]" : "text-[var(--warning)]"}>{validation.valid ? "검수 가능" : "확인 필요"}</span>
                       </div>
-
-                      <div className="divide-y divide-[var(--line)]">
-                        {match.files.map((item, fileIndex) => (
-                          <div key={item.id} className={`grid gap-2 px-5 py-3 text-xs sm:grid-cols-[90px_1fr_auto] sm:items-center ${item.excluded ? "opacity-45" : ""}`}>
-                            <span className={`w-fit rounded-md px-2 py-1 font-black ${typeClass(item.type)}`}>{TYPE_META[item.type].label}</span>
-                            <div className="min-w-0">
-                              <p className={`m-0 truncate font-semibold ${item.excluded ? "line-through text-[var(--muted)]" : "text-white"}`}>{item.file.name}</p>
-                              <p className="mt-1 text-[10px] text-[var(--muted)]">{formatDate(item.file.lastModified)} · {formatBytes(item.file.size)} · #{fileIndex + 1}</p>
-                            </div>
-                            <span className="text-[10px] text-[var(--muted)]">score {item.score.toFixed(3)}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-[#0d1118] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                        <span className={`text-xs ${validation.valid ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
-                          {match.reviewStatus === "confirmed"
-                            ? "분류 · OCR · 검수 저장 완료"
-                            : match.reviewStatus === "pending_ocr"
-                              ? "OCR 완료 · 아래에서 결과 검수" 
-                            : match.reviewStatus === "uploading"
-                              ? "업로드 진행 중"
-                              : match.reviewStatus === "ready_to_upload"
-                                ? "업로드 준비 완료"
-                                : validation.valid
-                                  ? "필수 구성 확인됨 · 검수 가능"
-                                  : validation.messages[0]}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openReview(match)}
-                          className="cursor-pointer rounded-lg border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-xs font-bold text-white transition hover:border-[#4b5668] hover:bg-[#19202d]"
-                        >
-                          {match.reviewStatus === "unreviewed" ? "검수하기" : "다시 검수"}
-                        </button>
-                      </div>
+                      <button type="button" onClick={() => openReview(match)} className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#d5d6d9] hover:bg-[#17181b] hover:text-white">{match.reviewStatus === "unreviewed" ? "검수" : "다시 보기"}</button>
                     </article>
                   );
                 })}
-              </section>
+              </div>
             ) : (
-              <section className="rounded-2xl border border-dashed border-[#364052] bg-[#0d1118] px-6 py-12 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#364052] bg-[var(--panel)] text-xl">⌕</div>
-                <p className="m-0 text-sm font-bold">아직 분류된 경기가 없습니다</p>
-                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">설정에서 고정한 스크린샷 폴더의 새 이미지를 확인하면 여기에 경기별로 나타납니다.</p>
-              </section>
+              <div className="border-y border-dashed border-[#34363c] py-16 text-center">
+                <p className="m-0 text-[13px] font-medium text-white">새로 분류된 경기가 없습니다</p>
+                <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">위의 ‘새 경기 찾기’를 누르면 마지막 처리 이후의 스크린샷만 확인합니다.</p>
+              </div>
             )}
           </section>
 
-          <aside className="space-y-5">
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-              <p className="mb-4 text-sm font-bold">자동 분류 규칙</p>
-              <div className="space-y-4 text-sm leading-6 text-[var(--muted)]">
-                <GuideRow number="01" title="요약" text="새 경기의 시작점으로 사용합니다." />
-                <GuideRow number="02" title="팀" text="10인 스코어보드 화면으로 분류합니다." />
-                <GuideRow number="03" title="개인" text="플레이 영웅 상세 화면은 여러 장 허용합니다." />
-                <GuideRow number="04" title="리플레이" text="하단 리플레이 UI를 기준으로 별도 분류합니다." />
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
-              <p className="mb-4 text-sm font-bold">이번 분류 결과</p>
-              <dl className="m-0 space-y-3 text-sm">
-                <StatusRow label="요약" value={`${counts.summary}장`} />
-                <StatusRow label="팀" value={`${counts.team}장`} />
-                <StatusRow label="개인" value={`${counts.personal}장`} />
-                <StatusRow label="리플레이" value={`${counts.replay}장`} />
-                <StatusRow label="미분류" value={`${counts.unknown}장`} warning={counts.unknown > 0} />
+          <aside className="space-y-7">
+            <section>
+              <h2 className="m-0 text-[13px] font-semibold text-white">이번 분류</h2>
+              <dl className="mt-3 border-t border-[var(--line)]">
+                <CompactStatusRow label="요약" value={`${counts.summary}장`} />
+                <CompactStatusRow label="팀" value={`${counts.team}장`} />
+                <CompactStatusRow label="개인" value={`${counts.personal}장`} />
+                <CompactStatusRow label="리플레이" value={`${counts.replay}장`} />
+                <CompactStatusRow label="미분류" value={`${counts.unknown}장`} warning={counts.unknown > 0} />
               </dl>
             </section>
-
-            <section className="rounded-2xl border border-[rgba(121,227,156,0.24)] bg-[rgba(121,227,156,0.05)] p-5">
-              <p className="m-0 text-sm font-bold text-[#8ee9aa]">고정 폴더 연결 흐름</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">이미지 분류 검수 → 바로 OCR 실행 → 같은 경기 등록 화면에서 OCR 값 검수 → 최종 저장 순서로 이어집니다.</p>
+            <section>
+              <h2 className="m-0 text-[13px] font-semibold text-white">분류 기준</h2>
+              <div className="mt-3 border-t border-[var(--line)] text-[11px] leading-5 text-[var(--muted)]">
+                <RuleRow number="01" title="요약" text="새 경기 시작" />
+                <RuleRow number="02" title="팀" text="10인 스코어보드" />
+                <RuleRow number="03" title="개인" text="영웅 상세 통계" />
+                <RuleRow number="04" title="리플레이" text="타임라인 화면" />
+              </div>
             </section>
-
-            <section className="rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.06)] p-5">
-              <p className="m-0 text-sm font-bold text-[#9bc6ff]">현재 단계</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">OCR은 localhost:8001의 실제 Python OCR 서버를 호출하고, Supabase 모드에서는 검수한 최종값을 confirmMatch로 저장합니다.</p>
+            <section className="border-t border-[var(--line)] pt-4">
+              <p className="m-0 text-[11px] leading-5 text-[var(--muted)]">분류 검수 → OCR 실행 → OCR 값 확인 → 최종 저장</p>
+              <p className="mb-0 mt-2 text-[10px] text-[#666a73]">OCR: localhost:8001 · Backend: {BACKEND_MODE}</p>
             </section>
           </aside>
         </div>
@@ -1661,6 +1574,18 @@ function ReviewScreen({
       </div>
     </main>
   );
+}
+
+function InlineMetric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return <div className="border-r border-[var(--line)] px-3 py-4 first:pl-0 last:border-r-0 md:px-5"><p className="m-0 text-[10px] text-[var(--muted)]">{label}</p><p className={`mb-0 mt-1 text-[18px] font-semibold ${accent ? "text-[var(--orange-2)]" : "text-white"}`}>{value}</p></div>;
+}
+
+function CompactStatusRow({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) {
+  return <div className="flex items-center justify-between border-b border-[var(--line-soft)] py-2.5 text-[11px]"><dt className="text-[var(--muted)]">{label}</dt><dd className={`m-0 font-medium ${warning ? "text-[var(--warning)]" : "text-[#d5d6d9]"}`}>{value}</dd></div>;
+}
+
+function RuleRow({ number, title, text }: { number: string; title: string; text: string }) {
+  return <div className="grid grid-cols-[28px_48px_1fr] border-b border-[var(--line-soft)] py-2.5"><span className="text-[#666a73]">{number}</span><strong className="font-medium text-[#d5d6d9]">{title}</strong><span>{text}</span></div>;
 }
 
 function validateMatch(match: DetectedMatch) {

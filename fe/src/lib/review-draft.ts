@@ -1,3 +1,5 @@
+import { getPersonalMetricLabel } from "@/lib/personal-metric-labels";
+
 export type ReviewTeam = "ally" | "enemy";
 
 export type ReviewPlayer = {
@@ -20,6 +22,7 @@ export type ReviewHeroMetric = {
   metric_key: string;
   scope: string;
   label: string;
+  label_raw?: string;
   value: string;
   confidence: number | null;
   needs_review: boolean;
@@ -62,7 +65,8 @@ function migrateMetric(value: unknown): ReviewHeroMetric | null {
   return {
     metric_key: metricKey,
     scope: asString(record.scope) || "hero_specific",
-    label: asString(record.label) || asString(record.label_raw) || metricKey,
+    label: getPersonalMetricLabel(metricKey),
+    label_raw: asString(record.label_raw) || asString(record.label),
     value:
       typeof record.value === "number" && Number.isFinite(record.value)
         ? String(record.value)
