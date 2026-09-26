@@ -88,7 +88,7 @@ export default function AnalysisPage() {
       <div className="mx-auto max-w-[1320px]">
         <section className="mb-6 border-b border-[var(--line)] pb-6">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">분석</p>
-          <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">확정 경기 기초 분석</h1>
+          <h1 className="m-0 text-[30px] font-semibold tracking-[-0.03em]">확정 경기 기초 분석</h1>
           <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--muted)]">
             현재는 확정된 경기의 검수값을 기준으로 승률과 맵, 영웅, 모드, 시즌, 패치, 선공/선수비를 비교합니다. 실제 통계 모델 연결 전 단계입니다.
           </p>
@@ -161,7 +161,7 @@ function Breakdown({ title, rows }: { title: string; rows: BreakdownRow[] }) {
                 <strong className="min-w-0 truncate text-xs text-white">{row.key}</strong>
                 <span className="text-xs font-semibold text-[#c8cad0]">{row.winRate === null ? "-" : `${row.winRate}%`}</span>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 text-[10px] text-[var(--muted)]">
+              <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-[var(--muted)]">
                 <span>{row.games}경기 · {row.wins}승 {row.losses}패</span>
                 <div className="h-1 w-20 overflow-hidden rounded-sm bg-[#1b1d21]">
                   <div className="h-full bg-[var(--orange)]" style={{ width: `${row.winRate ?? 0}%` }} />
