@@ -175,14 +175,14 @@ export default function MatchReviewEditor({
 
   if (!draft) {
     return (
-      <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 text-xs text-[var(--muted)]">
+      <section className="border-t border-[var(--line)] py-5 text-xs text-[var(--muted)]">
         OCR 검수 편집기를 준비하는 중...
       </section>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+    <section className="overflow-hidden border-t border-[var(--line)]">
       <div className="flex flex-col gap-3 border-b border-[var(--line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="m-0 text-sm font-bold">OCR 구조화 데이터 검수</p>
@@ -199,14 +199,14 @@ export default function MatchReviewEditor({
           <button
             type="button"
             onClick={resetDraft}
-            className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
+            className="cursor-pointer rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
           >
             초기화
           </button>
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-[var(--line)] bg-[#0d1118] px-4 py-3">
+      <div className="flex gap-2 border-b border-[var(--line)] bg-transparent px-4 py-3">
         <TabButton
           active={tab === "scoreboard"}
           onClick={() => setTab("scoreboard")}
@@ -257,7 +257,7 @@ function TabButton({
       onClick={onClick}
       className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
         active
-          ? "border-[rgba(249,158,26,0.42)] bg-[var(--orange-soft)] text-[var(--orange)]"
+          ? "border-[rgba(249,158,26,0.42)] bg-[#17181b] text-[#d8dade]"
           : "border-[var(--line)] bg-[#121823] text-[var(--muted)] hover:text-white"
       }`}
     >
@@ -312,11 +312,11 @@ function ScoreboardTable({
   return (
     <div className="border-b border-[var(--line)] last:border-b-0">
       <div className="flex items-center gap-2 bg-[#111722] px-5 py-3">
-        <span className="text-xs font-black text-white">{title}</span>
+        <span className="text-xs font-semibold text-white">{title}</span>
         <span className="text-[9px] text-[var(--muted)]">5명</span>
       </div>
 
-      <div className="grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 text-[9px] font-black text-[var(--muted)]">
+      <div className="grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 text-[9px] font-semibold text-[var(--muted)]">
         <span>나</span>
         <span>영웅 표시명</span>
         <span>hero_key</span>
@@ -332,16 +332,16 @@ function ScoreboardTable({
         <div
           key={player.id}
           className={`grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 last:border-b-0 ${
-            player.is_me ? "bg-[rgba(249,158,26,0.05)]" : "bg-[var(--panel)]"
+            player.is_me ? "bg-[rgba(249,158,26,0.05)]" : "bg-transparent"
           }`}
         >
           <button
             type="button"
             onClick={() => onSetMe(player.id)}
-            className={`cursor-pointer rounded-lg border text-[9px] font-black ${
+            className={`cursor-pointer rounded-lg border text-[9px] font-semibold ${
               player.is_me
-                ? "border-[rgba(249,158,26,0.45)] bg-[var(--orange-soft)] text-[var(--orange)]"
-                : "border-[var(--line)] bg-[#0d1118] text-[var(--muted)]"
+                ? "border-[rgba(249,158,26,0.45)] bg-[#17181b] text-[#d8dade]"
+                : "border-[var(--line)] bg-transparent text-[var(--muted)]"
             }`}
           >
             {player.is_me ? "ME" : player.slot}
@@ -412,7 +412,7 @@ function HeroDetailEditor({
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="rounded-xl border border-[var(--line)] bg-[#0d1118] p-4"
+            className="rounded-md border border-[var(--line)] bg-transparent p-4"
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
@@ -533,7 +533,7 @@ function HeroDetailEditor({
       <button
         type="button"
         onClick={onAdd}
-        className="mt-4 cursor-pointer rounded-xl border border-[var(--line)] bg-[#121823] px-4 py-3 text-xs font-bold text-white hover:border-[#4b5668]"
+        className="mt-4 cursor-pointer rounded-md border border-[var(--line)] bg-[#121823] px-4 py-3 text-xs font-bold text-white hover:border-[#4b5668]"
       >
         + 플레이 영웅 추가
       </button>
