@@ -90,7 +90,7 @@ export default function LoginPage() {
           </label>
 
           <button
-            className="app-orange-button mt-5 w-full rounded-md px-4 py-2.5 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
+            className="app-orange-button mt-5 w-full"
             disabled={loading || !config.configured}
           >
             {loading ? "로그인 중..." : "로그인"}
@@ -100,7 +100,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="mt-2 w-full cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-4 py-2.5 text-[12px] font-medium text-white hover:bg-[#151619]"
+              className="app-secondary-button mt-2 w-full cursor-pointer"
             >
               Mock 모드로 계속
             </button>
