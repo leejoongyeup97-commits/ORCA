@@ -249,6 +249,24 @@ begin
   set
     editable = coalesce(editable, '{}'::jsonb) || coalesce(p_match, '{}'::jsonb),
     played_at = coalesce(nullif(p_match->>'played_at','')::timestamptz, played_at),
+    map = coalesce(nullif(p_match->>'map_name',''), map),
+    mode = coalesce(nullif(p_match->>'game_mode',''), mode),
+    result = coalesce(nullif(p_match->>'result',''), result),
+    duration_seconds = coalesce(
+      case
+        when coalesce(p_match->>'match_duration','') ~ '^\\d{1,3}:\\d{2}
+  return jsonb_build_object('match_id', p_match_id, 'status', 'confirmed');
+end;
+$$;
+
+grant execute on function public.confirm_orca_match(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
+ then
+          split_part(p_match->>'match_duration', ':', 1)::integer * 60
+          + split_part(p_match->>'match_duration', ':', 2)::integer
+        else null
+      end,
+      duration_seconds
+    ),
     import_status = 'confirmed'
   where id = p_match_id and user_id = v_user_id;
 
