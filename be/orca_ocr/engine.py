@@ -443,21 +443,29 @@ def _rapid_read_cell(engine,cell,key):
     return best,max(grouped[best])
 
 def _rapid_read_cell_consensus(engine,cell,key):
-    """RapidOCR-only ensemble for compact scoreboard counts.
+    """RapidOCR-only ensemble for every Team numeric stat.
 
-    Use several crops/threshold variants and majority vote so a single 7->1
-    misread cannot dominate the final Team stat.
+    Small count columns can tolerate slightly tighter crops. Large totals keep
+    the full horizontal extent so leading digits are not clipped.
     """
-    if key not in ('elims','assists','deaths'):
-        return _rapid_read_cell(engine,cell,key)
-
     gray=cv2.cvtColor(cell,cv2.COLOR_BGR2GRAY) if len(cell.shape)==3 else cell
     h,w=gray.shape[:2]
-    crops=[
-        gray,
-        gray[:, max(0,int(w*0.08)):min(w,int(w*0.92))],
-        gray[max(0,int(h*0.08)):min(h,int(h*0.92)), :],
-    ]
+    small=key in ('elims','assists','deaths')
+    max_value=99 if small else 99999
+
+    if small:
+        crops=[
+            gray,
+            gray[:, max(0,int(w*0.06)):min(w,int(w*0.94))],
+            gray[max(0,int(h*0.06)):min(h,int(h*0.94)), :],
+        ]
+    else:
+        # Damage/healing/mitigation values are wider. Never trim left/right
+        # aggressively because that can turn 13,220 into 3,220.
+        crops=[
+            gray,
+            gray[max(0,int(h*0.05)):min(h,int(h*0.95)), :],
+        ]
 
     reads=[]
     for crop in crops:
@@ -468,7 +476,7 @@ def _rapid_read_cell_consensus(engine,cell,key):
             variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
         for image in variants:
             value,score=_rapid_read_one(engine,image)
-            if value is not None and value<=99:
+            if value is not None and value<=max_value:
                 reads.append((value,float(score)))
 
     if not reads:
@@ -480,11 +488,15 @@ def _rapid_read_cell_consensus(engine,cell,key):
 
     best=max(
         grouped,
-        key=lambda value:(len(grouped[value]), sum(grouped[value])/len(grouped[value]), max(grouped[value]))
+        key=lambda value:(
+            len(grouped[value]),
+            sum(grouped[value])/len(grouped[value]),
+            max(grouped[value])
+        )
     )
     votes=len(grouped[best])
     avg_score=sum(grouped[best])/votes
-    confidence=min(0.99,0.65+0.03*votes+0.20*avg_score)
+    confidence=min(0.99,0.62+0.025*votes+0.22*avg_score)
     return best,confidence
 
 
@@ -750,7 +762,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.16-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.17-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -830,7 +842,7 @@ def extract_team(img):
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.16-dev',
+        'ocr_version':'0.9.17-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
