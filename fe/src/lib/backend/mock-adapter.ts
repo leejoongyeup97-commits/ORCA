@@ -8,7 +8,9 @@ import type {
   MatchImportView,
   MatchListItem,
   MatchManagementAdapter,
+  MapSubmapOption,
   OcrReviewState,
+  RoundDetail,
   UploadTarget,
 } from "./contracts";
 
@@ -21,6 +23,7 @@ type StoredMockMatch = {
   uploads: UploadTarget[];
   editable?: Partial<EditableMatchFields>;
   ocr?: Partial<OcrReviewState>;
+  roundDetails?: RoundDetail[];
 };
 
 const STORAGE_PREFIX = "ow-insight-mock-backend:";
@@ -269,11 +272,31 @@ export class MockMatchBackendAdapter implements MatchManagementAdapter {
     return toView(next);
   }
 
+  async listMapSubmaps(_mapName: string, _gameMode: "control" | "flashpoint"): Promise<MapSubmapOption[]> {
+    return [];
+  }
+
+  async getRoundDetails(matchId: string): Promise<RoundDetail[]> {
+    const current = loadAll().find((item) => item.matchId === matchId);
+    return current?.roundDetails ?? [];
+  }
+
   async confirmMatch(
     input: ConfirmMatchInput,
   ): Promise<{ matchId: string; status: "confirmed" }> {
     await sleep(250);
-    updateStored(input.match_id, { status: "confirmed" });
+    const rawRounds = Array.isArray(input.manual_fields.round_details)
+      ? input.manual_fields.round_details
+      : [];
+    const roundDetails = rawRounds
+      .filter((item): item is RoundDetail => {
+        if (!item || typeof item !== "object") return false;
+        const row = item as Partial<RoundDetail>;
+        return typeof row.order === "number" && typeof row.submap === "string" &&
+          ["win", "loss", "draw", "unknown"].includes(String(row.result));
+      })
+      .map((item) => ({ ...item }));
+    updateStored(input.match_id, { status: "confirmed", roundDetails });
     return { matchId: input.match_id, status: "confirmed" };
   }
 }
