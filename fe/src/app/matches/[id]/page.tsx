@@ -538,6 +538,11 @@ export default function MatchDetailPage() {
                     <option value="neutral">해당 없음</option>
                   </select>
                 </Field>
+
+                <Field label="경기 시간" changed={form.match_duration !== match.editable.match_duration}>
+                  <input value={form.match_duration} onChange={(e) => setForm({ ...form, match_duration: e.target.value })} placeholder="예: 14:32" className="field-input" />
+                </Field>
+
                 <RoundDetailsEditor
                   rounds={roundDetails}
                   submaps={submapOptions}
@@ -545,10 +550,6 @@ export default function MatchDetailPage() {
                   enabled={referenceGameMode(form.game_mode) !== null}
                   onChange={setRoundDetails}
                 />
-
-                <Field label="경기 시간" changed={form.match_duration !== match.editable.match_duration}>
-                  <input value={form.match_duration} onChange={(e) => setForm({ ...form, match_duration: e.target.value })} placeholder="예: 14:32" className="field-input" />
-                </Field>
                 <Field label="메모" wide changed={form.notes !== match.editable.notes}>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="특이사항이나 수동 메모" rows={4} className="field-input resize-y" />
                 </Field>
