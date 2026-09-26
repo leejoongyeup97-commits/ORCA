@@ -100,8 +100,9 @@ def _summary_map_reads(img):
             pass
 
         # Korean recognizer is used only as an extra candidate source.
+        # Fixed Summary crops use a fast-first path before the full ensemble.
         try:
-            reads.extend(_ocr_korean(crop))
+            reads.extend(_ocr_korean_summary_fast(crop))
         except Exception:
             pass
 
@@ -185,7 +186,7 @@ def extract_summary(img):
     card = ROI['summary_result']
     card_crop=_crop(img,card)
     text = _ocr(card_crop, 6)
-    korean_card_reads=_ocr_korean(card_crop)
+    korean_card_reads=_ocr_korean_summary_fast(card_crop)
     korean_text='\n'.join(korean_card_reads)
     boxes = {
         'result': (0.682, 0.565, 0.790, 0.635),
@@ -196,8 +197,8 @@ def extract_summary(img):
     }
     field_raw = {k: _ocr_box(img, b, 7) for k,b in boxes.items()}
     try:
-        field_raw['result_ko']='\n'.join(_ocr_korean(_crop(img,boxes['result'])))
-        field_raw['mode_ko']='\n'.join(_ocr_korean(_crop(img,boxes['mode'])))
+        field_raw['result_ko']='\n'.join(_ocr_korean_summary_fast(_crop(img,boxes['result'])))
+        field_raw['mode_ko']='\n'.join(_ocr_korean_summary_fast(_crop(img,boxes['mode'])))
     except Exception:
         field_raw['result_ko']=''
         field_raw['mode_ko']=''
@@ -291,7 +292,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.24-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.25-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -427,6 +428,33 @@ def _ocr_korean(img):
             except Exception:
                 continue
     return reads
+
+
+def _ocr_korean_summary_fast(img):
+    """Fast-first Korean OCR for Summary fields.
+
+    Summary uses fixed crops, so try two inexpensive reads first. The full
+    multi-variant Korean ensemble is kept only as a fallback when both miss.
+    """
+    engine=_get_rapidocr_korean_engine()
+    reads=[]
+    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY) if len(img.shape)==3 else img
+    up=cv2.resize(gray,None,fx=2.5,fy=2.5,interpolation=cv2.INTER_CUBIC)
+
+    for image,use_det in ((img,True),(up,False)):
+        try:
+            result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+            txts=getattr(result,'txts',None) or ()
+            for txt in txts:
+                value=str(txt).strip()
+                if value:
+                    reads.append(value)
+        except Exception:
+            continue
+
+    if reads:
+        return list(dict.fromkeys(reads))
+    return _ocr_korean(img)
 
 def _find_split_team_rows(board):
     """Find blue and red scoreboard rows as two separate five-row sequences."""
