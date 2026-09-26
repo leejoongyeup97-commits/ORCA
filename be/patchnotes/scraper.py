@@ -266,6 +266,22 @@ def _items_from_raw_markup(raw_html: str, limit: int) -> list[PatchNoteItem]:
     return items
 
 
+def _title_contexts(raw_html: str, max_items: int = 3, radius: int = 900) -> list[str]:
+    normalized = html_lib.unescape(raw_html).replace(r"\/", "/")
+    pattern = re.compile(
+        r"오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일"
+    )
+    contexts: list[str] = []
+    for match in pattern.finditer(normalized):
+        left = max(0, match.start() - radius)
+        right = min(len(normalized), match.end() + radius)
+        snippet = normalized[left:right]
+        contexts.append(snippet)
+        if len(contexts) >= max_items:
+            break
+    return contexts
+
+
 def patchnotes_debug() -> dict:
     """Small diagnostics payload so we can see what Nexon actually returned on the user's PC."""
     plain = _fetch_html(LIST_URL)
@@ -273,7 +289,7 @@ def patchnotes_debug() -> dict:
     plain_parser.feed(plain)
 
     result = {
-        "collector_version": "0.2",
+        "collector_version": "0.3",
         "chrome_path": _find_chrome_executable(),
         "plain_html_length": len(plain),
         "plain_anchor_count": len(plain_parser.anchors),
@@ -282,6 +298,8 @@ def patchnotes_debug() -> dict:
             r"오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일",
             html_lib.unescape(plain),
         )[:10],
+        "plain_title_context": _title_contexts(plain),
+        "plain_anchor_hrefs": [href for href, _ in plain_parser.anchors[:30]],
     }
 
     try:
@@ -297,6 +315,8 @@ def patchnotes_debug() -> dict:
                     r"오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일",
                     html_lib.unescape(rendered),
                 )[:10],
+                "rendered_title_context": _title_contexts(rendered),
+                "rendered_anchor_hrefs": [href for href, _ in rendered_parser.anchors[:80]],
             }
         )
     except Exception as exc:
