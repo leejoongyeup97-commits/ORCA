@@ -269,18 +269,3 @@ end;
 $$;
 
 grant execute on function public.confirm_orca_match(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
- then
-          split_part(p_match->>'match_duration', ':', 1)::integer * 60
-          + split_part(p_match->>'match_duration', ':', 2)::integer
-        else null
-      end,
-      duration_seconds
-    ),
-    import_status = 'confirmed'
-  where id = p_match_id and user_id = v_user_id;
-
-  return jsonb_build_object('match_id', p_match_id, 'status', 'confirmed');
-end;
-$$;
-
-grant execute on function public.confirm_orca_match(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
