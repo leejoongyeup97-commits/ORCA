@@ -135,14 +135,14 @@ export default function HypothesesPage() {
         <section className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">가설 Registry</p>
-            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">미리 준비된 가설 Library</h1>
+            <h1 className="m-0 text-[30px] font-semibold tracking-[-0.03em]">미리 준비된 가설 Library</h1>
             <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--muted)]">
               사용자가 가설을 직접 쓰는 화면이 아닙니다. ORCA가 처음부터 검증할 질문을 등록해두고,
               데이터가 쌓이면 자동으로 검증 가능한 가설부터 올립니다.
             </p>
           </div>
           <div className="max-w-[360px] border-l border-[var(--line)] pl-4">
-            <p className="m-0 text-[10px] font-medium text-[var(--muted)]">현재 규칙</p>
+            <p className="m-0 text-[11px] font-medium text-[var(--muted)]">현재 규칙</p>
             <p className="mb-0 mt-1 text-xs text-[var(--muted)]">
               발견과 검증을 분리하고, 표본이 부족하면 결론을 내리지 않습니다.
             </p>
@@ -211,27 +211,27 @@ export default function HypothesesPage() {
               return (
                 <article key={item.id} className="grid gap-4 border-b border-[var(--line)] py-5 xl:grid-cols-[180px_1fr_180px]">
                   <div className="flex flex-wrap content-start items-center gap-1.5">
-                    <span className="rounded-sm bg-[#151619] px-2 py-1 text-[9px] font-medium text-[#a9adb5]">
+                    <span className="rounded-sm bg-[#151619] px-2 py-1 text-[11px] font-medium text-[#a9adb5]">
                       {category.label}
                     </span>
-                    <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${priorityMeta.className}`}>
+                    <span className={`rounded-sm px-2 py-1 text-[11px] font-medium ${priorityMeta.className}`}>
                       {priorityMeta.label}
                     </span>
-                    <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${readinessMeta.className}`}>
+                    <span className={`rounded-sm px-2 py-1 text-[11px] font-medium ${readinessMeta.className}`}>
                       {readinessMeta.label}
                     </span>
                   </div>
 
-                  <h2 className="m-0 text-[14px] font-semibold text-white">{item.title}</h2>
+                  <h2 className="m-0 text-[15px] font-semibold text-white">{item.title}</h2>
                   <p className="mt-1 text-[12px] leading-5 text-[#c7c9ce]">{item.question}</p>
 
                   <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
-                    <p className="m-0 text-[9px] font-medium tracking-[0.08em] text-[var(--muted)]">RULE</p>
-                    <p className="mb-0 mt-1 break-words font-mono text-[10px] leading-5 text-[#aeb4bf]">{item.rule}</p>
+                    <p className="m-0 text-[11px] font-medium tracking-[0.08em] text-[var(--muted)]">RULE</p>
+                    <p className="mb-0 mt-1 break-words font-mono text-[11px] leading-5 text-[#aeb4bf]">{item.rule}</p>
                   </div>
 
                   <div className="mt-3">
-                    <div className="mb-2 flex items-center justify-between gap-4 text-[10px]">
+                    <div className="mb-2 flex items-center justify-between gap-4 text-[11px]">
                       <span className="text-[var(--muted)]">최소 표본 {item.minSamples}경기</span>
                       <span className="font-bold text-white">{item.available} / {item.minSamples}</span>
                     </div>
@@ -241,7 +241,7 @@ export default function HypothesesPage() {
                   </div>
 
                   <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
-                    <p className="m-0 text-[9px] font-semibold text-[var(--muted)]">필요 데이터</p>
+                    <p className="m-0 text-[11px] font-semibold text-[var(--muted)]">필요 데이터</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {item.requiredData.map((key) => {
                         const count = countAvailable(matches, key);
@@ -249,7 +249,7 @@ export default function HypothesesPage() {
                         return (
                           <span
                             key={key}
-                            className={`rounded-sm border px-2 py-1 text-[9px] font-medium ${
+                            className={`rounded-sm border px-2 py-1 text-[11px] font-medium ${
                               ready
                                 ? "border-[#2f4236] bg-transparent text-[#8fb89d]"
                                 : "border-[var(--line)] bg-transparent text-[var(--muted)]"
@@ -305,7 +305,7 @@ function SelectButton({ active, onClick, children }: { active: boolean; onClick:
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-md border px-3 py-2 text-[10px] font-medium transition ${
+      className={`cursor-pointer rounded-md border px-3 py-2 text-[11px] font-medium transition ${
         active
           ? "border-[#3b3e45] bg-[#17181b] text-white"
           : "border-transparent bg-transparent text-[var(--muted)] hover:bg-[#121316] hover:text-white"
@@ -331,7 +331,7 @@ function CategoryButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-md border px-3 py-2 text-[10px] font-medium transition ${
+      className={`cursor-pointer rounded-md border px-3 py-2 text-[11px] font-medium transition ${
         active
           ? "border-[#3b3e45] bg-[#17181b] text-white"
           : "border-transparent bg-transparent text-[var(--muted)] hover:bg-[#121316] hover:text-white"
