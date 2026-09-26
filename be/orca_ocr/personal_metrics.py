@@ -787,6 +787,11 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "charged_shot_accuracy","transcendence_efficiency","players_saved",
         "charged_shot_kills","self_healing","weapon_accuracy","damage_amplified",
     ],
+    "juno": [
+        "critical_hit_accuracy","damage_amplified","players_saved",
+        "pulsar_torpedoes_damage","pulsar_torpedoes_healing","weapon_accuracy",
+        "orbital_ray_healing","orbital_ray_assists",
+    ],
 }
 
 
