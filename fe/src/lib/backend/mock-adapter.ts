@@ -9,6 +9,7 @@ import type {
   MatchListItem,
   MatchManagementAdapter,
   MapSubmapOption,
+  OcrExecutionProgress,
   OcrReviewState,
   RoundDetail,
   UploadTarget,
@@ -220,9 +221,22 @@ export class MockMatchBackendAdapter implements MatchManagementAdapter {
     saveAll(next);
   }
 
-  async runMockOcr(matchId: string): Promise<MatchImportView> {
+  async runMockOcr(
+    matchId: string,
+    options: { onProgress?: (progress: OcrExecutionProgress) => void } = {},
+  ): Promise<MatchImportView> {
     const current = loadAll().find((item) => item.matchId === matchId);
     if (!current) throw new Error("MOCK_MATCH_NOT_FOUND");
+
+    options.onProgress?.({
+      stage: "starting",
+      current: 0,
+      total: 1,
+      percent: 0,
+      success_count: 0,
+      error_count: 0,
+      message: "Mock OCR을 시작합니다.",
+    });
 
     updateStored(matchId, {
       status: "processing_ocr",
@@ -236,6 +250,16 @@ export class MockMatchBackendAdapter implements MatchManagementAdapter {
 
     const refreshed = loadAll().find((item) => item.matchId === matchId);
     if (!refreshed) throw new Error("MOCK_MATCH_NOT_FOUND");
+    options.onProgress?.({
+      stage: "file_success",
+      current: 1,
+      total: 1,
+      percent: 100,
+      success_count: 1,
+      error_count: 0,
+      message: "Mock OCR 처리 완료",
+    });
+
     const next = updateStored(matchId, {
       status: "needs_review",
       ocr: {
@@ -243,6 +267,15 @@ export class MockMatchBackendAdapter implements MatchManagementAdapter {
         overall_confidence: null,
         message: "Mock OCR 완료. 실제 이미지를 읽은 값은 아니며 검수 UI 테스트용 빈 결과입니다.",
       },
+    });
+    options.onProgress?.({
+      stage: "completed",
+      current: 1,
+      total: 1,
+      percent: 100,
+      success_count: 1,
+      error_count: 0,
+      message: "Mock OCR 재실행 완료",
     });
     return toView(next);
   }
