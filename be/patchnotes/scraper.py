@@ -358,6 +358,86 @@ def _items_from_html(raw_html: str, limit: int) -> list[PatchNoteItem]:
     return items
 
 
+
+def _list_patchnotes_via_playwright(limit: int) -> list[PatchNoteItem]:
+    """Use the real browser click behavior when Nexon's cards have no href in the DOM."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError(
+            "Playwright is not installed. Restart START_OCR.bat so requirements are synchronized."
+        ) from exc
+
+    chrome = _find_chrome_executable()
+    if not chrome:
+        raise RuntimeError(
+            "Chrome executable was not found. Set ORCA_CHROME_PATH if Chrome is installed in a custom location."
+        )
+
+    items: list[PatchNoteItem] = []
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(
+            executable_path=chrome,
+            headless=True,
+            args=["--disable-extensions", "--no-first-run", "--no-default-browser-check"],
+        )
+        page = browser.new_page(locale="ko-KR")
+        page.goto(LIST_URL, wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_selector(".news-list-item", timeout=15_000)
+        page.wait_for_timeout(750)
+
+        count = min(page.locator(".news-list-item").count(), limit)
+        for index in range(count):
+            cards = page.locator(".news-list-item")
+            card = cards.nth(index)
+
+            try:
+                title = _clean_inline(card.locator(".news-title").inner_text(timeout=5_000))
+            except Exception:
+                title = ""
+
+            if not title or "패치" not in title:
+                continue
+
+            origin_url = page.url
+            try:
+                card.click(timeout=5_000)
+                page.wait_for_timeout(250)
+                page.wait_for_function(
+                    "(oldUrl) => window.location.href !== oldUrl",
+                    arg=origin_url,
+                    timeout=8_000,
+                )
+                detail_url = page.url
+            except Exception:
+                # Some cards may use delayed router navigation.
+                page.wait_for_timeout(750)
+                detail_url = page.url
+
+            parsed = urlparse(detail_url)
+            if (
+                detail_url != origin_url
+                and parsed.hostname in _ALLOWED_HOSTS
+                and parsed.path.startswith("/news/patchnotes")
+            ):
+                items.append(
+                    PatchNoteItem(
+                        title=title,
+                        published_date=_to_iso_date(title),
+                        url=detail_url,
+                    )
+                )
+
+            if page.url != LIST_URL:
+                page.goto(LIST_URL, wait_until="domcontentloaded", timeout=30_000)
+                page.wait_for_selector(".news-list-item", timeout=15_000)
+                page.wait_for_timeout(300)
+
+        browser.close()
+
+    return items
+
+
 def list_patchnotes(limit: int = 20) -> list[dict]:
     limit = max(1, min(limit, 100))
 
@@ -389,6 +469,12 @@ def list_patchnotes(limit: int = 20) -> list[dict]:
                         url=url,
                     )
                 )
+
+    # Nexon's current cards are clickable Vue components with no href in the
+    # rendered HTML. When markup parsing cannot discover routes, use the same
+    # browser click behavior a user would use and capture the resulting URL.
+    if not items:
+        items = _list_patchnotes_via_playwright(limit)
 
     return [asdict(item) for item in items]
 
