@@ -289,3 +289,164 @@ export async function runRealOcrForMatch(
 
   return view;
 }
+
+
+export async function rerunRealOcrFilesForMatch(
+  adapter: MatchManagementAdapter,
+  matchId: string,
+  files: OcrSourceFile[],
+  options: OcrRunOptions = {},
+) {
+  const existing = getStoredOcrBundle(matchId);
+  const totalSteps = Math.max(2, files.length + 2);
+  const emit = (
+    event: Omit<OcrProgressEvent, "percent" | "total"> & { total?: number },
+  ) => {
+    const total = event.total ?? totalSteps;
+    const percent = Math.max(
+      0,
+      Math.min(100, Math.round((event.current / Math.max(1, total)) * 100)),
+    );
+    options.onProgress?.({ ...event, total, percent });
+  };
+
+  emit({
+    stage: "starting",
+    level: "info",
+    message: `선택한 ${files.length}개 파일 OCR 재시도를 시작합니다.`,
+    current: 0,
+  });
+
+  await adapter.setOcrState(matchId, "processing_ocr", {
+    message: "선택한 이미지의 실제 OCR을 다시 실행하고 있습니다.",
+  });
+
+  const retried: StoredOcrFileResult[] = [];
+
+  for (let index = 0; index < files.length; index += 1) {
+    const item = files[index];
+    const step = index + 1;
+
+    emit({
+      stage: "file_start",
+      level: "info",
+      message: `[${step}/${files.length}] ${item.screen_type} OCR 재시도 중 · ${item.file.name}`,
+      current: index,
+      filename: item.file.name,
+      screen_type: item.screen_type,
+    });
+
+    try {
+      const result = await extractScreenshot(item.screen_type as OcrScreenType, item.file);
+      retried.push({
+        filename: item.file.name,
+        screen_type: item.screen_type,
+        ok: true,
+        result,
+      });
+      emit({
+        stage: "file_success",
+        level: "success",
+        message: `[${step}/${files.length}] ${item.screen_type} OCR 재시도 완료 · ${item.file.name}`,
+        current: step,
+        filename: item.file.name,
+        screen_type: item.screen_type,
+      });
+    } catch (error) {
+      const rawError = error instanceof Error ? error.message : String(error);
+      retried.push({
+        filename: item.file.name,
+        screen_type: item.screen_type,
+        ok: false,
+        error: rawError || "OCR 처리 실패",
+      });
+      emit({
+        stage: "file_error",
+        level: "error",
+        message: `[${step}/${files.length}] ${item.screen_type} OCR 재시도 실패 · ${item.file.name}`,
+        current: step,
+        filename: item.file.name,
+        screen_type: item.screen_type,
+        error: rawError || "OCR 처리 실패",
+      });
+    }
+  }
+
+  emit({
+    stage: "finalizing",
+    level: "info",
+    message: "재시도 결과를 기존 OCR 결과와 병합하고 있습니다.",
+    current: files.length + 1,
+  });
+
+  const retryMap = new Map(
+    retried.map((item) => [`${item.screen_type}::${item.filename}`, item] as const),
+  );
+  const merged = existing
+    ? existing.files.map((item) => {
+        const key = `${item.screen_type}::${item.filename}`;
+        return retryMap.get(key) ?? item;
+      })
+    : [];
+
+  for (const item of retried) {
+    const key = `${item.screen_type}::${item.filename}`;
+    if (!merged.some((current) => `${current.screen_type}::${current.filename}` === key)) {
+      merged.push(item);
+    }
+  }
+
+  const generatedAt = new Date().toISOString();
+  const bundle: StoredOcrBundle = {
+    match_id: matchId,
+    generated_at: generatedAt,
+    files: merged,
+  };
+  localStorage.setItem(`${STORAGE_PREFIX}${matchId}`, JSON.stringify(bundle));
+
+  const summary = merged.find(
+    (item) => item.ok && item.screen_type === "summary" && item.result,
+  )?.result;
+  if (summary) {
+    const patch = summaryPatch(summary);
+    if (Object.keys(patch).length > 0) {
+      await adapter.updateMatchImport(matchId, patch);
+    }
+  }
+
+  let reviewDraft = loadReviewDraft(matchId);
+  const team = merged.find(
+    (item) => item.ok && item.screen_type === "team" && item.result,
+  )?.result;
+  if (team) reviewDraft = applyTeamOcrResult(reviewDraft, team);
+
+  const personal = merged
+    .filter((item) => item.ok && item.screen_type === "personal" && item.result)
+    .map((item) => item.result as OcrExtractResult);
+  reviewDraft = applyPersonalOcrResults(reviewDraft, personal);
+  saveReviewDraft(matchId, reviewDraft);
+
+  const successCount = merged.filter((item) => item.ok).length;
+  const attemptedCount = merged.filter((item) => item.screen_type !== "unknown").length;
+  const confidence = averageConfidence(merged);
+  const status = successCount > 0 ? "needs_review" : "failed";
+  const message =
+    successCount > 0
+      ? `OCR 재시도 완료 · 전체 ${successCount}/${attemptedCount} 화면 성공${successCount < attemptedCount ? " · 일부 실패" : ""}`
+      : "OCR 재시도에 실패했습니다. OCR 서버 상태를 확인해 주세요.";
+
+  const view = await adapter.setOcrState(matchId, status, {
+    generated_at: generatedAt,
+    overall_confidence: confidence,
+    message,
+  });
+
+  emit({
+    stage: "completed",
+    level: status === "failed" ? "error" : "success",
+    message,
+    current: totalSteps,
+  });
+
+  return view;
+}

@@ -22,12 +22,24 @@ export default function RoundDetailsEditor({
   enabled: boolean;
   onChange: (rounds: RoundDetail[]) => void;
 }) {
+  const availableSubmaps = submaps.map((submap) => submap.submap_name);
+
+  const canAddRound = !loading && rounds.length < availableSubmaps.length;
+
   function addRound() {
+    if (!canAddRound) return;
+
+    const used = new Set(rounds.map((round) => round.submap));
+    const nextSubmap =
+      availableSubmaps.find((submap) => !used.has(submap)) ??
+      availableSubmaps[0] ??
+      "";
+
     onChange([
       ...rounds,
       {
         order: rounds.length + 1,
-        submap: submaps[0]?.submap_name ?? "",
+        submap: nextSubmap,
         result: "unknown",
       },
     ]);
@@ -51,29 +63,20 @@ export default function RoundDetailsEditor({
     );
   }
 
-  if (!enabled) {
-    return (
-      <section className="border-t border-[var(--line)] pt-4">
-        <h2 className="m-0 text-[15px] font-semibold text-white">세트 상세</h2>
-        <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">
-          쟁탈 또는 플래시포인트 경기에서 세트별 세부맵과 결과를 기록합니다.
-        </p>
-      </section>
-    );
-  }
+  if (!enabled) return null;
 
   return (
-    <section className="border-t border-[var(--line)] pt-4">
+    <section className="md:col-span-2 border-t border-[var(--line)] pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="m-0 text-[15px] font-semibold text-white">세트 상세</h2>
+          <h2 className="m-0 text-[15px] font-semibold text-white">세트별 세부맵 · 결과</h2>
           <p className="mt-1 text-[12px] leading-6 text-[var(--muted)]">
-            DB의 세부맵 기준 데이터를 사용합니다. 세트 순서는 위에서 아래 순서로 저장됩니다.
+            세부맵을 선택하고 각 세트의 승패를 기록하세요. 진행 순서는 위에서 아래로 자동 저장됩니다.
           </p>
         </div>
         <button
           type="button"
-          disabled={loading || submaps.length === 0}
+          disabled={!canAddRound}
           onClick={addRound}
           className="app-secondary-button cursor-pointer"
         >
@@ -83,22 +86,26 @@ export default function RoundDetailsEditor({
 
       {loading ? (
         <p className="mt-4 text-[12px] text-[var(--muted)]">세부맵 기준 데이터를 불러오는 중...</p>
-      ) : submaps.length === 0 ? (
-        <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
-          현재 맵/모드에 등록된 세부맵 기준 데이터가 없습니다.
-        </p>
+      ) : rounds.length === 0 && submaps.length === 0 ? (
+        <div className="mt-4 border-y border-[var(--line)] py-4">
+          <p className="m-0 text-[12px] leading-6 text-[var(--muted)]">
+            현재 맵/모드에 등록된 세부맵 기준 데이터가 없습니다.
+          </p>
+        </div>
       ) : rounds.length === 0 ? (
         <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
-          아직 세트가 없습니다. ‘세트 추가’를 눌러 기록을 시작하세요.
+          아직 입력된 세트가 없습니다. ‘세트 추가’를 눌러 1세트부터 기록하세요.
         </p>
-      ) : (
+      ) : null}
+
+      {rounds.length > 0 && (
         <div className="mt-4 border-t border-[var(--line)]">
           {rounds.map((round, index) => (
             <div
               key={`${index}-${round.order}`}
               className="grid gap-3 border-b border-[var(--line-soft)] py-3 md:grid-cols-[72px_1fr_180px_auto] md:items-center"
             >
-              <span className="text-[12px] font-medium text-[#c9cbd0]">{index + 1}세트</span>
+              <span className="text-[12px] font-semibold text-white">{index + 1}세트</span>
 
               <select
                 value={round.submap}
@@ -106,9 +113,9 @@ export default function RoundDetailsEditor({
                 className="field-input"
               >
                 <option value="">세부맵 선택</option>
-                {submaps.map((submap) => (
-                  <option key={submap.submap_key} value={submap.submap_name}>
-                    {submap.submap_name}
+                {availableSubmaps.map((submap) => (
+                  <option key={submap} value={submap}>
+                    {submap}
                   </option>
                 ))}
               </select>

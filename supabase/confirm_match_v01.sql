@@ -543,45 +543,6 @@ begin
     raise exception 'MATCH_NOT_FOUND_OR_FORBIDDEN';
   end if;
 
-  -- Personal OCR is already persisted in uploads. Read it directly here so the
-  -- structured save does not depend on FE mapping every hero-specific metric.
-  select u.ocr_raw
-    into v_personal_ocr
-  from public.uploads u
-  where u.match_id = p_match_id
-    and u.user_id = v_user_id
-    and u.screen_type = 'personal'
-    and u.ocr_raw is not null
-  order by u.created_at desc
-  limit 1;
-
-  v_hero_specific := '{}'::jsonb;
-  v_ocr_accuracy := null;
-  v_ocr_crit_rate := null;
-
-  if v_personal_ocr is not null then
-    select coalesce(
-      jsonb_object_agg(metric->>'metric_key', metric->'value'),
-      '{}'::jsonb
-    )
-    into v_hero_specific
-    from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-    where nullif(metric->>'metric_key','') is not null
-      and coalesce(metric->>'scope','') = 'hero_specific';
-
-    select metric->>'value'
-      into v_ocr_accuracy
-    from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-    where metric->>'metric_key' = 'weapon_accuracy'
-    limit 1;
-
-    select metric->>'value'
-      into v_ocr_crit_rate
-    from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-    where metric->>'metric_key' = 'critical_hit_accuracy'
-    limit 1;
-  end if;
-
   delete from public.match_players
    where match_id = p_match_id and user_id = v_user_id;
   delete from public.my_hero_details
@@ -623,6 +584,48 @@ begin
   for v_detail in
     select value from jsonb_array_elements(coalesce(p_my_hero_details, '[]'::jsonb))
   loop
+    -- Use OCR fallback from the same hero only.
+    v_personal_ocr := null;
+    v_hero_specific := '{}'::jsonb;
+    v_ocr_accuracy := null;
+    v_ocr_crit_rate := null;
+
+    if nullif(v_detail->>'hero_key','') is not null then
+      select u.ocr_raw
+        into v_personal_ocr
+      from public.uploads u
+      where u.match_id = p_match_id
+        and u.user_id = v_user_id
+        and u.screen_type = 'personal'
+        and u.ocr_raw is not null
+        and u.ocr_raw->>'hero_key' = v_detail->>'hero_key'
+      order by u.created_at desc
+      limit 1;
+    end if;
+
+    if v_personal_ocr is not null then
+      select coalesce(
+        jsonb_object_agg(metric->>'metric_key', metric->'value'),
+        '{}'::jsonb
+      )
+      into v_hero_specific
+      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
+      where nullif(metric->>'metric_key','') is not null
+        and coalesce(metric->>'scope','') = 'hero_specific';
+
+      select metric->>'value'
+        into v_ocr_accuracy
+      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
+      where metric->>'metric_key' = 'weapon_accuracy'
+      limit 1;
+
+      select metric->>'value'
+        into v_ocr_crit_rate
+      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
+      where metric->>'metric_key' = 'critical_hit_accuracy'
+      limit 1;
+    end if;
+
     insert into public.my_hero_details (
       user_id, match_id, hero_id, hero_key, play_time, play_time_seconds, accuracy, crit_rate, hero_specific
     ) values (
@@ -668,28 +671,63 @@ begin
     );
   end loop;
 
-  -- Backward-safe OCR fallback: if an older FE sends no hero-detail array at all,
-  -- still keep the extracted Personal data instead of silently dropping it.
-  if jsonb_array_length(coalesce(p_my_hero_details, '[]'::jsonb)) = 0
-     and v_personal_ocr is not null then
-    insert into public.my_hero_details (
-      user_id, match_id, hero_id, hero_key, play_time, play_time_seconds, accuracy, crit_rate, hero_specific
-    ) values (
-      v_user_id,
-      p_match_id,
-      null,
-      nullif(v_personal_ocr->>'hero_key',''),
-      nullif(v_personal_ocr->>'play_time',''),
-      case
-        when coalesce(v_personal_ocr->>'play_time','') ~ '^[0-9]{1,3}:[0-9]{2}$' then
-          split_part(v_personal_ocr->>'play_time', ':', 1)::integer * 60
-          + split_part(v_personal_ocr->>'play_time', ':', 2)::integer
-        else null
-      end,
-      v_ocr_accuracy,
-      v_ocr_crit_rate,
-      coalesce(v_hero_specific,'{}'::jsonb)
-    );
+  -- Backward-safe fallback for older FE versions with no hero-detail array:
+  -- save the latest Personal OCR once per detected hero.
+  if jsonb_array_length(coalesce(p_my_hero_details, '[]'::jsonb)) = 0 then
+    for v_personal_ocr in
+      select distinct on (u.ocr_raw->>'hero_key') u.ocr_raw
+      from public.uploads u
+      where u.match_id = p_match_id
+        and u.user_id = v_user_id
+        and u.screen_type = 'personal'
+        and u.ocr_raw is not null
+        and nullif(u.ocr_raw->>'hero_key','') is not null
+      order by u.ocr_raw->>'hero_key', u.created_at desc
+    loop
+      v_hero_specific := '{}'::jsonb;
+      v_ocr_accuracy := null;
+      v_ocr_crit_rate := null;
+
+      select coalesce(
+        jsonb_object_agg(metric->>'metric_key', metric->'value'),
+        '{}'::jsonb
+      )
+      into v_hero_specific
+      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
+      where nullif(metric->>'metric_key','') is not null
+        and coalesce(metric->>'scope','') = 'hero_specific';
+
+      select metric->>'value'
+        into v_ocr_accuracy
+      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
+      where metric->>'metric_key' = 'weapon_accuracy'
+      limit 1;
+
+      select metric->>'value'
+        into v_ocr_crit_rate
+      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
+      where metric->>'metric_key' = 'critical_hit_accuracy'
+      limit 1;
+
+      insert into public.my_hero_details (
+        user_id, match_id, hero_id, hero_key, play_time, play_time_seconds, accuracy, crit_rate, hero_specific
+      ) values (
+        v_user_id,
+        p_match_id,
+        nullif(v_personal_ocr->>'hero_id',''),
+        nullif(v_personal_ocr->>'hero_key',''),
+        nullif(v_personal_ocr->>'play_time',''),
+        case
+          when coalesce(v_personal_ocr->>'play_time','') ~ '^[0-9]{1,3}:[0-9]{2}$' then
+            split_part(v_personal_ocr->>'play_time', ':', 1)::integer * 60
+            + split_part(v_personal_ocr->>'play_time', ':', 2)::integer
+          else null
+        end,
+        v_ocr_accuracy,
+        v_ocr_crit_rate,
+        coalesce(v_hero_specific,'{}'::jsonb)
+      );
+    end loop;
   end if;
 
   -- New structured round contract. Legacy control_submap / round_sequence stay

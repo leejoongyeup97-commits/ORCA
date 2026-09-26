@@ -703,6 +703,32 @@ def _hero_similarity(a,b):
     )
 
 
+def get_hero_reference_status():
+    root=Path(__file__).resolve().parent/'hero_references'
+    manifest=root/'manifest.json'
+    hero_dirs=0
+    reference_count=0
+    if root.exists():
+        for hero_dir in root.iterdir():
+            if not hero_dir.is_dir():
+                continue
+            count=sum(
+                1 for p in hero_dir.iterdir()
+                if p.suffix.lower() in ('.png','.jpg','.jpeg','.webp')
+            )
+            if count:
+                hero_dirs+=1
+                reference_count+=count
+    ready=root.exists() and manifest.exists() and hero_dirs>0 and reference_count>0
+    return {
+        'ready': ready,
+        'path': str(root),
+        'manifest_exists': manifest.exists(),
+        'hero_count': hero_dirs,
+        'reference_count': reference_count,
+    }
+
+
 def _load_hero_references():
     global _HERO_REFERENCE_CACHE,_HERO_ROLE_CACHE
     if _HERO_REFERENCE_CACHE is not None:
@@ -733,6 +759,13 @@ def _load_hero_references():
                     refs.append(img)
             if refs:
                 library[hero_dir.name]=refs
+
+    if not library:
+        raise RuntimeError(
+            "HERO_REFERENCES_MISSING: be/orca_ocr/hero_references is required for Team hero recognition. "
+            "Pull the production hero reference assets or rebuild them with BUILD_HERO_REFERENCES.bat."
+        )
+
     _HERO_REFERENCE_CACHE=library
     _HERO_ROLE_CACHE=roles
     return library

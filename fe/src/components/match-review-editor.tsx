@@ -41,6 +41,7 @@ export default function MatchReviewEditor({
   const [draft, setDraft] = useState<MatchReviewDraft | null>(null);
   const [tab, setTab] = useState<TabKey>("scoreboard");
   const [savedAt, setSavedAt] = useState("");
+  const [saveState, setSaveState] = useState<"ready" | "saved">("ready");
 
   useEffect(() => {
     const loaded = loadReviewDraft(matchId, defaultHero);
@@ -51,6 +52,7 @@ export default function MatchReviewEditor({
   function commit(next: MatchReviewDraft) {
     const saved = saveReviewDraft(matchId, next);
     setDraft(saved);
+    setSaveState("saved");
     setSavedAt(
       new Date(saved.updated_at).toLocaleTimeString("ko-KR", {
         hour: "2-digit",
@@ -191,11 +193,9 @@ export default function MatchReviewEditor({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {savedAt && (
-            <span className="text-[11px] text-[var(--muted)]">
-              자동 저장 {savedAt}
-            </span>
-          )}
+          <span className="text-[12px] text-[var(--muted)]">
+            {saveState === "saved" && savedAt ? `자동 저장됨 · ${savedAt}` : "자동 저장 준비됨"}
+          </span>
           <button
             type="button"
             onClick={resetDraft}
@@ -411,7 +411,7 @@ function HeroDetailEditor({
       <div className="space-y-4">
         {items.map((item, index) => (
           <div
-            key={item.id}
+            key={`${item.id}-${index}`}
             className="rounded-md border border-[var(--line)] bg-transparent p-4"
           >
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -482,13 +482,16 @@ function HeroDetailEditor({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {item.metrics.map((metric) => (
+                  {item.metrics.map((metric) => {
+                    const lowConfidence = metric.confidence !== null && metric.confidence < 0.75;
+                    const needsAttention = metric.needs_review || lowConfidence;
+                    return (
                     <div
                       key={metric.metric_key}
-                      className={`grid gap-3 rounded-lg border px-3 py-3 sm:grid-cols-[1fr_180px] sm:items-center ${
-                        metric.needs_review
-                          ? "border-[rgba(255,184,92,0.45)] bg-[rgba(255,184,92,0.05)]"
-                          : "border-[var(--line)] bg-[#101722]"
+                      className={`grid gap-3 rounded-md border px-3 py-3 sm:grid-cols-[1fr_180px] sm:items-center ${
+                        needsAttention
+                          ? "border-[rgba(255,184,92,0.45)] bg-[rgba(255,184,92,0.04)]"
+                          : "border-[var(--line)] bg-transparent"
                       }`}
                     >
                       <div className="min-w-0">
@@ -496,16 +499,16 @@ function HeroDetailEditor({
                           <span className="text-[11px] font-bold text-white">
                             {metric.label || metric.metric_key}
                           </span>
-                          {metric.needs_review && (
-                            <span className="rounded-md bg-[rgba(255,184,92,0.14)] px-1.5 py-0.5 text-[8px] font-bold text-[#ffc779]">
-                              검수 필요
+                          {needsAttention && (
+                            <span className="rounded-sm border border-[rgba(255,184,92,0.35)] px-1.5 py-0.5 text-[11px] font-medium text-[#ffc779]">
+                              {metric.needs_review ? "검수 필요" : "신뢰도 낮음"}
                             </span>
                           )}
                         </div>
                         <p className="mb-0 mt-1 break-all text-[11px] text-[var(--muted)]">
                           {metric.metric_key} · {metric.scope}
                           {metric.confidence !== null
-                            ? ` · confidence ${Math.round(metric.confidence * 100)}%`
+                            ? ` · 신뢰도 ${Math.round(metric.confidence * 100)}%`
                             : ""}
                         </p>
                       </div>
@@ -522,7 +525,8 @@ function HeroDetailEditor({
                         placeholder="값"
                       />
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </div>

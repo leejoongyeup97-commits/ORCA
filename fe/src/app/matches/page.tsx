@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import EmptyState from "@/components/empty-state";
 import {
   getMatchBackendAdapter,
   type MatchImportStatus,
@@ -9,6 +11,7 @@ import {
   type MatchResult,
 } from "@/lib/backend";
 import { removeReviewDraft } from "@/lib/review-draft";
+import { basicReviewReady } from "@/lib/match-review-readiness";
 
 const STATUS_META: Record<MatchImportStatus, { label: string; className: string }> = {
   awaiting_upload: { label: "업로드 대기", className: "bg-[rgba(249,158,26,0.12)] text-[var(--orange)]" },
@@ -43,12 +46,18 @@ function countType(match: MatchListItem, type: string) {
   return match.files.filter((file) => file.screen_type === type).length;
 }
 
-function MatchStatus({ status }: { status: MatchImportStatus }) {
+function MatchStatus({ status, ready = false }: { status: MatchImportStatus; ready?: boolean }) {
   const meta = STATUS_META[status];
-  return <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${meta.className}`}>{meta.label}</span>;
+  return (
+    <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${ready ? "bg-transparent text-[#9fcaae]" : meta.className}`}>
+      {ready ? "확정 가능" : meta.label}
+    </span>
+  );
 }
 
 export default function MatchesPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -57,6 +66,8 @@ export default function MatchesPage() {
   const [patchFilter, setPatchFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const deleteTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -70,6 +81,36 @@ export default function MatchesPage() {
       });
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status") as FilterKey | null;
+    if (
+      status &&
+      ["all", "action", "awaiting_upload", "pending_ocr", "processing_ocr", "needs_review", "confirmed", "failed"].includes(status)
+    ) {
+      setFilter(status);
+    }
+    setQuery(params.get("q") ?? "");
+    setSeasonFilter(params.get("season") ?? "all");
+    setPatchFilter(params.get("patch") ?? "all");
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter !== "all") params.set("status", filter);
+    if (query.trim()) params.set("q", query.trim());
+    if (seasonFilter !== "all") params.set("season", seasonFilter);
+    if (patchFilter !== "all") params.set("patch", patchFilter);
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [filter, patchFilter, pathname, query, router, seasonFilter]);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
     };
   }, []);
 
@@ -138,25 +179,43 @@ export default function MatchesPage() {
     });
   }
 
-  async function deleteSelected() {
-    const ids = Array.from(selectedIds);
+  async function performBulkDelete(ids: string[]) {
     if (ids.length === 0) return;
-
-    const ok = window.confirm(`선택한 경기 ${ids.length}개를 한 번에 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`);
-    if (!ok) return;
-
     setDeleting(true);
+    setPendingDeleteIds([]);
     try {
       const adapter = getMatchBackendAdapter();
       for (const id of ids) {
         await adapter.deleteMatchImport(id);
         removeReviewDraft(id);
       }
-      setMatches((current) => current.filter((match) => !selectedIds.has(match.match_id)));
+      setMatches((current) => current.filter((match) => !ids.includes(match.match_id)));
       setSelectedIds(new Set());
     } finally {
       setDeleting(false);
     }
+  }
+
+  function deleteSelected() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0 || pendingDeleteIds.length > 0) return;
+
+    const ok = window.confirm(`선택한 경기 ${ids.length}개를 삭제할까요? 5초 동안 실행 취소할 수 있습니다.`);
+    if (!ok) return;
+
+    setPendingDeleteIds(ids);
+    deleteTimerRef.current = window.setTimeout(() => {
+      deleteTimerRef.current = null;
+      void performBulkDelete(ids);
+    }, 5000);
+  }
+
+  function undoBulkDelete() {
+    if (deleteTimerRef.current !== null) {
+      window.clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    setPendingDeleteIds([]);
   }
 
   return (
@@ -227,16 +286,24 @@ export default function MatchesPage() {
               >
                 {allVisibleSelected ? "현재 목록 선택 해제" : `현재 목록 전체 선택 (${visible.length})`}
               </button>
-              {selectedIds.size > 0 && (
+              {pendingDeleteIds.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={undoBulkDelete}
+                  className="app-danger-button cursor-pointer"
+                >
+                  선택 {pendingDeleteIds.length}개 삭제 취소
+                </button>
+              ) : selectedIds.size > 0 ? (
                 <button
                   type="button"
                   disabled={deleting}
-                  onClick={() => void deleteSelected()}
-                  className="cursor-pointer rounded-md border border-[#5b3237] bg-[#241416] px-3 py-2 text-[11px] font-semibold text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
+                  onClick={deleteSelected}
+                  className="app-danger-button cursor-pointer"
                 >
                   {deleting ? "삭제 중..." : `선택 ${selectedIds.size}개 삭제`}
                 </button>
-              )}
+              ) : null}
               {(seasonFilter !== "all" || patchFilter !== "all" || query) && (
                 <button
                   type="button"
@@ -256,12 +323,19 @@ export default function MatchesPage() {
           {loading ? (
             <div className="px-6 py-16 text-center text-sm text-[var(--muted)]">경기 목록을 불러오는 중...</div>
           ) : visible.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="m-0 text-sm font-bold text-white">표시할 경기가 없습니다</p>
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                경기 등록에서 검수 완료 후 Mock 업로드까지 진행하면 여기에 나타납니다.
-              </p>
-            </div>
+            matches.length === 0 ? (
+              <EmptyState
+                title="아직 등록된 경기가 없습니다"
+                description="경기를 등록하면 OCR, 검수, 확정 상태를 이 화면에서 이어서 관리할 수 있습니다."
+                href="/matches/new"
+                action="경기 등록"
+              />
+            ) : (
+              <EmptyState
+                title="조건에 맞는 경기가 없습니다"
+                description="현재 검색어나 필터 조건을 바꾸거나 초기화해 주세요."
+              />
+            )
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {visible.map((match) => {
@@ -270,6 +344,7 @@ export default function MatchesPage() {
                 const personal = countType(match, "personal");
                 const replay = countType(match, "replay");
                 const result = RESULT_META[match.editable.result];
+                const readyToConfirm = match.status === "needs_review" && basicReviewReady(match);
 
                 return (
                   <article key={match.match_id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#101114] xl:grid-cols-[34px_150px_110px_1fr_200px_auto] xl:items-center ${selectedIds.has(match.match_id) ? "bg-[rgba(242,140,40,0.04)]" : ""}`}>
@@ -289,7 +364,7 @@ export default function MatchesPage() {
                     </div>
 
                     <div>
-                      <MatchStatus status={match.status} />
+                      <MatchStatus status={match.status} ready={readyToConfirm} />
                     </div>
 
                     <div className="min-w-0">
@@ -317,7 +392,7 @@ export default function MatchesPage() {
                     </div>
 
                     <Link
-                      href={`/matches/${match.match_id}`}
+                      href={`/matches/${match.match_id}?return=${encodeURIComponent(buildFilterQuery(filter, query, seasonFilter, patchFilter))}`}
                       className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-center text-xs font-bold text-white no-underline transition hover:border-[#4b5668] hover:bg-[#19202d]"
                     >
                       상세 / 수정
@@ -331,6 +406,15 @@ export default function MatchesPage() {
       </div>
     </main>
   );
+}
+
+function buildFilterQuery(filter: FilterKey, query: string, season: string, patch: string) {
+  const params = new URLSearchParams();
+  if (filter !== "all") params.set("status", filter);
+  if (query.trim()) params.set("q", query.trim());
+  if (season !== "all") params.set("season", season);
+  if (patch !== "all") params.set("patch", patch);
+  return params.toString();
 }
 
 function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

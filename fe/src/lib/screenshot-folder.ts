@@ -140,3 +140,29 @@ export function getScreenshotAutoScanEnabled() {
 export function setScreenshotAutoScanEnabled(enabled: boolean) {
   localStorage.setItem(AUTO_SCAN_KEY, String(enabled));
 }
+
+
+export async function getSavedScreenshotFilesByName(
+  names: string[],
+): Promise<Map<string, File>> {
+  const handle = await getSavedScreenshotFolder();
+  if (!handle) {
+    throw new Error("저장된 스크린샷 폴더가 없습니다. 설정에서 스크린샷 폴더를 다시 지정해 주세요.");
+  }
+
+  const allowed = await ensureScreenshotFolderPermission(handle, true);
+  if (!allowed) {
+    throw new Error("스크린샷 폴더 읽기 권한이 필요합니다.");
+  }
+
+  const wanted = new Set(names.filter(Boolean));
+  const found = new Map<string, File>();
+
+  for await (const entry of handle.values()) {
+    if (entry.kind !== "file" || !wanted.has(entry.name) || !entry.getFile) continue;
+    found.set(entry.name, await entry.getFile());
+    if (found.size === wanted.size) break;
+  }
+
+  return found;
+}
