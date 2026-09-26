@@ -161,10 +161,6 @@ export interface MatchManagementAdapter extends MatchBackendAdapter {
   listMatchImports(): Promise<MatchListItem[]>;
   updateMatchImport(matchId: string, patch: Partial<EditableMatchFields>): Promise<MatchImportView>;
   deleteMatchImport(matchId: string): Promise<void>;
-  runMockOcr(
-    matchId: string,
-    options?: { onProgress?: (progress: OcrExecutionProgress) => void },
-  ): Promise<MatchImportView>;
   setOcrState(
     matchId: string,
     status: Extract<MatchImportStatus, "processing_ocr" | "needs_review" | "failed">,
