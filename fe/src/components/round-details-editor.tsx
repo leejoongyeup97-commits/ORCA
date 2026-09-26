@@ -82,6 +82,8 @@ export default function RoundDetailsEditor({
 
       {loading ? (
         <p className="mt-4 text-[12px] text-[var(--muted)]">세부맵 기준 데이터를 불러오는 중...</p>
+      ) : rounds.length > 0 ? (
+        <div className="mt-4 border-t border-[var(--line)]">
       ) : submaps.length === 0 ? (
         <div className="mt-4 border-y border-[var(--line)] py-4">
           <p className="m-0 text-[12px] leading-6 text-[var(--muted)]">
@@ -95,11 +97,13 @@ export default function RoundDetailsEditor({
             예시 데이터 채우기
           </button>
         </div>
-      ) : rounds.length === 0 ? (
+      ) : (
         <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
           아직 입력된 세트가 없습니다. ‘세트 추가’를 눌러 1세트부터 기록하세요.
         </p>
-      ) : (
+      )}
+
+      {rounds.length > 0 && (
         <div className="mt-4 border-t border-[var(--line)]">
           {rounds.map((round, index) => (
             <div
