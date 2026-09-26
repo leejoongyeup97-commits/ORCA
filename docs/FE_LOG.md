@@ -15,6 +15,23 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-26 · OCR 진행 로그 + 오류 모달
+- 상태: DONE
+- 내용:
+  - 경기 등록 OCR 실행 중 현재 단계/진행률/파일별 처리 상태를 로그 패널로 표시
+  - OCR 시작, 파일별 처리 시작/완료/실패, 결과 정리, 최종 완료 단계를 표시
+  - 오류 발생 시 화면 위에 오류 모달 표시
+  - `오류 메시지 원문 보기`로 서버/네트워크 원문 확인 가능
+  - `오류 메시지 복사` 버튼으로 전체 오류 원문 복사 가능
+  - OCR HTTP 오류 응답 본문도 FE까지 보존하도록 개선
+  - 일부 이미지 OCR 실패도 서버 콘솔에만 남지 않고 사용자 오류 모달로 노출
+- 관련:
+  - `fe/src/app/matches/new/page.tsx`
+  - `fe/src/lib/ocr-integration.ts`
+  - `fe/src/lib/ocr-client.ts`
+- 검증: Frontend Check build 성공
+- 완료 커밋: c56806809bc4fa5a8a150c40e24db5a950e2e1a1
+
 ### 2026-09-26 · Personal hero_key 상속 금지 + metric_key 고정 표시명
 - 상태: DONE
 - 내용:
