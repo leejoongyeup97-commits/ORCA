@@ -31,7 +31,7 @@ create unique index if not exists patches_patch_label_uidx
 alter table public.matches add column if not exists season_id uuid;
 alter table public.matches add column if not exists patch_id uuid;
 
-do $
+do $orca$
 begin
   if not exists (
     select 1 from pg_constraint
@@ -53,7 +53,7 @@ begin
       foreign key (patch_id) references public.patches(id) on delete set null;
   end if;
 end;
-$;
+$orca$;
 
 create index if not exists seasons_period_idx
   on public.seasons (starts_at desc);
@@ -134,7 +134,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = public
-as $
+as $orca$
 declare
   v_season_id uuid;
   v_season_name text;
@@ -176,7 +176,7 @@ begin
 
   return new;
 end;
-$;
+$orca$;
 
 drop trigger if exists matches_apply_context_from_played_at on public.matches;
 create trigger matches_apply_context_from_played_at
