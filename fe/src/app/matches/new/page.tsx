@@ -38,6 +38,7 @@ type DetectedMatch = {
   startedAt: number;
   files: Classification[];
   reviewStatus: ReviewStatus;
+  backendMatchId?: string;
 };
 
 type FolderState = {
@@ -711,7 +712,11 @@ export default function NewMatchPage() {
         })),
       );
 
-      patchMatch(match.id, (current) => ({ ...current, reviewStatus: "pending_ocr" }));
+      patchMatch(match.id, (current) => ({
+        ...current,
+        reviewStatus: "pending_ocr",
+        backendMatchId: completed.matchId,
+      }));
       setUploadState({
         phase: ocrView.status === "failed" ? "error" : "done",
         current: activeFiles.length,
@@ -755,6 +760,57 @@ export default function NewMatchPage() {
     setMessage("이번에 발견된 모든 경기 검수가 끝났습니다.");
     closeReview();
   }
+
+  async function rerunOcr(match: DetectedMatch) {
+    if (!match.backendMatchId) {
+      setReviewNotice("저장된 match_id가 없어 OCR을 다시 실행할 수 없습니다.");
+      return;
+    }
+
+    const activeFiles = match.files.filter((file) => !file.excluded);
+    setReviewNotice("");
+    setUploadState({
+      phase: "completing",
+      current: activeFiles.length,
+      total: activeFiles.length,
+      message: "OCR을 다시 실행하고 있습니다...",
+      matchId: match.backendMatchId,
+    });
+
+    try {
+      const ocrView = await runRealOcrForMatch(
+        getMatchBackendAdapter(),
+        match.backendMatchId,
+        activeFiles.map((item) => ({
+          screen_type: item.type,
+          file: item.file,
+        })),
+      );
+
+      setUploadState({
+        phase: ocrView.status === "failed" ? "error" : "done",
+        current: activeFiles.length,
+        total: activeFiles.length,
+        message: ocrView.ocr.message,
+        matchId: match.backendMatchId,
+      });
+      setReviewNotice(
+        ocrView.status === "failed"
+          ? "OCR 재실행에 실패했습니다. OCR 서버 상태를 확인해 주세요."
+          : "OCR 재실행이 완료되었습니다.",
+      );
+    } catch (error) {
+      setUploadState({
+        phase: "error",
+        current: activeFiles.length,
+        total: activeFiles.length,
+        message: error instanceof Error ? error.message : "OCR 재실행 중 오류가 발생했습니다.",
+        matchId: match.backendMatchId,
+      });
+      setReviewNotice("OCR 재실행에 실패했습니다.");
+    }
+  }
+
 
   async function approveAllWithoutReview() {
     const targets = matches.filter((item) => item.reviewStatus !== "pending_ocr");
@@ -811,6 +867,7 @@ export default function NewMatchPage() {
         onAddFiles={(event) => addManualFiles(reviewingMatch.id, event)}
         onReady={() => markReady(reviewingMatch)}
         onReadyAndNext={() => completeReviewAndNext(reviewingMatch)}
+        onRerunOcr={() => rerunOcr(reviewingMatch)}
         onApproveAll={() => approveAllWithoutReview()}
         bulkReviewState={bulkReviewState}
         uploadState={uploadState}
@@ -1041,6 +1098,7 @@ function ReviewScreen({
   onAddFiles,
   onReady,
   onReadyAndNext,
+  onRerunOcr,
   onApproveAll,
   bulkReviewState,
   uploadState,
@@ -1062,6 +1120,7 @@ function ReviewScreen({
   onAddFiles: (event: ChangeEvent<HTMLInputElement>) => void;
   onReady: () => void;
   onReadyAndNext: () => void;
+  onRerunOcr: () => void;
   onApproveAll: () => void;
   bulkReviewState: { running: boolean; current: number; total: number };
   uploadState: UploadUiState;
@@ -1308,28 +1367,45 @@ function ReviewScreen({
                 </div>
               )}
 
-              <button
-                type="button"
-                disabled={
-                  bulkReviewState.running ||
-                  (match.reviewStatus !== "pending_ocr" && !validation.valid) ||
-                  uploadState.phase === "creating" ||
-                  uploadState.phase === "uploading" ||
-                  uploadState.phase === "completing"
-                }
-                onClick={onReadyAndNext}
-                className="mt-4 w-full rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
-              >
-                {uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
-                  ? "업로드 중..."
-                  : match.reviewStatus === "pending_ocr"
-                    ? currentIndex < queue.length - 1
-                      ? "다음 경기 검수 →"
-                      : "전체 검수 완료"
-                    : currentIndex < queue.length - 1
-                      ? "검수 완료 · 다음 경기 →"
-                      : "검수 완료 · 전체 검수 끝"}
-              </button>
+              <div className="mt-4 flex gap-2">
+                {match.reviewStatus === "pending_ocr" && match.backendMatchId && (
+                  <button
+                    type="button"
+                    onClick={onRerunOcr}
+                    disabled={
+                      bulkReviewState.running ||
+                      uploadState.phase === "creating" ||
+                      uploadState.phase === "uploading" ||
+                      uploadState.phase === "completing"
+                    }
+                    className="shrink-0 cursor-pointer rounded-xl border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-4 py-3.5 text-xs font-bold text-[#9bc6ff] hover:bg-[rgba(102,169,255,0.13)] disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    {uploadState.phase === "completing" ? "OCR 실행 중..." : "OCR 다시 실행"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={
+                    bulkReviewState.running ||
+                    (match.reviewStatus !== "pending_ocr" && !validation.valid) ||
+                    uploadState.phase === "creating" ||
+                    uploadState.phase === "uploading" ||
+                    uploadState.phase === "completing"
+                  }
+                  onClick={onReadyAndNext}
+                  className="min-w-0 flex-1 rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  {uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
+                    ? "처리 중..."
+                    : match.reviewStatus === "pending_ocr"
+                      ? currentIndex < queue.length - 1
+                        ? "다음 경기 검수 →"
+                        : "전체 검수 완료"
+                      : currentIndex < queue.length - 1
+                        ? "검수 완료 · 다음 경기 →"
+                        : "검수 완료 · 전체 검수 끝"}
+                </button>
+              </div>
               {match.reviewStatus !== "pending_ocr" && validation.valid && (
                 <button
                   type="button"
