@@ -292,6 +292,49 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "direct_hit_accuracy": {"aliases": ["직격 명중률", "직격 적중률"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
     },
+    "winston": {
+        "primary_fire_accuracy": {"aliases": ["기본 발사 명중률"]},
+        "primal_rage_kills": {"aliases": ["원시의 분노로 처치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "secondary_fire_accuracy": {"aliases": ["보조 발사 명중률"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "jump_pack_kills": {"aliases": ["점프 팩으로 처치"]},
+    },
+    "junkrat": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "enemies_trapped": {"aliases": ["덫에 걸린 적", "강철 덫에 걸린 적"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "direct_hit_accuracy": {"aliases": ["직격 명중률", "적중률"]},
+        "rip_tire_kills": {"aliases": ["죽이는 타이어로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지"]},
+        "concussion_mine_kills": {"aliases": ["충격 지뢰로 처치"]},
+    },
+    "zarya": {
+        "primary_fire_accuracy": {"aliases": ["기본 발사 명중률"]},
+        "average_energy": {"aliases": ["평균 에너지", "균 에너지"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "secondary_fire_accuracy": {"aliases": ["보조 발사 명중률", "보조발사명중률"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "high_energy_kills": {"aliases": ["고에너지로 처치", "고에너지로 저치"]},
+    },
+    "junkerqueen": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "carnage_kills": {"aliases": ["도륙으로 처치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "jagged_blade_kills": {"aliases": ["톱니칼로 처치"]},
+        "wound_uptime": {"aliases": ["부상 활성 시간 비율"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "jagged_blade_accuracy": {"aliases": ["톱니칼 명중률"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+    },
+    "jetpackcat": {
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "lifeline_healing": {"aliases": ["생명줄 치유"]},
+        "abduction_kills": {"aliases": ["납치한다냥으로 처치"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "lifeline_usage": {"aliases": ["생명줄 사용"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -324,6 +367,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "emre": ["엠레", "EMRE"],
     "widowmaker": ["위도우메이커", "WIDOWMAKER"],
     "wuyang": ["우양", "WUYANG"],
+    "winston": ["윈스턴", "WINSTON"],
+    "junkrat": ["정크랫", "JUNKRAT"],
+    "zarya": ["자리야", "ZARYA"],
+    "junkerqueen": ["정커퀸", "JUNKER QUEEN"],
+    "jetpackcat": ["제트팩 캣", "JETPACK CAT"],
 }
 
 
@@ -443,6 +491,26 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "wuyang": [
         "weapon_accuracy","guardian_wave_kills","water_staff_direct_hits",
         "healing_wave_healing_amplified","tidal_blast_kills","direct_hit_accuracy","healing_amplified",
+    ],
+    "winston": [
+        "primary_fire_accuracy","primal_rage_kills","objective_contest_time",
+        "secondary_fire_accuracy","players_saved","jump_pack_kills",
+    ],
+    "junkrat": [
+        "weapon_accuracy","enemies_trapped","final_blows","direct_hit_accuracy",
+        "rip_tire_kills","solo_kills","concussion_mine_kills",
+    ],
+    "zarya": [
+        "primary_fire_accuracy","average_energy","objective_contest_time",
+        "secondary_fire_accuracy","players_saved","high_energy_kills",
+    ],
+    "junkerqueen": [
+        "weapon_accuracy","carnage_kills","objective_contest_time","jagged_blade_kills",
+        "wound_uptime","players_saved","jagged_blade_accuracy","self_healing",
+    ],
+    "jetpackcat": [
+        "knockback_kills","players_saved","lifeline_healing",
+        "abduction_kills","weapon_accuracy","lifeline_usage",
     ],
 }
 
