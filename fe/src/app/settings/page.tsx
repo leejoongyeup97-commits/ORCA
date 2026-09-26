@@ -161,21 +161,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 text-[var(--text)] md:px-6 md:py-6">
-      <div className="mx-auto max-w-[1180px]">
-        <section className="mb-5 rounded-[16px] border border-[var(--line)] bg-[#0f1721] p-6">
-          <p className="mb-2 text-[12px] font-bold text-[var(--orange-2)]">설정</p>
-          <h1 className="m-0 text-3xl font-extrabold leading-[1.15] text-white md:text-[36px]">개발 환경 및 데이터</h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+    <main className="min-h-screen px-4 py-7 text-[var(--text)] md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1120px]">
+        <section className="mb-8 border-b border-[var(--line)] pb-6">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">설정</p>
+          <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] text-white md:text-[32px]">개발 환경 및 데이터</h1>
+          <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">
             실제 백엔드 연결 전까지 브라우저에 저장되는 Mock 데이터를 관리합니다.
           </p>
         </section>
 
         {notice && (
-          <div className="mb-5 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-xs text-[#c5cfda]">{notice}</div>
+          <div className="mb-6 border-y border-[var(--line)] py-3 text-[11px] text-[#c5cfda]">{notice}</div>
         )}
 
-        <section className="app-panel mb-5 rounded-[16px] p-5 md:p-6">
+        <section className="mb-8 border-t border-[var(--line)] pt-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="m-0 text-sm font-medium text-white">스크린샷 폴더</p>
@@ -188,7 +188,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={folderBusy}
                 onClick={chooseScreenshotFolder}
-                className="app-orange-button cursor-pointer rounded-lg px-4 py-3 text-xs font-bold disabled:cursor-wait disabled:opacity-50"
+                className="app-orange-button cursor-pointer rounded-md px-3 py-2 text-[11px] font-medium disabled:cursor-wait disabled:opacity-50"
               >
                 {folderBusy ? "폴더 연결 중..." : folderName ? "폴더 변경" : "폴더 지정"}
               </button>
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={clearScreenshotFolder}
-                  className="cursor-pointer rounded-lg bg-[#0d141d] px-4 py-3 text-xs font-medium text-white hover:bg-[#17212d]"
+                  className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-white hover:bg-[#151619]"
                 >
                   연결 해제
                 </button>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 border-y border-[var(--line)] sm:grid-cols-3">
             <FolderStatus label="저장된 폴더" value={folderName || "없음"} />
             <FolderStatus
               label="권한"
@@ -221,7 +221,7 @@ export default function SettingsPage() {
             <FolderStatus label="브라우저" value={supportsDirectoryPicker() ? "지원" : "미지원"} />
           </div>
 
-          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--line-soft)] bg-[#0d141d] p-4">
+          <label className="mt-5 flex cursor-pointer items-start gap-3 border-b border-[var(--line)] py-4">
             <input
               type="checkbox"
               checked={autoScanFolder}
@@ -241,8 +241,8 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        <div className="grid gap-5 md:grid-cols-2">
-          <section className="app-panel rounded-[16px] p-5">
+        <div className="grid gap-10 md:grid-cols-2">
+          <section className="border-t border-[var(--line)] pt-4">
             <p className="m-0 text-sm font-medium">연결 상태</p>
             <dl className="mt-4 space-y-3 text-xs">
               <Row label="Frontend" value="v0.12" />
@@ -252,24 +252,24 @@ export default function SettingsPage() {
               <Row label="저장 위치" value="브라우저 localStorage" />
               <Row label="Mock 저장 항목" value={String(storageCount)} />
             </dl>
-            <div className="mt-4 rounded-lg bg-[#0d141d] p-4">
+            <div className="mt-4 border-t border-[var(--line-soft)] pt-4">
               <p className="m-0 text-[10px] leading-5 text-[var(--muted)]">
                 실제 Supabase 연결 후에는 경기 원본과 상태가 서버에 저장되고, 이 Mock 저장소는 개발용으로만 남깁니다.
               </p>
             </div>
           </section>
 
-          <section className="app-panel rounded-[16px] p-5">
+          <section className="border-t border-[var(--line)] pt-4">
             <p className="m-0 text-sm font-medium">Mock 데이터 백업</p>
             <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
               브라우저를 바꾸거나 테스트 데이터를 보관할 때 JSON 파일로 내보내고 다시 가져올 수 있습니다.
             </p>
 
             <div className="mt-5 space-y-2">
-              <button type="button" onClick={exportData} className="app-orange-button w-full cursor-pointer rounded-lg px-4 py-3 text-xs font-bold">
+              <button type="button" onClick={exportData} className="w-full cursor-pointer rounded-md border border-[var(--line)] bg-[#151619] px-4 py-2.5 text-[11px] font-medium text-white hover:bg-[#1a1b1f]">
                 JSON 백업 내보내기
               </button>
-              <label className="block cursor-pointer rounded-lg bg-[#0d141d] px-4 py-3 text-center text-xs font-medium text-white hover:bg-[#17212d]">
+              <label className="block cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-4 py-2.5 text-center text-[11px] font-medium text-white hover:bg-[#151619]">
                 JSON 백업 가져오기
                 <input type="file" accept=".json,application/json" onChange={importData} className="hidden" />
               </label>
@@ -277,12 +277,12 @@ export default function SettingsPage() {
           </section>
         </div>
 
-        <section className="app-panel mt-5 rounded-[16px] p-5">
+        <section className="mt-10 border-t border-[var(--line)] pt-4">
           <p className="m-0 text-sm font-medium text-[#c5cfda]">개발 데이터 초기화</p>
           <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
             경기 목록, 가설, 폴더 처리 기록, 업로드 대기 manifest를 브라우저에서 모두 삭제합니다.
           </p>
-          <button type="button" onClick={resetData} className="mt-4 cursor-pointer rounded-lg bg-[#0d141d] px-4 py-3 text-xs font-medium text-[#c5cfda] hover:bg-[#17212d]">
+          <button type="button" onClick={resetData} className="mt-4 cursor-pointer rounded-md border border-[#4b2f33] bg-transparent px-3 py-2 text-[11px] font-medium text-[#d98b91] hover:bg-[#1c1214]">
             모든 Mock 데이터 초기화
           </button>
         </section>
@@ -293,7 +293,7 @@ export default function SettingsPage() {
 
 function FolderStatus({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line-soft)] bg-[#0d141d] p-3">
+    <div className="border-r border-[var(--line)] px-4 py-3 first:pl-0 last:border-r-0">
       <p className="m-0 text-[9px] font-medium text-[var(--muted)]">{label}</p>
       <p className="mb-0 mt-1 truncate text-xs font-medium text-white">{value}</p>
     </div>
