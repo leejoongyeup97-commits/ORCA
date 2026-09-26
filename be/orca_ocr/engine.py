@@ -11,7 +11,6 @@ from orca_ocr.personal_metrics import infer_hero_from_metric_labels, metric_from
 def _configure_tesseract() -> str:
     candidates=[]
 
-    # Explicit override is useful when Tesseract is installed outside C:.
     env_cmd=os.environ.get('TESSERACT_CMD')
     if env_cmd:
         candidates.append(env_cmd)
@@ -931,24 +930,31 @@ def extract_personal(img, hero_key=None):
     # the hero-summary card before resolving hero-specific metric labels.
     hero_summary_raw=_card_text(img,boxes[0]) if boxes else ''
     hero_name_raw=_personal_hero_name_text(img)
-    if not hero_key:
-        hero_key=(
-            resolve_hero_key(hero_name_raw)
-            or resolve_hero_key(hero_summary_raw)
-            or resolve_hero_key(panel_text)
-        )
 
-    # If hero-name OCR failed, infer hero from the combination of hero-specific
-    # labels visible on the Personal screen (e.g. hook + pig pen => Roadhog).
+    name_hero_key=hero_key or (
+        resolve_hero_key(hero_name_raw)
+        or resolve_hero_key(hero_summary_raw)
+        or resolve_hero_key(panel_text)
+    )
+
+    # Metric inference always runs and only uses hero-unique labels. This prevents
+    # shared stats from forcing an unrelated hero and then triggering bad card-order mapping.
     hero_metric_inference={"hero_key":None,"confidence":0.0,"matches":[]}
-    if not hero_key and len(boxes)>1:
+    if len(boxes)>1:
         pre_labels=[]
         for box in boxes[1:]:
             label_raw,_=_personal_card_label(img,box)
             if label_raw:
                 pre_labels.append(label_raw)
+            raw_label=_personal_label_from_raw(_card_text(img,box))
+            if raw_label and raw_label not in pre_labels:
+                pre_labels.append(raw_label)
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
-        hero_key=hero_metric_inference.get("hero_key")
+
+    metric_hero_key=hero_metric_inference.get("hero_key")
+    # Two or more hero-unique metric labels are stronger evidence than the
+    # hero-name OCR, which can read another hero name entirely on this screen.
+    hero_key=metric_hero_key or name_hero_key
 
     metric_cards=[]
     metrics=[]
@@ -970,6 +976,8 @@ def extract_personal(img, hero_key=None):
             ordered=metric_from_verified_order(hero_key,metric_index)
             if ordered:
                 resolved={**resolved,**ordered}
+                # Verified hero card order is authoritative when the label crop is blank/noisy.
+                label_conf=max(label_conf,0.88)
 
         # If the dedicated label crop grabbed helper text/noise, retry using the
         # whole card OCR. This commonly recovers labels such as "결정타".
@@ -992,7 +1000,17 @@ def extract_personal(img, hero_key=None):
         # Trust the isolated numeric OCR when repeated reads agree. It excludes
         # icons/helper text and is more reliable than whole-card OCR in cases such
         # as Ana 3 -> 104, saved players 4 -> 0, slept enemies 6 -> 4, scoped 73% -> 0.
-        if isolated_primary is not None and value_conf>=0.90:
+        if (
+            raw_primary is not None
+            and ',' in raw_primary
+            and isolated_primary is not None
+            and raw_primary.replace(',','').endswith(isolated_primary.replace(',',''))
+        ):
+            # Isolated value OCR can clip the leading thousands digit
+            # (e.g. 2,183 -> 183). Whole-card OCR preserves comma-formatted totals.
+            primary=raw_primary
+            value_conf=max(value_conf,0.90)
+        elif isolated_primary is not None and value_conf>=0.90:
             primary=isolated_primary
         else:
             primary=raw_primary if raw_primary is not None else isolated_primary
@@ -1036,11 +1054,78 @@ def extract_personal(img, hero_key=None):
             })
 
     play_time=None
-    # Play time belongs to the hero summary card. Reading the whole panel can
-    # accidentally pick objective/contest time from another metric card.
-    hero_times=re.findall(r'\b\d{1,2}:\d{2}\b',hero_summary_raw)
+    # Prefer the hero-summary card. Normalize common OCR damage in the time:
+    # 0001.22 -> 01:22, and 90:50 -> 00:50 when the leading 0 was read as 9.
+    hero_times=[]
+    for raw_time in re.findall(r'\b\d{1,4}[.:]\d{2}\b',hero_summary_raw):
+        left,right=re.split(r'[.:]',raw_time,1)
+        left=left.lstrip('0') or '0'
+        if len(left)==2 and left.startswith('9') and int(left)>45:
+            left='0'+left[1:]
+        candidate=f"{int(left):02d}:{right}"
+        mm,ss=(int(v) for v in candidate.split(':'))
+        if ss<60 and mm*60+ss<=45*60:
+            hero_times.append(candidate)
     if hero_times:
         play_time=hero_times[-1]
+    if play_time is None:
+        # Hero-summary OCR sometimes reads the ':' in MM:SS as '1' (e.g. 01:25 -> 01125).
+        for damaged in re.findall(r'\b\d{5}\b', hero_summary_raw):
+            candidate=f"{damaged[:2]}:{damaged[-2:]}"
+            mm,ss=(int(v) for v in candidate.split(':'))
+            if damaged[2]=='1' and ss<60 and mm*60+ss<=45*60:
+                play_time=candidate
+                break
+    if play_time is None and metric_cards:
+        summary_primary=str(metric_cards[0].get('primary_value') or '')
+        if re.fullmatch(r'\d{1,2}:\d{2}',summary_primary):
+            mm,ss=(int(v) for v in summary_primary.split(':'))
+            if mm*60+ss<=45*60:
+                play_time=summary_primary
+    if play_time is None:
+        panel_times=re.findall(r'\b\d{1,2}:\d{2}\b',panel_text)
+        if panel_times:
+            def _mmss_seconds(value):
+                mm,ss=value.split(':',1)
+                return int(mm)*60+int(ss)
+            plausible=[v for v in panel_times if _mmss_seconds(v)<=45*60]
+            if plausible:
+                play_time=max(plausible,key=_mmss_seconds)
+
+    # Recover obviously clipped integer totals from the visible per-10 helper.
+    if play_time:
+        mm,ss=(int(v) for v in play_time.split(':'))
+        played=mm*60+ss
+        for card,metric in zip(metric_cards[1:],metrics):
+            value=str(metric.get('value') or '')
+            m=re.search(r'10분당\s*평균\s*[:：]?\s*([\d,]+(?:\.\d+)?)',card.get('raw_text') or '')
+            if not (played and m and re.fullmatch(r'\d+',value)):
+                continue
+            avg=float(m.group(1).replace(',',''))
+            expected=int(round(avg*played/600))
+            if value=='10' and expected<=3:
+                metric['value']=str(expected)
+                card['primary_value']=str(expected)
+            elif value.startswith('0') and expected>=100:
+                suffix=int(value)
+                base=10**len(value)
+                candidate=max(1,round((expected-suffix)/base))*base+suffix
+                if abs(candidate-expected)<=max(5,expected*0.02):
+                    metric['value']=f"{candidate:,}"
+                    card['primary_value']=f"{candidate:,}"
+
+    # Final cleanup for obvious integer OCR artifacts after per-10 recovery.
+    for card,metric in zip(metric_cards[1:],metrics):
+        value=str(metric.get('value') or '')
+        if re.fullmatch(r'0+\d*',value):
+            metric['value']=str(int(value))
+            card['primary_value']=metric['value']
+        if metric.get('metric_key')=='drill_dash_kills' and re.fullmatch(r'\d{7,}',value):
+            label=str(metric.get('label_raw') or '')
+            m=re.search(r'(\d+)0{6}',label)
+            if m:
+                metric['value']=m.group(1)
+                card['primary_value']=m.group(1)
 
     known={}
     m=re.search(r'(\d{1,3})%[^\n]*\n?[^\n]*무기\s*명중률|무기\s*명중률[^\n]*(\d{1,3})%',panel_text)
@@ -1052,7 +1137,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.5-dev',
+        'ocr_version':'0.10.28-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
