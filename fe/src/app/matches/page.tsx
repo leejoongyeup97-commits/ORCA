@@ -45,7 +45,7 @@ function countType(match: MatchListItem, type: string) {
 
 function MatchStatus({ status }: { status: MatchImportStatus }) {
   const meta = STATUS_META[status];
-  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${meta.className}`}>{meta.label}</span>;
+  return <span className={`rounded-md px-2 py-1 text-[10px] font-semibold ${meta.className}`}>{meta.label}</span>;
 }
 
 export default function MatchesPage() {
@@ -160,33 +160,33 @@ export default function MatchesPage() {
   }
 
   return (
-    <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-[1240px]">
-        <section className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1320px]">
+        <section className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 데이터</p>
-            <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">경기 목록</h1>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">경기 데이터</p>
+            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">경기 목록</h1>
+            <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">
               등록한 경기의 업로드, OCR, 검수 상태와 확정 데이터를 한곳에서 관리합니다.
             </p>
           </div>
           <Link
             href="/matches/new"
-            className="w-fit rounded-xl bg-[var(--orange)] px-5 py-3 text-sm font-black text-black no-underline transition hover:brightness-110"
+            className="app-orange-button w-fit rounded-md px-4 py-2.5 text-[12px] font-semibold no-underline"
           >
             + 경기 등록
           </Link>
         </section>
 
-        <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <SummaryCard label="전체 경기" value={matches.length} />
-          <SummaryCard label="확인 필요" value={actionCount} warning={actionCount > 0} />
-          <SummaryCard label="OCR 대기/처리" value={matches.filter((m) => m.status === "pending_ocr" || m.status === "processing_ocr").length} />
-          <SummaryCard label="확정 완료" value={matches.filter((m) => m.status === "confirmed").length} accent />
+        <section className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[var(--line)] pb-4 text-[11px] text-[var(--muted)]">
+          <span><strong className="font-semibold text-white">{matches.length}</strong> 전체</span>
+          <span><strong className={actionCount > 0 ? "font-semibold text-[var(--warning)]" : "font-semibold text-white"}>{actionCount}</strong> 확인 필요</span>
+          <span><strong className="font-semibold text-white">{matches.filter((m) => m.status === "pending_ocr" || m.status === "processing_ocr").length}</strong> OCR 처리</span>
+          <span><strong className="font-semibold text-white">{matches.filter((m) => m.status === "confirmed").length}</strong> 확정</span>
         </section>
 
-        <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
-          <div className="border-b border-[var(--line)] p-4">
+        <section className="border-y border-[var(--line)]">
+          <div className="border-b border-[var(--line)] py-3">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap gap-2">
               <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>전체 {matches.length}</FilterButton>
@@ -199,7 +199,7 @@ export default function MatchesPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="맵 · 영웅 · 시즌 · 패치 · 경기 ID 검색"
-                className="w-full rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-xs text-white outline-none placeholder:text-[#657083] focus:border-[var(--orange)] xl:w-[300px]"
+                className="w-full rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-xs text-white outline-none placeholder:text-[#657083] focus:border-[var(--orange)] xl:w-[300px]"
               />
             </div>
 
@@ -207,7 +207,7 @@ export default function MatchesPage() {
               <select
                 value={seasonFilter}
                 onChange={(event) => setSeasonFilter(event.target.value)}
-                className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white outline-none"
+                className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-[10px] font-bold text-white outline-none"
               >
                 <option value="all">시즌 전체</option>
                 {seasonOptions.map((season) => <option key={season} value={season}>{season}</option>)}
@@ -215,7 +215,7 @@ export default function MatchesPage() {
               <select
                 value={patchFilter}
                 onChange={(event) => setPatchFilter(event.target.value)}
-                className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white outline-none"
+                className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-[10px] font-bold text-white outline-none"
               >
                 <option value="all">패치 전체</option>
                 {patchOptions.map((patch) => <option key={patch} value={patch}>{patch}</option>)}
@@ -223,7 +223,7 @@ export default function MatchesPage() {
               <button
                 type="button"
                 onClick={toggleSelectAllVisible}
-                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#121823] px-3 py-2 text-[10px] font-bold text-white hover:border-[#4b5668]"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-[#111214] px-3 py-2 text-[10px] font-bold text-white hover:border-[#4b5668]"
               >
                 {allVisibleSelected ? "현재 목록 선택 해제" : `현재 목록 전체 선택 (${visible.length})`}
               </button>
@@ -232,7 +232,7 @@ export default function MatchesPage() {
                   type="button"
                   disabled={deleting}
                   onClick={() => void deleteSelected()}
-                  className="cursor-pointer rounded-lg border border-[#6a3a40] bg-[#281419] px-3 py-2 text-[10px] font-black text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
+                  className="cursor-pointer rounded-md border border-[#5b3237] bg-[#241416] px-3 py-2 text-[10px] font-semibold text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
                 >
                   {deleting ? "삭제 중..." : `선택 ${selectedIds.size}개 삭제`}
                 </button>
@@ -245,7 +245,7 @@ export default function MatchesPage() {
                     setPatchFilter("all");
                     setQuery("");
                   }}
-                  className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#121823] px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
+                  className="cursor-pointer rounded-md border border-[var(--line)] bg-[#111214] px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
                 >
                   필터 초기화
                 </button>
@@ -272,7 +272,7 @@ export default function MatchesPage() {
                 const result = RESULT_META[match.editable.result];
 
                 return (
-                  <article key={match.match_id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#141a25] xl:grid-cols-[34px_150px_110px_1fr_200px_auto] xl:items-center ${selectedIds.has(match.match_id) ? "bg-[rgba(249,158,26,0.04)]" : ""}`}>
+                  <article key={match.match_id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#101114] xl:grid-cols-[34px_150px_110px_1fr_200px_auto] xl:items-center ${selectedIds.has(match.match_id) ? "bg-[rgba(242,140,40,0.04)]" : ""}`}>
                     <label className="flex cursor-pointer items-center justify-center">
                       <input
                         type="checkbox"
@@ -295,16 +295,16 @@ export default function MatchesPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <strong className="truncate text-sm text-white">{match.editable.map_name || "맵 미확인"}</strong>
-                        <span className={`text-xs font-black ${result.className}`}>{result.label}</span>
-                        {match.editable.my_hero && <span className="text-xs text-[#9bc6ff]">{match.editable.my_hero}</span>}
+                        <span className={`text-xs font-semibold ${result.className}`}>{result.label}</span>
+                        {match.editable.my_hero && <span className="text-xs text-[#aeb4bf]">{match.editable.my_hero}</span>}
                       </div>
                       <p className="mb-0 mt-1 truncate text-[10px] text-[var(--muted)]">
                         {match.editable.game_mode || "게임 모드 미확인"} · 이미지 {match.files.length}장
                       </p>
                       {(match.editable.season || match.editable.patch_label) && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {match.editable.season && <span className="rounded-md bg-[#171e2a] px-2 py-1 text-[9px] font-bold text-[#b8c0cf]">{match.editable.season}</span>}
-                          {match.editable.patch_label && <span className="rounded-md bg-[rgba(102,169,255,0.10)] px-2 py-1 text-[9px] font-bold text-[#9bc6ff]">{match.editable.patch_label}</span>}
+                          {match.editable.season && <span className="rounded-sm bg-[#151619] px-2 py-1 text-[9px] font-bold text-[#b8c0cf]">{match.editable.season}</span>}
+                          {match.editable.patch_label && <span className="rounded-sm bg-[#151619] px-2 py-1 text-[9px] font-bold text-[#aeb4bf]">{match.editable.patch_label}</span>}
                         </div>
                       )}
                     </div>
@@ -318,7 +318,7 @@ export default function MatchesPage() {
 
                     <Link
                       href={`/matches/${match.match_id}`}
-                      className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-center text-xs font-bold text-white no-underline transition hover:border-[#4b5668] hover:bg-[#19202d]"
+                      className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-center text-xs font-bold text-white no-underline transition hover:border-[#4b5668] hover:bg-[#19202d]"
                     >
                       상세 / 수정
                     </Link>
@@ -330,16 +330,6 @@ export default function MatchesPage() {
         </section>
       </div>
     </main>
-  );
-}
-
-function SummaryCard({ label, value, accent = false, warning = false }: { label: string; value: number; accent?: boolean; warning?: boolean }) {
-  const valueClass = warning ? "text-[#ffb45f]" : accent ? "text-[#8ee9aa]" : "text-white";
-  return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
-      <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
-      <p className={`mb-0 mt-2 text-2xl font-black ${valueClass}`}>{value}</p>
-    </div>
   );
 }
 
@@ -361,7 +351,7 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 
 function DataChip({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[#0d1118] px-2 py-1.5 text-center">
+    <div className="border-l border-[var(--line-soft)] px-2 py-1 text-center">
       <span className="block text-[9px] text-[var(--muted)]">{label}</span>
       <strong className="mt-0.5 block text-[11px] text-white">{value}</strong>
     </div>
