@@ -95,6 +95,9 @@ function summaryPatch(result: OcrExtractResult): Partial<EditableMatchFields> {
     patch.result = rawResult as MatchResult;
   }
 
+  const mapName = asString(result.map_name).trim();
+  if (mapName) patch.map_name = mapName;
+
   const mode = asString(result.mode).trim();
   if (mode) patch.game_mode = mode;
 
