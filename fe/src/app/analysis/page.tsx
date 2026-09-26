@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import EmptyState from "@/components/empty-state";
 import { useEffect, useMemo, useState } from "react";
 import { getMatchBackendAdapter, type MatchListItem } from "@/lib/backend";
 
@@ -106,11 +107,12 @@ export default function AnalysisPage() {
             </section>
 
             {confirmed.length === 0 ? (
-              <section className="border-y border-dashed border-[#35383f] px-6 py-16 text-center">
-                <p className="m-0 text-sm font-bold">아직 분석 가능한 경기가 없습니다</p>
-                <p className="mt-2 text-xs leading-5 text-[var(--muted)]">경기 상세에서 OCR 검수 후 확정하면 여기에 집계됩니다.</p>
-                <Link href="/matches" className="mt-4 inline-block text-xs font-bold text-[#9bbcff] no-underline hover:text-white">경기 목록으로 →</Link>
-              </section>
+              <EmptyState
+                title="아직 분석 가능한 경기가 없습니다"
+                description="경기 상세에서 OCR 검수를 마치고 확정하면 승률과 맵·영웅·모드별 집계가 시작됩니다."
+                href="/matches"
+                action="검수할 경기 보기"
+              />
             ) : (
               <div className="grid gap-x-7 gap-y-8 xl:grid-cols-3">
                 <Breakdown title="맵별" rows={mapRows} />
