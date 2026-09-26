@@ -1024,11 +1024,19 @@ def extract_personal(img, hero_key=None):
             })
 
     play_time=None
-    # Play time belongs to the hero summary card. Reading the whole panel can
-    # accidentally pick objective/contest time from another metric card.
+    # Prefer the hero-summary card. If its OCR misses the time entirely, fall
+    # back to the longest mm:ss value on the Personal panel; objective/contest
+    # times are shorter in normal Personal-stat layouts.
     hero_times=re.findall(r'\b\d{1,2}:\d{2}\b',hero_summary_raw)
     if hero_times:
         play_time=hero_times[-1]
+    else:
+        panel_times=re.findall(r'\b\d{1,2}:\d{2}\b',panel_text)
+        if panel_times:
+            def _mmss_seconds(value):
+                mm,ss=value.split(':',1)
+                return int(mm)*60+int(ss)
+            play_time=max(panel_times,key=_mmss_seconds)
 
     known={}
     m=re.search(r'(\d{1,3})%[^\n]*\n?[^\n]*무기\s*명중률|무기\s*명중률[^\n]*(\d{1,3})%',panel_text)
@@ -1040,7 +1048,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.10-dev',
+        'ocr_version':'0.10.11-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
