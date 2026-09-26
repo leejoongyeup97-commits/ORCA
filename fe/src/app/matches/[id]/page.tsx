@@ -78,6 +78,31 @@ function referenceGameMode(value: string): "control" | "flashpoint" | null {
   return null;
 }
 
+function roundCompatibilityFields(
+  form: EditableMatchFields,
+  rounds: RoundDetail[],
+): Pick<EditableMatchFields, "control_submap" | "round_sequence"> {
+  const validRounds = rounds.filter((round) => round.submap.trim());
+  if (validRounds.length === 0) {
+    return {
+      control_submap: form.control_submap,
+      round_sequence: form.round_sequence,
+    };
+  }
+
+  const resultLabel: Record<MatchResult, string> = {
+    win: "승",
+    loss: "패",
+    draw: "무",
+    unknown: "미확인",
+  };
+
+  return {
+    control_submap: validRounds.map((round) => round.submap.trim()).join(" → "),
+    round_sequence: validRounds.map((round) => resultLabel[round.result]).join(" → "),
+  };
+}
+
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -202,8 +227,10 @@ export default function MatchDetailPage() {
     if (!match || !form) return null;
     setBusy("save");
     setNotice("");
+    const compatibility = roundCompatibilityFields(form, roundDetails);
     const patch: EditableMatchFields = {
       ...form,
+      ...compatibility,
       side: normalizeSideForGameMode(form.game_mode, form.side),
       played_at: fromLocalDateTime(playedAtLocal, match.editable.played_at),
     };
@@ -227,8 +254,10 @@ export default function MatchDetailPage() {
     setBusy("confirm");
     setNotice("");
     try {
+      const compatibility = roundCompatibilityFields(form, roundDetails);
       const saved = await getMatchBackendAdapter().updateMatchImport(match.match_id, {
         ...form,
+        ...compatibility,
         side: normalizeSideForGameMode(form.game_mode, form.side),
         played_at: fromLocalDateTime(playedAtLocal, match.editable.played_at),
       });
@@ -239,8 +268,8 @@ export default function MatchDetailPage() {
         players: reviewDraft ? toConfirmPlayers(reviewDraft) : [],
         my_hero_details: reviewDraft ? toConfirmHeroDetails(reviewDraft) : [],
         manual_fields: {
-          control_submap: saved.editable.control_submap,
-          round_sequence: saved.editable.round_sequence,
+          control_submap: compatibility.control_submap,
+          round_sequence: compatibility.round_sequence,
           notes: saved.editable.notes,
           round_details: roundDetails.filter((round) => round.submap.trim()),
         },
@@ -509,28 +538,23 @@ export default function MatchDetailPage() {
                     <option value="neutral">해당 없음</option>
                   </select>
                 </Field>
-                <Field label="쟁탈 세부 맵" changed={form.control_submap !== match.editable.control_submap}>
-                  <input value={form.control_submap} onChange={(e) => setForm({ ...form, control_submap: e.target.value })} placeholder="예: 부산 · 시내" className="field-input" />
-                </Field>
-                <Field label="세트 진행 순서" changed={form.round_sequence !== match.editable.round_sequence}>
-                  <input value={form.round_sequence} onChange={(e) => setForm({ ...form, round_sequence: e.target.value })} placeholder="예: 승 → 패 → 승" className="field-input" />
-                </Field>
+
                 <Field label="경기 시간" changed={form.match_duration !== match.editable.match_duration}>
                   <input value={form.match_duration} onChange={(e) => setForm({ ...form, match_duration: e.target.value })} placeholder="예: 14:32" className="field-input" />
                 </Field>
+
+                <RoundDetailsEditor
+                  rounds={roundDetails}
+                  submaps={submapOptions}
+                  loading={submapLoading}
+                  enabled={referenceGameMode(form.game_mode) !== null}
+                  onChange={setRoundDetails}
+                />
                 <Field label="메모" wide changed={form.notes !== match.editable.notes}>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="특이사항이나 수동 메모" rows={4} className="field-input resize-y" />
                 </Field>
               </div>
             </form>
-
-            <RoundDetailsEditor
-              rounds={roundDetails}
-              submaps={submapOptions}
-              loading={submapLoading}
-              enabled={referenceGameMode(form.game_mode) !== null}
-              onChange={setRoundDetails}
-            />
 
             <MatchReviewEditor
               key={match.ocr.generated_at ?? match.match_id}
