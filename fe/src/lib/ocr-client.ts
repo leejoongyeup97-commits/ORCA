@@ -56,7 +56,15 @@ export function getOcrApiUrl() {
 }
 
 export async function getOcrHealth(signal?: AbortSignal): Promise<OcrHealth> {
-  const response = await fetch(`${OCR_API_URL}/health`, { signal });
+  let response: Response;
+  try {
+    response = await fetch(`${OCR_API_URL}/health`, { signal });
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `OCR 서버에 연결할 수 없습니다. ${OCR_API_URL} 가 실행 중인지 확인해 주세요.\n${raw}`,
+    );
+  }
   if (!response.ok) {
     const raw = await response.text().catch(() => "");
     throw new Error(
@@ -74,10 +82,18 @@ export async function extractScreenshot(
   form.append("screen_type", screenType);
   form.append("file", file, file.name);
 
-  const response = await fetch(`${OCR_API_URL}/extract`, {
-    method: "POST",
-    body: form,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${OCR_API_URL}/extract`, {
+      method: "POST",
+      body: form,
+    });
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `OCR 서버에 연결할 수 없습니다. ${OCR_API_URL} 가 실행 중인지 확인해 주세요.\n${raw}`,
+    );
+  }
 
   if (!response.ok) {
     const raw = await response.text().catch(() => "");

@@ -53,8 +53,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               OR
             </span>
             <span className="leading-tight">
-              <span className="block text-[14px] font-semibold tracking-[0.02em]">ORCA</span>
-              <span className="hidden text-[9px] text-[#70747d] lg:block">Overwatch Result Correlation Analysis</span>
+              <span className="block text-[15px] font-semibold tracking-[0.02em]">ORCA</span>
+              <span className="hidden text-[11px] text-[#70747d] lg:block">Overwatch Result Correlation Analysis</span>
             </span>
           </Link>
 
@@ -82,7 +82,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <span className="hidden items-center gap-2 px-1 text-[10px] text-[#737780] xl:flex">
+            <span className="hidden items-center gap-2 px-1 text-[11px] text-[#737780] xl:flex">
               <span className={`h-1.5 w-1.5 rounded-full ${session ? "bg-[#7fbf95]" : config.configured ? "bg-[#c6a15b]" : "bg-[#666a73]"}`} />
               {session ? session.user.email : config.configured ? "로그인 필요" : "Mock mode"}
             </span>
