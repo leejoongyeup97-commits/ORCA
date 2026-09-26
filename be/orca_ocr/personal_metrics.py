@@ -406,6 +406,8 @@ def resolve_hero_key(text: str) -> str | None:
 def _label_similarity(a: str, b: str) -> float:
     if not a or not b:
         return 0.0
+    if a == b:
+        return 1.0
     if a in b or b in a:
         return 0.96
     return SequenceMatcher(None, a, b).ratio()
