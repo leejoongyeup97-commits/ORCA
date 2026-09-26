@@ -477,6 +477,38 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "blade_projectile_accuracy": {"aliases": ["칼날 투영 명중률"]},
         "onslaught_uptime": {"aliases": ["맹공 활성 시간 비율"]},
     },
+    "moira": {
+        "biotic_orb_kills": {"aliases": ["생체 구슬로 처치"]},
+        "enemy_coalescence_efficiency": {"aliases": ["적 융화 활용도"]},
+        "coalescence_kills": {"aliases": ["융화로 처치"]},
+        "coalescence_healing": {"aliases": ["융화로 치유"]},
+        "players_saved": {"aliases": ["구한 플레이어", "보호한 플레이어"]},
+        "secondary_fire_accuracy": {"aliases": ["보조 발사 명중률", "보조발사 명중률"]},
+        "ally_coalescence_efficiency": {"aliases": ["아군 융화 활용도"]},
+    },
+    "juno": {
+        "orbital_ray_assists": {"aliases": ["궤도 광선 지원", "기도공선지원"]},
+        "orbital_ray_healing": {"aliases": ["궤도 광선으로 치유", "기도 공선으로 치유"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+    },
+    "illari": {
+        "secondary_fire_accuracy": {"aliases": ["보조 발사 명중률", "보조발사 명중률"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지"]},
+        "players_saved": {"aliases": ["구한 플레이어", "보호한 플레이어"]},
+        "healing_pylon_uptime": {"aliases": ["태양석 활성 시간 비율"]},
+        "sunstruck_detonations": {"aliases": ["열상 폭발"]},
+        "primary_fire_accuracy": {"aliases": ["기본 발사 명중률"]},
+        "healing_pylon_healing": {"aliases": ["태양석 치유", "치유의 태양석으로 치유"]},
+    },
+    "zenyatta": {
+        "charged_shot_accuracy": {"aliases": ["모아쏘기 명중률", "모이소기 명중률"]},
+        "transcendence_efficiency": {"aliases": ["초월 활용도"]},
+        "players_saved": {"aliases": ["구한 플레이어", "보호한 플레이어"]},
+        "charged_shot_kills": {"aliases": ["모아쏘기로 처치"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "damage_amplified": {"aliases": ["공격력 증폭"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -529,6 +561,10 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "sierra": ["시에라", "SIERRA"],
     "venture": ["벤처", "VENTURE"],
     "vendetta": ["벤데타", "VENDETTA"],
+    "moira": ["모이라", "MOIRA"],
+    "juno": ["주노", "JUNO"],
+    "illari": ["일리아리", "ILLARI"],
+    "zenyatta": ["젠야타", "ZENYATTA"],
 }
 
 
