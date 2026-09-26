@@ -7,6 +7,7 @@ import sys
 import time
 from datetime import datetime
 from orca_ocr.engine import extract, get_rapidocr_status
+from patchnotes import fetch_patchnote, list_patchnotes
 
 app = FastAPI(title="ORCA OCR API", version="0.2.11")
 app.add_middleware(
@@ -25,6 +26,39 @@ def health():
         return {"ok": ok, "service": "orca-ocr", "version": "0.2.11", "rapidocr": status}
     except Exception as exc:
         return {"ok": False, "service": "orca-ocr", "version": "0.2.11", "rapidocr_error": str(exc)}
+
+
+
+@app.get("/patchnotes/list")
+def patchnotes_list(limit: int = 20):
+    try:
+        return {
+            "ok": True,
+            "source": "nexon-overwatch",
+            "items": list_patchnotes(limit=limit),
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"PATCHNOTE_LIST_FAILED: {type(exc).__name__}: {exc}",
+        ) from exc
+
+
+@app.get("/patchnotes/preview")
+def patchnotes_preview(url: str):
+    try:
+        return {
+            "ok": True,
+            "source": "nexon-overwatch",
+            "patchnote": fetch_patchnote(url),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"PATCHNOTE_FETCH_FAILED: {type(exc).__name__}: {exc}",
+        ) from exc
 
 @app.post("/extract")
 async def extract_image(screen_type: str = Form(...), file: UploadFile = File(...)):
