@@ -7,7 +7,7 @@ import sys
 import time
 from datetime import datetime
 from orca_ocr.engine import extract, get_rapidocr_status
-from patchnotes import fetch_patchnote, list_patchnotes
+from patchnotes import fetch_patchnote, list_patchnotes, patchnotes_debug
 
 app = FastAPI(title="ORCA OCR API", version="0.2.11")
 app.add_middleware(
@@ -41,6 +41,17 @@ def patchnotes_list(limit: int = 20):
         raise HTTPException(
             status_code=502,
             detail=f"PATCHNOTE_LIST_FAILED: {type(exc).__name__}: {exc}",
+        ) from exc
+
+
+@app.get("/patchnotes/debug")
+def patchnotes_debug_view():
+    try:
+        return {"ok": True, **patchnotes_debug()}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"PATCHNOTE_DEBUG_FAILED: {type(exc).__name__}: {exc}",
         ) from exc
 
 
