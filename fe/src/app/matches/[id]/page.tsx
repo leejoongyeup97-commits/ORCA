@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MatchReviewEditor from "@/components/match-review-editor";
+import RoundDetailsEditor from "@/components/round-details-editor";
 import {
   removeReviewDraft,
   toConfirmHeroDetails,
@@ -16,9 +17,11 @@ import {
   getMatchBackendAdapter,
   type EditableMatchFields,
   type MatchImportStatus,
+  type MapSubmapOption,
   type MatchImportView,
   type MatchResult,
   type MatchSide,
+  type RoundDetail,
 } from "@/lib/backend";
 
 const STATUS_META: Record<MatchImportStatus, { label: string; className: string }> = {
@@ -63,6 +66,13 @@ function formatDate(value: string) {
   }).format(date);
 }
 
+function referenceGameMode(value: string): "control" | "flashpoint" | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "control" || normalized.includes("쟁탈")) return "control";
+  if (normalized === "flashpoint" || normalized.includes("플래시포인트")) return "flashpoint";
+  return null;
+}
+
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -78,6 +88,9 @@ export default function MatchDetailPage() {
   const [error, setError] = useState("");
   const [reviewDraft, setReviewDraft] = useState<MatchReviewDraft | null>(null);
   const [ocrBundle, setOcrBundle] = useState<StoredOcrBundle | null>(null);
+  const [roundDetails, setRoundDetails] = useState<RoundDetail[]>([]);
+  const [submapOptions, setSubmapOptions] = useState<MapSubmapOption[]>([]);
+  const [submapLoading, setSubmapLoading] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
@@ -105,6 +118,50 @@ export default function MatchDetailPage() {
     if (!matchId) return;
     setOcrBundle(getStoredOcrBundle(matchId));
   }, [matchId, match?.ocr.generated_at]);
+
+  useEffect(() => {
+    if (!matchId) return;
+    let mounted = true;
+    getMatchBackendAdapter()
+      .getRoundDetails(matchId)
+      .then((rounds) => {
+        if (mounted) setRoundDetails(rounds);
+      })
+      .catch(() => {
+        if (mounted) setRoundDetails([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [matchId]);
+
+  useEffect(() => {
+    const mode = referenceGameMode(form?.game_mode ?? "");
+    const mapName = form?.map_name.trim() ?? "";
+    if (!mode || !mapName) {
+      setSubmapOptions([]);
+      setSubmapLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    setSubmapLoading(true);
+    getMatchBackendAdapter()
+      .listMapSubmaps(mapName, mode)
+      .then((items) => {
+        if (mounted) setSubmapOptions(items);
+      })
+      .catch(() => {
+        if (mounted) setSubmapOptions([]);
+      })
+      .finally(() => {
+        if (mounted) setSubmapLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [form?.game_mode, form?.map_name]);
 
   const counts = useMemo(() => {
     if (!match) return { summary: 0, team: 0, personal: 0, replay: 0, unknown: 0 };
@@ -158,7 +215,12 @@ export default function MatchDetailPage() {
         match: saved.editable,
         players: reviewDraft ? toConfirmPlayers(reviewDraft) : [],
         my_hero_details: reviewDraft ? toConfirmHeroDetails(reviewDraft) : [],
-        manual_fields: {},
+        manual_fields: {
+          control_submap: saved.editable.control_submap,
+          round_sequence: saved.editable.round_sequence,
+          notes: saved.editable.notes,
+          round_details: roundDetails,
+        },
       });
       const confirmed = await getMatchBackendAdapter().getMatchImport(match.match_id);
       setMatch(confirmed);
@@ -330,11 +392,11 @@ export default function MatchDetailPage() {
                     {(Object.keys(RESULT_LABELS) as MatchResult[]).map((result) => <option key={result} value={result}>{RESULT_LABELS[result]}</option>)}
                   </select>
                 </Field>
-                <Field label="시즌">
-                  <input value={form.season} onChange={(e) => setForm({ ...form, season: e.target.value })} placeholder="예: Season 20" className="field-input" />
+                <Field label="시즌 · 자동 판별">
+                  <input value={form.season} readOnly placeholder="DB에서 경기 시간 기준 자동 판별" className="field-input cursor-default text-[var(--muted)]" />
                 </Field>
-                <Field label="패치">
-                  <input value={form.patch_label} onChange={(e) => setForm({ ...form, patch_label: e.target.value })} placeholder="예: 2026-09-15" className="field-input" />
+                <Field label="패치 · 자동 판별">
+                  <input value={form.patch_label} readOnly placeholder="DB에서 경기 시간 기준 자동 판별" className="field-input cursor-default text-[var(--muted)]" />
                 </Field>
                 <Field label="공격 / 수비">
                   <select
@@ -363,6 +425,14 @@ export default function MatchDetailPage() {
                 </Field>
               </div>
             </form>
+
+            <RoundDetailsEditor
+              rounds={roundDetails}
+              submaps={submapOptions}
+              loading={submapLoading}
+              enabled={referenceGameMode(form.game_mode) !== null}
+              onChange={setRoundDetails}
+            />
 
             <MatchReviewEditor
               key={match.ocr.generated_at ?? match.match_id}
