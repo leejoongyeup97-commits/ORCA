@@ -145,6 +145,52 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "overrun_kills": {"aliases": ["돌파로 처치"]},
         "cage_fight_kills": {"aliases": ["케이지 혈투로 처치"]},
     },
+    "mercy": {
+        "damage_amplified": {"aliases": ["공격력 증폭"]},
+        "players_resurrected": {"aliases": ["부활한 플레이어"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "damage_boost_beam_usage": {"aliases": ["증폭 광선 사용"]},
+        "valkyrie_healing": {"aliases": ["발키리로 치유"]},
+        "blaster_kills": {"aliases": ["블라스터로 처치"]},
+        "healing_beam_usage": {"aliases": ["치유 광선 사용"]},
+        "valkyrie_damage": {"aliases": ["발키리로 준 피해", "발키2로준피하"]},
+    },
+    "mei": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "enemies_frozen": {"aliases": ["얼린 적", "빙결한 적"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "icicle_accuracy": {"aliases": ["고드름 명중률"]},
+        "blizzard_kills": {"aliases": ["눈보라로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "icicle_critical_hit_accuracy": {"aliases": ["고드름 치명타 명중률"]},
+    },
+    "mizuki": {
+        "healing_hat_healing": {"aliases": ["치유의 삿갓으로 치유"]},
+        "enemies_bound": {"aliases": ["속박한 적", "방해한 적"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "barrier_sanctuary_absorbed": {"aliases": ["결계 성역으로 흡수", "흡수한 피해"]},
+        "spirit_shuriken_accuracy": {"aliases": ["영혼 수리검 명중률"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "healing_hat_accuracy": {"aliases": ["치유의 삿갓 명중률"]},
+        "ultimates_negated": {"aliases": ["궁극기 차단"]},
+    },
+    "baptiste": {
+        "healing_accuracy": {"aliases": ["치유 명중률", "시유 명중률"]},
+        "deaths_prevented": {"aliases": ["불사 장치로 사망 저지"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "amplification_matrix_assists": {"aliases": ["증폭 매트릭스 지원", "증폭매트릭스지원"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "damage_amplified": {"aliases": ["공격력 증폭"]},
+    },
+    "brigitte": {
+        "inspire_triggers": {"aliases": ["격려 발동"]},
+        "inspire_uptime": {"aliases": ["격려 활성 시간 비율"]},
+        "shield_bash_kills": {"aliases": ["방패 밀쳐내기로 처치"]},
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "whip_shot_accuracy": {"aliases": ["도리깨 투척 명중률"]},
+        "overhealth_provided": {"aliases": ["추가 생명력 제공"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -162,6 +208,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "lucio": ["루시우", "LUCIO", "LÚCIO"],
     "reaper": ["리퍼", "REAPER"],
     "mauga": ["마우가", "MAUGA"],
+    "mercy": ["메르시", "MERCY"],
+    "mei": ["메이", "MEI"],
+    "mizuki": ["미즈키", "MIZUKI"],
+    "baptiste": ["바티스트", "BAPTISTE"],
+    "brigitte": ["브리기테", "BRIGITTE"],
 }
 
 
@@ -213,6 +264,26 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "mauga": [
         "weapon_accuracy","self_healing","objective_contest_time","critical_damage",
         "overhealth_generated","players_saved","overrun_kills","cage_fight_kills",
+    ],
+    "mercy": [
+        "damage_amplified","players_resurrected","players_saved","damage_boost_beam_usage",
+        "valkyrie_healing","blaster_kills","healing_beam_usage","valkyrie_damage",
+    ],
+    "mei": [
+        "weapon_accuracy","enemies_frozen","final_blows","icicle_accuracy",
+        "blizzard_kills","solo_kills","icicle_critical_hit_accuracy",
+    ],
+    "mizuki": [
+        "healing_hat_healing","enemies_bound","players_saved","barrier_sanctuary_absorbed",
+        "spirit_shuriken_accuracy","weapon_accuracy","healing_hat_accuracy","ultimates_negated",
+    ],
+    "baptiste": [
+        "healing_accuracy","deaths_prevented","players_saved","critical_hit_accuracy",
+        "amplification_matrix_assists","weapon_accuracy","damage_amplified",
+    ],
+    "brigitte": [
+        "inspire_triggers","inspire_uptime","shield_bash_kills",
+        "knockback_kills","whip_shot_accuracy","overhealth_provided",
     ],
 }
 
