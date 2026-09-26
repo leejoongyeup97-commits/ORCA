@@ -290,7 +290,6 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "tidal_blast_kills": {"aliases": ["해일 폭발로 처치", "하일 폭발로 처치"]},
         "direct_hit_accuracy": {"aliases": ["직격 명중률", "직격 적중률"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
-        "self_healing": {"aliases": ["자가 치유"]},
     },
 }
 
@@ -442,7 +441,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     ],
     "wuyang": [
         "weapon_accuracy","guardian_wave_kills","water_staff_direct_hits",
-        "healing_amplified","tidal_blast_kills","direct_hit_accuracy","self_healing",
+        "healing_amplified","tidal_blast_kills","direct_hit_accuracy","healing_amplified",
     ],
 }
 
