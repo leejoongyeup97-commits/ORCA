@@ -377,7 +377,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     "kiriko": {
         "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
-        "healing_ofuda_accuracy": {"aliases": ["치유의 부적 명중률"]},
+        "kitsune_rush_assists": {"aliases": ["여우길 지원", "여우길지원"]},
         "kunai_kills": {"aliases": ["쿠나이로 처치"]},
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "negative_effects_cleansed": {"aliases": ["부정적인 효과 정화", "부정적인흐과정화"]},
@@ -728,7 +728,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "molten_core_kills","solo_kills","hammer_kills",
     ],
     "kiriko": [
-        "critical_hit_accuracy","players_saved","healing_ofuda_accuracy",
+        "critical_hit_accuracy","players_saved","kitsune_rush_assists",
         "kunai_kills","weapon_accuracy","negative_effects_cleansed",
     ],
     "freja": [
