@@ -28,6 +28,7 @@ create unique index if not exists patches_patch_label_uidx
   on public.patches (patch_label)
   where patch_label is not null;
 
+alter table public.matches drop column if exists attack_defense;
 alter table public.matches add column if not exists season_id uuid;
 alter table public.matches add column if not exists patch_id uuid;
 alter table public.matches add column if not exists side text;
@@ -174,6 +175,64 @@ create table if not exists public.map_submaps (
 
 create index if not exists map_submaps_lookup_idx
   on public.map_submaps (map_name, game_mode, sort_order);
+
+-- Canonical Control / Flashpoint submap reference data.
+-- map_name follows the Korean names used by ORCA OCR/FE.
+insert into public.map_submaps (
+  map_name, game_mode, submap_key, submap_name, sort_order, is_active
+) values
+  -- Control
+  ('남극 반도','control','icebreaker','쇄빙선',1,true),
+  ('남극 반도','control','labs','연구실',2,true),
+  ('남극 반도','control','sublevel','지하층',3,true),
+
+  ('부산','control','downtown','시내',1,true),
+  ('부산','control','sanctuary','사찰',2,true),
+  ('부산','control','meka-base','MEKA 기지',3,true),
+
+  ('일리오스','control','lighthouse','등대',1,true),
+  ('일리오스','control','well','우물',2,true),
+  ('일리오스','control','ruins','폐허',3,true),
+
+  ('리장 타워','control','night-market','야시장',1,true),
+  ('리장 타워','control','garden','정원',2,true),
+  ('리장 타워','control','control-center','관제 센터',3,true),
+
+  ('네팔','control','village','마을',1,true),
+  ('네팔','control','shrine','제단',2,true),
+  ('네팔','control','sanctum','성소',3,true),
+
+  ('오아시스','control','city-center','도심',1,true),
+  ('오아시스','control','gardens','정원',2,true),
+  ('오아시스','control','university','대학',3,true),
+
+  ('사모아','control','beach','해변',1,true),
+  ('사모아','control','downtown','시내',2,true),
+  ('사모아','control','volcano','화산',3,true),
+
+  -- Flashpoint
+  ('뉴 정크 시티','flashpoint','arena','경기장',1,true),
+  ('뉴 정크 시티','flashpoint','the-ducts','배관',2,true),
+  ('뉴 정크 시티','flashpoint','refinery','제련소',3,true),
+  ('뉴 정크 시티','flashpoint','junkyard','고철 처리장',4,true),
+  ('뉴 정크 시티','flashpoint','bomb-flats','폭탄 지대',5,true),
+
+  ('수라바사','flashpoint','market','시장',1,true),
+  ('수라바사','flashpoint','garden','정원',2,true),
+  ('수라바사','flashpoint','palace','궁전',3,true),
+  ('수라바사','flashpoint','temple','사원',4,true),
+  ('수라바사','flashpoint','ruins','폐허',5,true),
+
+  ('아틀리스','flashpoint','station','스테이션',1,true),
+  ('아틀리스','flashpoint','garden','정원',2,true),
+  ('아틀리스','flashpoint','town-center','타운 센터',3,true),
+  ('아틀리스','flashpoint','bazaar','바자르',4,true),
+  ('아틀리스','flashpoint','resort','리조트',5,true)
+on conflict (map_name, submap_key) do update
+set game_mode = excluded.game_mode,
+    submap_name = excluded.submap_name,
+    sort_order = excluded.sort_order,
+    is_active = excluded.is_active;
 
 alter table public.seasons enable row level security;
 alter table public.patches enable row level security;
