@@ -181,10 +181,13 @@ def _summary_result_from_text(reads):
 
 
 def extract_summary(img):
-    # Fixed fields on the right-side summary card. Keeping the full card OCR is useful
-    # for debugging, but each field is read independently so labels cannot steal values.
+    # Use the Korean recognizer only for Korean text, while keeping the proven
+    # default RapidOCR path for numbers/date/time.
     card = ROI['summary_result']
-    text = _ocr(_crop(img, card), 6)
+    card_crop=_crop(img,card)
+    text = _ocr(card_crop, 6)
+    korean_card_reads=_ocr_korean(card_crop)
+    korean_text='\n'.join(korean_card_reads)
     boxes = {
         'result': (0.682, 0.565, 0.790, 0.635),
         'score': (0.688, 0.625, 0.815, 0.665),
@@ -193,6 +196,12 @@ def extract_summary(img):
         'duration': (0.688, 0.715, 0.855, 0.755),
     }
     field_raw = {k: _ocr_box(img, b, 7) for k,b in boxes.items()}
+    try:
+        field_raw['result_ko']='\n'.join(_ocr_korean(_crop(img,boxes['result'])))
+        field_raw['mode_ko']='\n'.join(_ocr_korean(_crop(img,boxes['mode'])))
+    except Exception:
+        field_raw['result_ko']=''
+        field_raw['mode_ko']=''
 
     # Map OCR is optional. Use tight multi-crop reads around the map heading.
     try:
@@ -208,7 +217,11 @@ def extract_summary(img):
     result_reads=_summary_result_reads(img)
     # Preserve the original fixed result crop in debug output as well.
     result_reads.insert(0,field_raw['result'])
+    if field_raw.get('result_ko'):
+        result_reads.insert(0,field_raw['result_ko'])
     result_reads.append(text)
+    if korean_text:
+        result_reads.append(korean_text)
 
     duration = None
     # The fixed duration crop can overlap the date/time. Prefer the labelled value
@@ -218,7 +231,16 @@ def extract_summary(img):
         m = re.search(r'(?:게임\s*)?시간\s*[:：]?\s*(\d{1,2}:\d{2})', text)
     if not m:
         m = re.search(r'(\d{1,2}:\d{2})', field_raw['duration'])
-    if m: duration = _time_to_seconds(m.group(1))
+    if not m:
+        duration_candidates=re.findall(r'\b\d{1,2}:\d{2}\b', text)
+        for candidate in reversed(duration_candidates):
+            seconds=_time_to_seconds(candidate)
+            if seconds is not None and 60 <= seconds <= 60*60:
+                m=re.match(r'(.*)',candidate)
+                duration=seconds
+                break
+    if duration is None and m:
+        duration = _time_to_seconds(m.group(1))
 
     score = None
     score_source = field_raw['score'] + '\n' + text
@@ -256,7 +278,7 @@ def extract_summary(img):
         result_source='final_score'
 
     mode = None
-    mode_source = field_raw['mode'] + '\n' + text
+    mode_source = field_raw.get('mode_ko','') + '\n' + field_raw['mode'] + '\n' + korean_text + '\n' + text
     m = re.search(r'(?:게임\s*)?모드\s*[:：]?\s*([^\n]+)', mode_source)
     if m: mode = m.group(1).strip(' ·ㆍ|')
     elif '혼합' in mode_source: mode = '혼합'
@@ -270,7 +292,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.23-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.24-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -989,8 +1011,17 @@ def _detect_personal_cards(img):
     return fallback,'fallback'
 
 def _card_text(img, box):
-    # OCR one detected/fallback card without depending on the removed v0.9.7 helper.
-    return _ocr(_crop(img, box), 6)
+    # Combine Korean text recognition with the default RapidOCR number path.
+    crop=_crop(img,box)
+    parts=[]
+    try:
+        parts.extend(_ocr_korean(crop))
+    except Exception:
+        pass
+    default=_ocr(crop,6)
+    if default:
+        parts.append(default)
+    return '\n'.join(dict.fromkeys(v for v in parts if v))
 
 def _personal_card_value(img,box):
     """Read Personal-card values with a RapidOCR-only ensemble."""
@@ -1025,15 +1056,19 @@ def _personal_card_value(img,box):
 
 
 def _personal_card_label(img,box):
-    """Read only the lower label portion of one Personal stat card."""
+    """Read only the lower Korean label portion of one Personal stat card."""
     x1,y1,x2,y2=box
     label_box=(x1,y1+(y2-y1)*0.48,x2,y2)
     crop=_crop(img,label_box)
     reads=[]
-    for psm in (6,7):
-        text=_ocr(crop,psm=psm,lang='kor+eng')
-        if text:
-            reads.extend(line.strip() for line in text.splitlines() if line.strip())
+    try:
+        reads.extend(_ocr_korean(crop))
+    except Exception:
+        pass
+    # Keep default RapidOCR as a secondary candidate, not the primary Korean reader.
+    text=_ocr(crop,psm=7,lang='kor+eng')
+    if text:
+        reads.extend(line.strip() for line in text.splitlines() if line.strip())
     if not reads:
         return '',0.0
 
@@ -1075,8 +1110,16 @@ def _personal_primary_from_raw(raw,label_raw):
 
 def _personal_hero_name_text(img):
     """Read selected hero name from the left Personal-screen navigation."""
-    text=_ocr_box(img,(0.025,0.185,0.195,0.255),psm=7,lang='kor+eng')
-    return text
+    crop=_crop(img,(0.025,0.185,0.195,0.255))
+    reads=[]
+    try:
+        reads.extend(_ocr_korean(crop))
+    except Exception:
+        pass
+    fallback=_ocr(crop,psm=7,lang='kor+eng')
+    if fallback:
+        reads.append(fallback)
+    return '\n'.join(dict.fromkeys(v for v in reads if v))
 
 
 def _personal_label_from_raw(raw):
@@ -1117,7 +1160,16 @@ def _symmetra_average_charge_from_panel(panel_text):
 
 
 def extract_personal(img, hero_key=None):
-    panel_text=_ocr(_crop(img,ROI['personal_panel']),6)
+    panel_crop=_crop(img,ROI['personal_panel'])
+    panel_parts=[]
+    try:
+        panel_parts.extend(_ocr_korean(panel_crop))
+    except Exception:
+        pass
+    panel_default=_ocr(panel_crop,6)
+    if panel_default:
+        panel_parts.append(panel_default)
+    panel_text='\n'.join(dict.fromkeys(v for v in panel_parts if v))
     boxes,layout=_detect_personal_cards(img)
 
     # The API only receives screen_type + image, so infer the selected hero from
@@ -1353,7 +1405,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.34-dev',
+        'ocr_version':'0.10.35-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
