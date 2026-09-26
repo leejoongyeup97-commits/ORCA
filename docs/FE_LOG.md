@@ -15,6 +15,21 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-26 · 경기 정보 수정 정리 + 중립 모드 공수 자동화
+- 상태: DONE
+- 내용:
+  - 경기 상세 > 경기 정보 수정에서 `내 주 영웅` 입력 항목 제거
+  - 현재 값 요약에서도 주 영웅 표시 제거
+  - 게임 모드가 쟁탈/플래시포인트/밀기(Control/Flashpoint/Push 포함)인 경우 `공격 / 수비`를 자동으로 `해당 없음` 처리
+  - 경기 상세 수동 수정, OCR 결과 검수, OCR 요약 매핑 모두 동일 규칙 적용
+- 관련:
+  - `fe/src/lib/match-rules.ts`
+  - `fe/src/app/matches/[id]/page.tsx`
+  - `fe/src/app/matches/new/page.tsx`
+  - `fe/src/lib/ocr-integration.ts`
+- 검증: Frontend Check build 성공
+- 완료 커밋: cf2c10f95165b42542908c0d552c885397cb7847
+
 ### 2026-09-26 · OCR 진행 로그 + 오류 모달
 - 상태: DONE
 - 내용:
