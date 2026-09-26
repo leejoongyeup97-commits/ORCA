@@ -1187,20 +1187,20 @@ function ReviewScreen({
   );
 
   return (
-    <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
+    <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
       <div className="mx-auto max-w-[1320px]">
 
-        <section className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+        <section className="mb-7 border-y border-[var(--line)] py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[var(--orange-soft)] px-2.5 py-1 text-[9px] font-black text-[var(--orange)]">BATCH REVIEW</span>
+                <span className="rounded-sm bg-[#17181b] px-2 py-1 text-[9px] font-medium text-[#c7c9ce]">BATCH REVIEW</span>
                 <span className="text-xs font-bold text-white">{currentIndex + 1} / {queue.length}</span>
                 <span className="text-[10px] text-[var(--muted)]">완료 {reviewedCount}건</span>
               </div>
-              <div className="mt-3 h-1.5 w-full max-w-[360px] overflow-hidden rounded-full bg-[#171e2a]">
+              <div className="mt-3 h-1 w-full max-w-[360px] overflow-hidden rounded-sm bg-[#1b1d21]">
                 <div
-                  className="h-full rounded-full bg-[var(--orange)] transition-all"
+                  className="h-full bg-[var(--orange)] transition-all"
                   style={{ width: `${queue.length > 0 ? Math.round(((currentIndex + 1) / queue.length) * 100) : 0}%` }}
                 />
               </div>
@@ -1211,7 +1211,7 @@ function ReviewScreen({
                 type="button"
                 disabled={bulkReviewState.running}
                 onClick={onApproveAll}
-                className="cursor-pointer rounded-lg border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-3 py-2 text-[10px] font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#b7d5c1] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
               >
                 {bulkReviewState.running
                   ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}`
@@ -1221,7 +1221,7 @@ function ReviewScreen({
                 type="button"
                 disabled={currentIndex <= 0 || bulkReviewState.running}
                 onClick={onPrevious}
-                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#d5d6d9] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 ← 이전 경기
               </button>
@@ -1229,7 +1229,7 @@ function ReviewScreen({
                 type="button"
                 disabled={currentIndex >= queue.length - 1 || bulkReviewState.running}
                 onClick={onNext}
-                className="cursor-pointer rounded-lg border border-[var(--line)] bg-[#0d1118] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-30"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#d5d6d9] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 다음 경기 →
               </button>
@@ -1247,18 +1247,18 @@ function ReviewScreen({
                   type="button"
                   key={item.id}
                   onClick={() => onSelectMatch(item.id)}
-                  className={`min-w-[116px] cursor-pointer rounded-xl border px-3 py-2 text-left transition ${
+                  className={`min-w-[108px] cursor-pointer rounded-md border px-3 py-2 text-left transition ${
                     active
-                      ? "border-[var(--orange)] bg-[var(--orange-soft)]"
+                      ? "border-[#3b3e45] bg-[#17181b]"
                       : done
-                        ? "border-[rgba(121,227,156,0.25)] bg-[rgba(121,227,156,0.05)]"
-                        : "border-[var(--line)] bg-[#0d1118] hover:border-[#4b5668]"
+                        ? "border-[#2d3530] bg-transparent"
+                        : "border-[var(--line)] bg-transparent hover:bg-[#121316]"
                   }`}
                 >
-                  <span className={`block text-[9px] font-black ${active ? "text-[var(--orange)]" : done ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
+                  <span className={`block text-[9px] font-medium ${active ? "text-[var(--orange)]" : done ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
                     경기 {index + 1}
                   </span>
-                  <span className="mt-1 block text-[10px] font-bold text-white">
+                  <span className="mt-1 block text-[10px] font-medium text-white">
                     {item.reviewStatus === "confirmed"
                       ? "저장 완료"
                       : item.reviewStatus === "pending_ocr"
@@ -1273,11 +1273,11 @@ function ReviewScreen({
           </div>
         </section>
 
-        <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <section className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-xs font-bold text-[#9bbcff] hover:text-white">← 전체 검수 종료</button>
-            <p className="mb-2 text-sm font-semibold text-[var(--orange)]">경기 검수</p>
-            <h1 className="m-0 text-3xl font-bold tracking-[-0.03em]">{match.id}</h1>
+            <button type="button" onClick={onBack} className="mb-3 cursor-pointer border-0 bg-transparent p-0 text-[11px] font-medium text-[var(--muted)] hover:text-white">← 전체 검수 종료</button>
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">경기 검수</p>
+            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em]">{match.id}</h1>
             <p className="mt-2 text-xs text-[var(--muted)]">자동 분류가 틀린 이미지는 직접 바꾸고, 필요 없는 이미지는 제외한 뒤 업로드 준비 완료로 표시하세요.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1291,7 +1291,7 @@ function ReviewScreen({
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <section className="space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[#05070a]">
+            <div className="overflow-hidden rounded-md border border-[var(--line)] bg-[#050607]">
               <div className="flex min-h-[360px] items-center justify-center bg-black p-3 md:min-h-[520px]">
                 {selected ? (
                   <FilePreview file={selected.file} className={`max-h-[620px] max-w-full object-contain ${selected.excluded ? "opacity-35 grayscale" : ""}`} />
@@ -1300,17 +1300,17 @@ function ReviewScreen({
                 )}
               </div>
               {selected && (
-                <div className="flex flex-col gap-2 border-t border-[var(--line)] bg-[var(--panel)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 border-t border-[var(--line)] bg-transparent px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="m-0 truncate text-sm font-bold">{selected.file.name}</p>
                     <p className="mt-1 text-[10px] text-[var(--muted)]">{formatDate(selected.file.lastModified)} · {formatBytes(selected.file.size)} · SHA {selected.hash.slice(0, 12)}…</p>
                   </div>
-                  <span className={`w-fit rounded-md px-2.5 py-1 text-xs font-black ${typeClass(selected.type)}`}>{TYPE_META[selected.type].label}</span>
+                  <span className={`w-fit rounded-sm px-2 py-1 text-[10px] font-medium ${typeClass(selected.type)}`}>{TYPE_META[selected.type].label}</span>
                 </div>
               )}
             </div>
 
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+            <div className="border-t border-[var(--line)] pt-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="m-0 text-sm font-bold">이미지 빠른 선택</p>
@@ -1324,10 +1324,10 @@ function ReviewScreen({
                     type="button"
                     key={file.id}
                     onClick={() => onSelectFile(file.id)}
-                    className={`relative aspect-video cursor-pointer overflow-hidden rounded-lg border bg-black ${selected?.id === file.id ? "border-[var(--orange)]" : "border-[var(--line)]"} ${file.excluded ? "opacity-35" : ""}`}
+                    className={`relative aspect-video cursor-pointer overflow-hidden rounded-sm border bg-black ${selected?.id === file.id ? "border-[var(--orange)]" : "border-[var(--line)]"} ${file.excluded ? "opacity-35" : ""}`}
                   >
                     <FilePreview file={file.file} className="h-full w-full object-cover" />
-                    <span className={`absolute left-1 top-1 rounded px-1.5 py-0.5 text-[9px] font-black ${typeClass(file.type)}`}>{index + 1} · {TYPE_META[file.type].label}</span>
+                    <span className={`absolute left-1 top-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${typeClass(file.type)}`}>{index + 1} · {TYPE_META[file.type].label}</span>
                     {file.excluded && <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-[10px] font-black text-white">제외됨</span>}
                   </button>
                 ))}
@@ -1336,7 +1336,7 @@ function ReviewScreen({
           </section>
 
           <aside className="space-y-4">
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+            <section className="border-t border-[var(--line)] pt-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="m-0 text-sm font-bold">이미지 분류 수정</p>
@@ -1350,9 +1350,9 @@ function ReviewScreen({
 
               <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
                 {match.files.map((file, index) => (
-                  <div key={file.id} className={`rounded-xl border p-3 ${file.excluded ? "border-[#2a303b] bg-[#0a0d12] opacity-55" : selected?.id === file.id ? "border-[rgba(249,158,26,0.55)] bg-[rgba(249,158,26,0.05)]" : "border-[var(--line)] bg-[#0d1118]"}`}>
+                  <div key={file.id} className={`border-b border-[var(--line-soft)] py-3 ${file.excluded ? "border-[#2a303b] bg-[#0a0d12] opacity-55" : selected?.id === file.id ? "border-[rgba(249,158,26,0.55)] bg-[rgba(249,158,26,0.05)]" : "border-[var(--line)] bg-[#0d1118]"}`}>
                     <button type="button" onClick={() => onSelectFile(file.id)} className="mb-2 flex w-full cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-white">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#171e2a] text-[10px] font-black text-[var(--muted)]">{index + 1}</span>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-[#151619] text-[10px] font-black text-[var(--muted)]">{index + 1}</span>
                       <div className="min-w-0 flex-1">
                         <p className={`m-0 truncate text-xs font-bold ${file.excluded ? "line-through text-[var(--muted)]" : "text-white"}`}>{file.file.name}</p>
                         <p className="mt-1 text-[9px] text-[var(--muted)]">score {file.score.toFixed(3)}</p>
@@ -1364,13 +1364,13 @@ function ReviewScreen({
                         value={file.type}
                         disabled={file.excluded}
                         onChange={(event) => onChangeType(file.id, event.target.value as ScreenType)}
-                        className="min-w-0 rounded-lg border border-[#303847] bg-[#0a0d12] px-2.5 py-2 text-xs font-bold text-white outline-none focus:border-[var(--orange)] disabled:opacity-50"
+                        className="min-w-0 rounded-md border border-[var(--line)] bg-transparent px-2.5 py-2 text-xs font-bold text-white outline-none focus:border-[var(--orange)] disabled:opacity-50"
                       >
                         {(Object.keys(TYPE_META) as ScreenType[]).map((type) => (
                           <option key={type} value={type}>{TYPE_META[type].label} · {TYPE_META[type].description}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => onToggleExcluded(file.id)} className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold ${file.excluded ? "border-[rgba(121,227,156,0.25)] text-[#8ee9aa]" : "border-[#503336] text-[#ff9b9b]"}`}>
+                      <button type="button" onClick={() => onToggleExcluded(file.id)} className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-medium ${file.excluded ? "border-[rgba(121,227,156,0.25)] text-[#8ee9aa]" : "border-[#503336] text-[#ff9b9b]"}`}>
                         {file.excluded ? "복원" : "제외"}
                       </button>
                     </div>
@@ -1384,7 +1384,7 @@ function ReviewScreen({
               </div>
             </section>
 
-            <section className={`rounded-2xl border p-5 ${validation.valid ? "border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.05)]" : "border-[rgba(249,158,26,0.28)] bg-[rgba(249,158,26,0.05)]"}`}>
+            <section className={`border-t border-[var(--line)] pt-4 ${validation.valid ? "border-[var(--line)] bg-transparent" : "border-[var(--line)] bg-transparent"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className={`m-0 text-sm font-bold ${validation.valid ? "text-[#8ee9aa]" : "text-[var(--orange)]"}`}>{validation.valid ? "검수 조건 충족" : "확인할 항목이 있습니다"}</p>
@@ -1396,7 +1396,7 @@ function ReviewScreen({
                     <ValidationRow ok text={`리플레이 ${perType.replay}장 · 선택`} neutral />
                   </div>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${match.reviewStatus === "ready_to_upload" ? "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
+                <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${match.reviewStatus === "ready_to_upload" ? "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
                   {match.reviewStatus === "confirmed"
                     ? "SAVED"
                     : match.reviewStatus === "pending_ocr"
@@ -1409,17 +1409,17 @@ function ReviewScreen({
                 </span>
               </div>
 
-              {notice && <div className="mt-4 rounded-lg border border-[#303847] bg-[#0a0d12] px-3 py-2.5 text-xs leading-5 text-[#c8d0dc]">{notice}</div>}
+              {notice && <div className="mt-4 rounded-md border border-[var(--line)] bg-transparent px-3 py-2.5 text-xs leading-5 text-[#c8d0dc]">{notice}</div>}
 
               {uploadState.phase !== "idle" && (
-                <div className="mt-4 rounded-lg border border-[#303847] bg-[#0a0d12] px-3 py-3">
+                <div className="mt-4 rounded-md border border-[var(--line)] bg-transparent px-3 py-3">
                   <div className="mb-2 flex items-center justify-between gap-3 text-[10px] text-[var(--muted)]">
                     <span>{uploadState.message}</span>
                     <span>{uploadState.total > 0 ? `${uploadState.current}/${uploadState.total}` : ""}</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-[#1b2230]">
                     <div
-                      className="h-full rounded-full bg-[var(--orange)] transition-all"
+                      className="h-full bg-[var(--orange)] transition-all"
                       style={{ width: `${uploadState.total > 0 ? Math.round((uploadState.current / uploadState.total) * 100) : 10}%` }}
                     />
                   </div>
@@ -1438,7 +1438,7 @@ function ReviewScreen({
                     uploadState.phase === "completing"
                   }
                   onClick={onReadyAndNext}
-                  className="mt-4 w-full rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="mt-4 w-full rounded-md bg-[var(--orange)] px-4 py-2.5 text-[12px] font-semibold text-[#17120d] transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
                     ? "업로드 · OCR 실행 중..."
@@ -1454,7 +1454,7 @@ function ReviewScreen({
                     uploadState.phase === "uploading" ||
                     uploadState.phase === "completing"
                   }
-                  className="mt-2 w-full cursor-pointer rounded-xl border border-[var(--line)] bg-[#0d1118] px-5 py-3 text-[10px] font-bold text-[var(--muted)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                  className="mt-2 w-full cursor-pointer rounded-xl border border-[var(--line)] bg-[#0d1118] px-5 py-3 text-[10px] font-medium text-[var(--muted)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   이 경기만 저장하고 계속 보기
                 </button>
@@ -1465,7 +1465,7 @@ function ReviewScreen({
         </div>
 
         {match.backendMatchId && (match.reviewStatus === "pending_ocr" || match.reviewStatus === "confirmed") && (
-          <section className="mt-5 space-y-4 rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.04)] p-5">
+          <section className="mt-5 space-y-4 border-t border-[var(--line)] pt-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="m-0 text-sm font-bold text-[#9bc6ff]">OCR 결과 검수</p>
@@ -1473,7 +1473,7 @@ function ReviewScreen({
                   이미지 분류와 OCR 검수를 이 화면에서 이어서 끝냅니다. 수정한 값이 최종 저장값이 됩니다.
                 </p>
               </div>
-              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2.5 py-1 text-[9px] font-black text-[#9bc6ff]">
+              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2.5 py-1 text-[9px] font-medium text-[#9bc6ff]">
                 {match.reviewStatus === "confirmed" ? "SAVED" : "OCR REVIEW"}
               </span>
             </div>
@@ -1481,7 +1481,7 @@ function ReviewScreen({
             {match.ocrEditable && (
               <div className="grid gap-3 md:grid-cols-4">
                 <label>
-                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">결과</span>
+                  <span className="mb-2 block text-[10px] font-medium text-[var(--muted)]">결과</span>
                   <select
                     className="field-input"
                     value={match.ocrEditable.result}
@@ -1495,7 +1495,7 @@ function ReviewScreen({
                   </select>
                 </label>
                 <label>
-                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">게임 모드</span>
+                  <span className="mb-2 block text-[10px] font-medium text-[var(--muted)]">게임 모드</span>
                   <input
                     className="field-input"
                     value={match.ocrEditable.game_mode}
@@ -1505,7 +1505,7 @@ function ReviewScreen({
                   />
                 </label>
                 <label>
-                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">경기 시간</span>
+                  <span className="mb-2 block text-[10px] font-medium text-[var(--muted)]">경기 시간</span>
                   <input
                     className="field-input"
                     value={match.ocrEditable.match_duration}
@@ -1515,7 +1515,7 @@ function ReviewScreen({
                   />
                 </label>
                 <label>
-                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">맵</span>
+                  <span className="mb-2 block text-[10px] font-medium text-[var(--muted)]">맵</span>
                   <input
                     className="field-input"
                     value={match.ocrEditable.map_name}
@@ -1528,7 +1528,7 @@ function ReviewScreen({
             )}
 
             {match.ocrMessage && (
-              <div className="rounded-lg border border-[#303847] bg-[#0a0d12] px-3 py-2 text-[10px] text-[var(--muted)]">
+              <div className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] text-[var(--muted)]">
                 {match.ocrMessage}
               </div>
             )}
@@ -1542,7 +1542,7 @@ function ReviewScreen({
             )}
 
             {match.reviewStatus === "confirmed" ? (
-              <div className="rounded-xl border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-4 py-3 text-xs font-bold text-[#8ee9aa]">
+              <div className="border-y border-[#2f4236] bg-transparent px-0 py-3 text-[11px] font-medium text-[#9fcaae]">
                 OCR 검수값이 최종 저장되었습니다.
               </div>
             ) : (
@@ -1551,7 +1551,7 @@ function ReviewScreen({
                   type="button"
                   onClick={onRerunOcr}
                   disabled={uploadState.phase === "completing"}
-                  className="cursor-pointer rounded-xl border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-5 py-3.5 text-xs font-bold text-[#9bc6ff] hover:bg-[rgba(102,169,255,0.13)] disabled:opacity-35"
+                  className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-4 py-2.5 text-[11px] font-medium text-[#c7c9ce] hover:bg-[rgba(102,169,255,0.13)] disabled:opacity-35"
                 >
                   {uploadState.phase === "completing" ? "OCR 실행 중..." : "OCR 다시 실행"}
                 </button>
@@ -1559,7 +1559,7 @@ function ReviewScreen({
                   type="button"
                   onClick={onConfirmOcr}
                   disabled={uploadState.phase === "completing"}
-                  className="flex-1 cursor-pointer rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black hover:brightness-110 disabled:opacity-35"
+                  className="flex-1 cursor-pointer rounded-md bg-[var(--orange)] px-4 py-2.5 text-[12px] font-semibold text-[#17120d] hover:brightness-110 disabled:opacity-35"
                 >
                   {uploadState.phase === "completing"
                     ? "저장 중..."
@@ -1623,7 +1623,7 @@ function typeClass(type: ScreenType) {
 }
 
 function TypePill({ type, count }: { type: ScreenType; count: number }) {
-  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${typeClass(type)}`}>{TYPE_META[type].label} {count}</span>;
+  return <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${typeClass(type)}`}>{TYPE_META[type].label} {count}</span>;
 }
 
 function MetricCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
