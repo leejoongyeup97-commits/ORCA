@@ -28,12 +28,27 @@ export default function RoundDetailsEditor({
   enabled: boolean;
   onChange: (rounds: RoundDetail[]) => void;
 }) {
+  const availableSubmaps =
+    submaps.length > 0
+      ? submaps.map((submap) => submap.submap_name)
+      : EXAMPLE_SUBMAPS;
+
+  const canAddRound = !loading && rounds.length < availableSubmaps.length;
+
   function addRound() {
+    if (!canAddRound) return;
+
+    const used = new Set(rounds.map((round) => round.submap));
+    const nextSubmap =
+      availableSubmaps.find((submap) => !used.has(submap)) ??
+      availableSubmaps[0] ??
+      "";
+
     onChange([
       ...rounds,
       {
         order: rounds.length + 1,
-        submap: submaps[0]?.submap_name ?? "",
+        submap: nextSubmap,
         result: "unknown",
       },
     ]);
@@ -78,7 +93,7 @@ export default function RoundDetailsEditor({
         </div>
         <button
           type="button"
-          disabled={loading || submaps.length === 0}
+          disabled={!canAddRound}
           onClick={addRound}
           className="app-secondary-button cursor-pointer"
         >
@@ -122,17 +137,11 @@ export default function RoundDetailsEditor({
                 className="field-input"
               >
                 <option value="">세부맵 선택</option>
-                {submaps.length > 0
-                  ? submaps.map((submap) => (
-                      <option key={submap.submap_key} value={submap.submap_name}>
-                        {submap.submap_name}
-                      </option>
-                    ))
-                  : EXAMPLE_SUBMAPS.map((submap) => (
-                      <option key={submap} value={submap}>
-                        {submap}
-                      </option>
-                    ))}
+                {availableSubmaps.map((submap) => (
+                  <option key={submap} value={submap}>
+                    {submap}
+                  </option>
+                ))}
               </select>
 
               <select
