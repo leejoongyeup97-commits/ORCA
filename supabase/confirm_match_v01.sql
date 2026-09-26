@@ -342,6 +342,13 @@ set created_at_kst = created_at at time zone 'Asia/Seoul';
 update public.my_hero_details
 set created_at_kst = created_at at time zone 'Asia/Seoul';
 
+update public.my_hero_details
+set play_time_seconds =
+  split_part(play_time, ':', 1)::integer * 60
+  + split_part(play_time, ':', 2)::integer
+where play_time ~ '^[0-9]{1,3}:[0-9]{2}$'
+  and play_time_seconds is null;
+
 create or replace function public.confirm_orca_match(
   p_match_id uuid,
   p_match jsonb,
