@@ -16,3 +16,13 @@ node_modules/
 # Build
 .next/
 dist/
+
+# OCR benchmark local data
+be/ocr_benchmark/images/
+be/ocr_benchmark/hero_references/
+be/ocr_benchmark/hero_crops/
+be/ocr_benchmark/highlight_debug/
+be/ocr_benchmark/*_montage.jpg
+be/ocr_benchmark/last_*.json
+be/tools/DataTool/
+be/ocr_benchmark/datatool_extract/
