@@ -88,18 +88,20 @@ export default function DashboardPage() {
         </section>
 
         <section className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-          <MetricCard icon="☷" label="전체 경기" value={String(stats.total)} note="등록된 모든 경기" />
-          <MetricCard icon="◷" label="확인 필요" value={String(stats.needsAction)} note="검수가 필요한 경기" warning={stats.needsAction > 0} />
-          <MetricCard icon="▤" label="OCR 대기/처리" value={String(stats.ocr)} note="OCR 처리 중인 경기" />
-          <MetricCard icon="▥" label="분석 가능" value={String(stats.confirmed)} note="분석할 수 있는 경기" accent />
-          <MetricCard icon="♜" label="확정 승률" value={stats.winRate === null ? "-" : `${stats.winRate}%`} note="확정 경기 기준" />
+          <MetricCard icon="list" label="전체 경기" value={String(stats.total)} note="등록된 모든 경기" />
+          <MetricCard icon="alert" label="확인 필요" value={String(stats.needsAction)} note="검수가 필요한 경기" warning={stats.needsAction > 0} />
+          <MetricCard icon="scan" label="OCR 대기/처리" value={String(stats.ocr)} note="OCR 처리 중인 경기" />
+          <MetricCard icon="chart" label="분석 가능" value={String(stats.confirmed)} note="분석할 수 있는 경기" accent />
+          <MetricCard icon="trophy" label="확정 승률" value={stats.winRate === null ? "-" : `${stats.winRate}%`} note="확정 경기 기준" />
         </section>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.6fr_0.8fr]">
           <section className="app-panel overflow-hidden rounded-[16px]">
             <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-5 py-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--orange-soft)] text-[var(--orange-2)]">◷</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--orange-soft)] text-[var(--orange-2)]">
+                  <DashboardIcon name="history" size={18} />
+                </span>
                 <div>
                   <p className="m-0 text-[15px] font-bold text-white">최근 경기</p>
                   <p className="mt-1 text-[10px] text-[var(--muted)]">가장 최근에 등록한 경기 5건</p>
@@ -112,7 +114,9 @@ export default function DashboardPage() {
               <div className="px-5 py-16 text-center text-sm text-[var(--muted)]">불러오는 중...</div>
             ) : recent.length === 0 ? (
               <div className="flex min-h-[360px] flex-col items-center justify-center px-5 py-12 text-center">
-                <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(255,107,26,0.24)] bg-[var(--orange-soft)] text-2xl text-[var(--orange-2)]">☷</span>
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(255,107,26,0.24)] bg-[var(--orange-soft)] text-[var(--orange-2)]">
+                  <DashboardIcon name="list" size={26} />
+                </span>
                 <p className="mb-0 mt-5 text-[15px] font-bold text-white">아직 등록된 경기가 없습니다</p>
                 <p className="mt-2 text-xs text-[var(--muted)]">첫 경기를 등록하면 최근 경기와 상태가 여기에 표시됩니다.</p>
                 <Link href="/matches/new" className="app-orange-button mt-5 rounded-xl px-5 py-3 text-xs font-bold no-underline">
@@ -149,7 +153,9 @@ export default function DashboardPage() {
           <aside className="space-y-5">
             <section className="app-panel rounded-[16px] p-4">
               <div className="mb-4 flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--orange-soft)] text-[var(--orange-2)]">ϟ</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--orange-soft)] text-[var(--orange-2)]">
+                  <DashboardIcon name="bolt" size={18} />
+                </span>
                 <div>
                   <p className="m-0 text-[15px] font-bold text-white">빠른 이동</p>
                   <p className="mt-1 text-[10px] text-[var(--muted)]">주요 기능으로 바로 이동</p>
@@ -157,11 +163,11 @@ export default function DashboardPage() {
               </div>
 
               <div className="space-y-2">
-                <QuickLink href="/matches/new" icon="＋" title="경기 등록" text="새 스크린샷 자동 분류" />
-                <QuickLink href="/matches" icon="☷" title="경기 목록" text="상세 · 수정 · 삭제 · OCR 검수" />
-                <QuickLink href="/analysis" icon="▥" title="분석" text="확정 경기 기반 기초 분석" />
-                <QuickLink href="/insights" icon="◉" title="인사이트" text="최근 변화와 다음 검증 포인트" />
-                <QuickLink href="/hypotheses" icon="△" title="가설" text={`사전 가설 Library ${PREDEFINED_HYPOTHESIS_COUNT}개`} />
+                <QuickLink href="/matches/new" icon="image-plus" title="경기 등록" text="새 스크린샷 자동 분류" />
+                <QuickLink href="/matches" icon="list" title="경기 목록" text="상세 · 수정 · 삭제 · OCR 검수" />
+                <QuickLink href="/analysis" icon="chart" title="분석" text="확정 경기 기반 기초 분석" />
+                <QuickLink href="/insights" icon="lightbulb" title="인사이트" text="최근 변화와 다음 검증 포인트" />
+                <QuickLink href="/hypotheses" icon="flask" title="가설" text={`사전 가설 Library ${PREDEFINED_HYPOTHESIS_COUNT}개`} />
               </div>
             </section>
 
@@ -191,7 +197,7 @@ function MetricCard({
   accent = false,
   warning = false,
 }: {
-  icon: string;
+  icon: DashboardIconName;
   label: string;
   value: string;
   note: string;
@@ -202,7 +208,9 @@ function MetricCard({
   return (
     <div className="app-panel rounded-[14px] p-4">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[#17212d] text-[16px] text-[#c7d1dd]">{icon}</span>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[#17212d] text-[#c7d1dd]">
+          <DashboardIcon name={icon} size={19} />
+        </span>
         <div className="min-w-0">
           <p className="m-0 text-[11px] font-semibold text-[var(--muted)]">{label}</p>
           <p className={`mb-0 mt-1 text-3xl font-extrabold ${valueClass}`}>{value}</p>
@@ -228,15 +236,159 @@ function PipelineStep({ label, state }: { label: string; state: "done" | "mock" 
   );
 }
 
-function QuickLink({ href, icon, title, text }: { href: string; icon: string; title: string; text: string }) {
+function QuickLink({ href, icon, title, text }: { href: string; icon: DashboardIconName; title: string; text: string }) {
   return (
     <Link href={href} className="app-panel-soft flex items-center gap-3 rounded-xl px-3 py-3 no-underline hover:border-[#3a4b60] hover:bg-[#16212d]">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#182331] text-[var(--orange-2)]">{icon}</span>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#182331] text-[var(--orange-2)]">
+        <DashboardIcon name={icon} size={18} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-bold text-white">{title}</span>
         <span className="mt-1 block truncate text-[10px] text-[var(--muted)]">{text}</span>
       </span>
       <span className="text-[var(--muted)]">›</span>
     </Link>
+  );
+}
+
+
+type DashboardIconName =
+  | "list"
+  | "alert"
+  | "scan"
+  | "chart"
+  | "trophy"
+  | "history"
+  | "bolt"
+  | "image-plus"
+  | "lightbulb"
+  | "flask";
+
+function DashboardIcon({
+  name,
+  size = 18,
+}: {
+  name: DashboardIconName;
+  size?: number;
+}) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  if (name === "list") {
+    return (
+      <svg {...common}>
+        <path d="M8 6h11" />
+        <path d="M8 12h11" />
+        <path d="M8 18h11" />
+        <path d="M4.5 6h.01" />
+        <path d="M4.5 12h.01" />
+        <path d="M4.5 18h.01" />
+      </svg>
+    );
+  }
+
+  if (name === "alert") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7.8v5.2" />
+        <path d="M12 16.5h.01" />
+      </svg>
+    );
+  }
+
+  if (name === "scan") {
+    return (
+      <svg {...common}>
+        <path d="M7 3H5a2 2 0 0 0-2 2v2" />
+        <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+        <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+        <path d="M7 9h10" />
+        <path d="M7 12h10" />
+        <path d="M7 15h6" />
+      </svg>
+    );
+  }
+
+  if (name === "chart") {
+    return (
+      <svg {...common}>
+        <path d="M4 20V10" />
+        <path d="M10 20V4" />
+        <path d="M16 20v-7" />
+        <path d="M22 20V7" />
+      </svg>
+    );
+  }
+
+  if (name === "trophy") {
+    return (
+      <svg {...common}>
+        <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+        <path d="M8 6H5a2 2 0 0 0 2 4h1" />
+        <path d="M16 6h3a2 2 0 0 1-2 4h-1" />
+        <path d="M12 12v5" />
+        <path d="M9 20h6" />
+        <path d="M10 17h4" />
+      </svg>
+    );
+  }
+
+  if (name === "history") {
+    return (
+      <svg {...common}>
+        <path d="M3 12a9 9 0 1 0 3-6.7" />
+        <path d="M3 4v5h5" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    );
+  }
+
+  if (name === "bolt") {
+    return (
+      <svg {...common}>
+        <path d="m13 2-8 11h7l-1 9 8-11h-7l1-9Z" />
+      </svg>
+    );
+  }
+
+  if (name === "image-plus") {
+    return (
+      <svg {...common}>
+        <rect x="3" y="4" width="14" height="16" rx="2" />
+        <circle cx="8" cy="9" r="1.5" />
+        <path d="m5 17 3.5-3.5 2.5 2.5 2-2 4 4" />
+        <path d="M20 5v6" />
+        <path d="M17 8h6" />
+      </svg>
+    );
+  }
+
+  if (name === "lightbulb") {
+    return (
+      <svg {...common}>
+        <path d="M9 18h6" />
+        <path d="M10 22h4" />
+        <path d="M8.2 14.5A7 7 0 1 1 15.8 14.5c-.9.7-1.3 1.4-1.5 2.5h-4.6c-.2-1.1-.6-1.8-1.5-2.5Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M9 3h6" />
+      <path d="M10 3v5l-5 9a2.5 2.5 0 0 0 2.2 3.7h9.6A2.5 2.5 0 0 0 19 17l-5-9V3" />
+      <path d="M8 14h8" />
+    </svg>
   );
 }
