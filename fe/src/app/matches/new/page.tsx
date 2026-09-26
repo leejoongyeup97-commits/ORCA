@@ -17,6 +17,7 @@ import {
   toConfirmHeroDetails,
   toConfirmPlayers,
 } from "@/lib/review-draft";
+import { normalizeSideForGameMode } from "@/lib/match-rules";
 import {
   ensureScreenshotFolderPermission,
   getSavedScreenshotFolder,
@@ -891,10 +892,8 @@ export default function NewMatchPage() {
   }
 
   function updateOcrEditable(matchId: string, patch: Partial<EditableMatchFields>) {
-    patchMatch(matchId, (current) => ({
-      ...current,
-      ocrEditable: {
-        ...(current.ocrEditable ?? {
+    patchMatch(matchId, (current) => {
+      const base = current.ocrEditable ?? {
           played_at: new Date(current.startedAt).toISOString(),
           map_name: "",
           game_mode: "",
@@ -907,10 +906,16 @@ export default function NewMatchPage() {
           round_sequence: "",
           match_duration: "",
           notes: "",
-        }),
-        ...patch,
-      },
-    }));
+        };
+      const next = { ...base, ...patch };
+      if (patch.game_mode !== undefined) {
+        next.side = normalizeSideForGameMode(next.game_mode, next.side);
+      }
+      return {
+        ...current,
+        ocrEditable: next,
+      };
+    });
   }
 
   async function confirmOcrReview(match: DetectedMatch) {
