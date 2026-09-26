@@ -57,7 +57,12 @@ export function getOcrApiUrl() {
 
 export async function getOcrHealth(signal?: AbortSignal): Promise<OcrHealth> {
   const response = await fetch(`${OCR_API_URL}/health`, { signal });
-  if (!response.ok) throw new Error(`OCR_HEALTH_${response.status}`);
+  if (!response.ok) {
+    const raw = await response.text().catch(() => "");
+    throw new Error(
+      `OCR_HEALTH_${response.status} ${response.statusText}${raw ? `\n${raw}` : ""}`,
+    );
+  }
   return (await response.json()) as OcrHealth;
 }
 
@@ -75,8 +80,24 @@ export async function extractScreenshot(
   });
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(payload?.detail || `OCR_EXTRACT_${response.status}`);
+    const raw = await response.text().catch(() => "");
+    let detail = "";
+    try {
+      const payload = raw ? (JSON.parse(raw) as { detail?: unknown }) : null;
+      detail = typeof payload?.detail === "string" ? payload.detail : "";
+    } catch {
+      detail = "";
+    }
+
+    throw new Error(
+      [
+        `OCR_EXTRACT_${response.status} ${response.statusText}`,
+        detail,
+        raw && raw !== detail ? raw : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
   }
 
   return (await response.json()) as OcrExtractResult;
