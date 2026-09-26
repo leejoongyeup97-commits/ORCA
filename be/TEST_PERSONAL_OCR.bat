@@ -66,7 +66,7 @@ if errorlevel 1 (
 
 echo [ORCA] Personal OCR summary:
 echo ------------------------------------------------------------
-".venv\Scripts\python.exe" -c "import json,sys; d=json.load(open(sys.argv[1],encoding='utf-8')); print('hero_key:',d.get('hero_key')); print('hero_name_raw:',d.get('hero_name_raw')); print('play_time:',d.get('play_time')); [print(f\"{m.get('metric_key') or 'UNKNOWN [' + str(m.get('label_raw')) + ']'}: {m.get('value')}  [review={str(m.get('needs_review')).lower()}]\") for m in d.get('metrics',[])]" "%OUT%"
+".venv\Scripts\python.exe" -c "import json,sys; d=json.load(open(sys.argv[1],encoding='utf-8')); print('hero_key:',d.get('hero_key')); print('hero_name_raw:',d.get('hero_name_raw')); print('play_time:',d.get('play_time')); [print(f\"{m.get('metric_key') or 'UNKNOWN'}: {m.get('value')}  [review={str(m.get('needs_review')).lower()}]  label={m.get('label_raw')}\") for m in d.get('metrics',[])]" "%OUT%"
 set "RC=%ERRORLEVEL%"
 echo ------------------------------------------------------------
 
