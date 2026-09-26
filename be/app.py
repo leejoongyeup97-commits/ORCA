@@ -6,9 +6,9 @@ import traceback
 import sys
 import time
 from datetime import datetime
-from orca_ocr.engine import extract, get_tesseract_status
+from orca_ocr.engine import extract, get_rapidocr_status
 
-app = FastAPI(title="ORCA OCR API", version="0.2.10")
+app = FastAPI(title="ORCA OCR API", version="0.2.11")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3040", "http://127.0.0.1:3040"],
@@ -20,11 +20,11 @@ app.add_middleware(
 @app.get("/health")
 def health():
     try:
-        status = get_tesseract_status()
-        ok = status["has_eng"] and status["has_kor"]
-        return {"ok": ok, "service": "orca-ocr", "version": "0.2.10", "tesseract": status}
+        status = get_rapidocr_status()
+        ok = status.get("ready") is True
+        return {"ok": ok, "service": "orca-ocr", "version": "0.2.11", "rapidocr": status}
     except Exception as exc:
-        return {"ok": False, "service": "orca-ocr", "version": "0.2.10", "tesseract_error": str(exc)}
+        return {"ok": False, "service": "orca-ocr", "version": "0.2.11", "rapidocr_error": str(exc)}
 
 @app.post("/extract")
 async def extract_image(screen_type: str = Form(...), file: UploadFile = File(...)):

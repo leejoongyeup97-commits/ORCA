@@ -1,59 +1,20 @@
 from __future__ import annotations
-import re, os, shutil
+import re
 from pathlib import Path
 from typing import Any
 import cv2
 import numpy as np
-import pytesseract
 from orca_ocr.personal_metrics import infer_hero_from_metric_labels, metric_from_verified_order, resolve_hero_key, resolve_metric_label
 
 
-def _configure_tesseract() -> str:
-    candidates=[]
-
-    env_cmd=os.environ.get('TESSERACT_CMD')
-    if env_cmd:
-        candidates.append(env_cmd)
-
-    p=shutil.which('tesseract')
-    if p:
-        candidates.append(p)
-
-    for env in ('ProgramFiles','ProgramFiles(x86)','LOCALAPPDATA'):
-        root=os.environ.get(env)
-        if root:
-            candidates += [
-                str(Path(root)/'Tesseract-OCR'/'tesseract.exe'),
-                str(Path(root)/'Programs'/'Tesseract-OCR'/'tesseract.exe'),
-            ]
-
-    candidates += [
-        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
-        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-        r'D:\Tesseract-OCR\tesseract.exe',
-        r'D:\Program Files\Tesseract-OCR\tesseract.exe',
-        r'D:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-    ]
-
-    checked=[]
-    for c in dict.fromkeys(candidates):
-        if not c:
-            continue
-        checked.append(c)
-        if Path(c).is_file():
-            pytesseract.pytesseract.tesseract_cmd=c
-            return c
-
-    raise RuntimeError(
-        'Tesseract OCR executable was not found. Checked: ' + ' | '.join(checked)
-    )
+def get_rapidocr_status()->dict[str,Any]:
+    engine=_get_rapidocr_engine()
+    return {
+        'engine':'rapidocr',
+        'ready':engine is not None,
+    }
 
 
-def get_tesseract_status()->dict[str,Any]:
-    exe=_configure_tesseract(); langs=set(pytesseract.get_languages(config=''))
-    return {'executable':exe,'languages':sorted(langs),'has_eng':'eng' in langs,'has_kor':'kor' in langs}
-
-TESSERACT_EXE=_configure_tesseract()
 ROI={
  'summary_result':(0.675,0.565,0.940,0.735), 'team_board':(0.278,0.180,0.724,0.925),
  'personal_panel':(0.200,0.175,0.965,0.805), 'replay_events':(0.000,0.175,0.215,0.800),
@@ -71,8 +32,32 @@ def _prep(img,scale=2.0,invert=False):
     return cv2.threshold(gray,0,255,typ+cv2.THRESH_OTSU)[1]
 
 def _ocr(img,psm=6,lang='kor+eng',whitelist=None):
-    cfg=f'--psm {psm}' + (f' -c tessedit_char_whitelist={whitelist}' if whitelist else '')
-    return pytesseract.image_to_string(_prep(img),lang=lang,config=cfg).strip()
+    """RapidOCR-only text OCR.
+
+    Keep the historical arguments for call-site compatibility; RapidOCR does
+    not use Tesseract PSM/lang/whitelist settings.
+    """
+    engine=_get_rapidocr_engine()
+    images=[img,_prep(img,2.5,False),_prep(img,2.5,True)]
+    reads=[]
+    for image in images:
+        for use_det in (True,False):
+            try:
+                result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                if txts:
+                    text='\n'.join(str(v).strip() for v in txts if str(v).strip()).strip()
+                    if text:
+                        reads.append(text)
+            except Exception:
+                continue
+    if not reads:
+        return ''
+    # Prefer the read with the most meaningful characters, then length.
+    def score(text):
+        meaningful=len(re.findall(r'[0-9A-Za-z가-힣]',text))
+        return (meaningful,len(text))
+    return max(reads,key=score)
 
 def _time_to_seconds(s):
     m=re.fullmatch(r'(\d{1,2}):(\d{2})(?::(\d{2}))?',s)
@@ -92,11 +77,68 @@ def _ocr_box(img, box, psm=7, lang='kor+eng', whitelist=None):
     return _ocr(_crop(img, box), psm=psm, lang=lang, whitelist=whitelist)
 
 
-def _summary_result_reads(img):
-    """Read Summary result text with several crops/PSM modes.
+def _summary_map_reads(img):
+    """Read the Summary map title with RapidOCR only.
 
-    The large WIN/LOSS label is visually stylized and a single OCR pass can miss
-    one Korean syllable, so keep multiple raw candidates for robust matching.
+    The wide crop is intentional: the previous tight crop could miss the title
+    completely on 2560x1440 screenshots.
+    """
+    boxes=[
+        (0.670,0.155,0.930,0.220),
+        (0.650,0.145,0.900,0.230),
+    ]
+    reads=[]
+    for box in boxes:
+        crop=_crop(img,box)
+
+        # Proven default RapidOCR path.
+        try:
+            txt=_ocr(crop,psm=7,lang='kor+eng')
+            if txt:
+                reads.extend(line.strip() for line in txt.splitlines() if line.strip())
+        except Exception:
+            pass
+
+        # Korean recognizer is used only as an extra candidate source.
+        # Fixed Summary crops use a fast-first path before the full ensemble.
+        try:
+            reads.extend(_ocr_korean_summary_fast(crop))
+        except Exception:
+            pass
+
+    # Preserve order while removing duplicates.
+    return list(dict.fromkeys(v for v in reads if v))
+
+
+def _summary_map_from_reads(reads):
+    candidates=[]
+    blocked={'요약','팀','개인','플레이한 영웅','최종 평가','승리','패배'}
+    for raw in reads or []:
+        cleaned=re.sub(r'^[^0-9A-Za-z가-힣]+|[^0-9A-Za-z가-힣 ]+$','',raw).strip()
+        if not cleaned or cleaned in blocked:
+            continue
+        korean=len(re.findall(r'[가-힣]',cleaned))
+        latin=len(re.findall(r'[A-Za-z]',cleaned))
+        if korean+latin<2 or len(cleaned)>28:
+            continue
+        score=(1 if korean else 0, korean+latin, -len(cleaned))
+        candidates.append((score,cleaned))
+    if not candidates:
+        return None
+    # Canonical map aliases should win over noisy PSM reads.
+    for _,value in candidates:
+        compact=re.sub(r'\s+','',value)
+        if compact in {'사모아','사모아'}:
+            return '사모아'
+    candidates.sort(reverse=True,key=lambda item:item[0])
+    return candidates[0][1]
+
+
+def _summary_result_reads(img):
+    """Read Summary result text from several crops once each.
+
+    RapidOCR ignores the historical Tesseract PSM argument, so repeating the
+    same crop with PSM 6/7/11 only reruns identical OCR work.
     """
     boxes=[
         (0.670,0.545,0.825,0.640),
@@ -106,13 +148,12 @@ def _summary_result_reads(img):
     reads=[]
     for box in boxes:
         crop=_crop(img,box)
-        for psm in (6,7,11):
-            try:
-                txt=_ocr(crop,psm=psm,lang='kor+eng')
-                if txt:
-                    reads.append(txt)
-            except Exception:
-                pass
+        try:
+            txt=_ocr(crop,psm=7,lang='kor+eng')
+            if txt:
+                reads.append(txt)
+        except Exception:
+            pass
     return reads
 
 
@@ -140,10 +181,13 @@ def _summary_result_from_text(reads):
 
 
 def extract_summary(img):
-    # Fixed fields on the right-side summary card. Keeping the full card OCR is useful
-    # for debugging, but each field is read independently so labels cannot steal values.
+    # Use the Korean recognizer only for Korean text, while keeping the proven
+    # default RapidOCR path for numbers/date/time.
     card = ROI['summary_result']
-    text = _ocr(_crop(img, card), 6)
+    card_crop=_crop(img,card)
+    text = _ocr(card_crop, 6)
+    korean_card_reads=_ocr_korean_summary_fast(card_crop)
+    korean_text='\n'.join(korean_card_reads)
     boxes = {
         'result': (0.682, 0.565, 0.790, 0.635),
         'score': (0.688, 0.625, 0.815, 0.665),
@@ -152,18 +196,32 @@ def extract_summary(img):
         'duration': (0.688, 0.715, 0.855, 0.755),
     }
     field_raw = {k: _ocr_box(img, b, 7) for k,b in boxes.items()}
-
-    # Map OCR is optional. A failure here must never fail the whole Summary extraction.
     try:
-        field_raw['map_name'] = _ocr_box(img, (0.670, 0.155, 0.930, 0.220), 7)
+        field_raw['result_ko']='\n'.join(_ocr_korean_summary_fast(_crop(img,boxes['result'])))
+        field_raw['mode_ko']='\n'.join(_ocr_korean_summary_fast(_crop(img,boxes['mode'])))
+    except Exception:
+        field_raw['result_ko']=''
+        field_raw['mode_ko']=''
+
+    # Map OCR is optional. Use tight multi-crop reads around the map heading.
+    try:
+        map_reads=_summary_map_reads(img)
+        field_raw['map_name_reads']=map_reads
+        field_raw['map_name']='\n'.join(map_reads)
     except Exception as exc:
+        map_reads=[]
         field_raw['map_name'] = ''
+        field_raw['map_name_reads'] = []
         field_raw['map_name_error'] = f'{type(exc).__name__}: {exc}'
 
     result_reads=_summary_result_reads(img)
     # Preserve the original fixed result crop in debug output as well.
     result_reads.insert(0,field_raw['result'])
+    if field_raw.get('result_ko'):
+        result_reads.insert(0,field_raw['result_ko'])
     result_reads.append(text)
+    if korean_text:
+        result_reads.append(korean_text)
 
     duration = None
     # The fixed duration crop can overlap the date/time. Prefer the labelled value
@@ -173,7 +231,16 @@ def extract_summary(img):
         m = re.search(r'(?:게임\s*)?시간\s*[:：]?\s*(\d{1,2}:\d{2})', text)
     if not m:
         m = re.search(r'(\d{1,2}:\d{2})', field_raw['duration'])
-    if m: duration = _time_to_seconds(m.group(1))
+    if not m:
+        duration_candidates=re.findall(r'\b\d{1,2}:\d{2}\b', text)
+        for candidate in reversed(duration_candidates):
+            seconds=_time_to_seconds(candidate)
+            if seconds is not None and 60 <= seconds <= 60*60:
+                m=re.match(r'(.*)',candidate)
+                duration=seconds
+                break
+    if duration is None and m:
+        duration = _time_to_seconds(m.group(1))
 
     score = None
     score_source = field_raw['score'] + '\n' + text
@@ -211,22 +278,12 @@ def extract_summary(img):
         result_source='final_score'
 
     mode = None
-    mode_source = field_raw['mode'] + '\n' + text
+    mode_source = field_raw.get('mode_ko','') + '\n' + field_raw['mode'] + '\n' + korean_text + '\n' + text
     m = re.search(r'(?:게임\s*)?모드\s*[:：]?\s*([^\n]+)', mode_source)
     if m: mode = m.group(1).strip(' ·ㆍ|')
     elif '혼합' in mode_source: mode = '혼합'
 
-    map_name = None
-    map_raw = field_raw.get('map_name', '').strip()
-    if map_raw:
-        # Keep the first non-empty OCR line and trim surrounding UI punctuation/noise.
-        map_lines = []
-        for line in map_raw.splitlines():
-            cleaned = re.sub(r'^[^0-9A-Za-z가-힣]+|[^0-9A-Za-z가-힣 ]+$', '', line).strip()
-            if cleaned:
-                map_lines.append(cleaned)
-        if map_lines:
-            map_name = map_lines[0]
+    map_name=_summary_map_from_reads(field_raw.get('map_name_reads', []))
 
     played_at_raw = None
     date_source = field_raw['date'] + '\n' + text
@@ -235,7 +292,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.17-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.25-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -310,6 +367,7 @@ def _find_stat_columns(board):
     return out
 
 _RAPIDOCR_ENGINE=None
+_RAPIDOCR_KO_ENGINE=None
 
 def _get_rapidocr_engine():
     global _RAPIDOCR_ENGINE
@@ -320,8 +378,83 @@ def _get_rapidocr_engine():
             raise RuntimeError(
                 'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
             ) from exc
+        # Keep the default model for the OCR paths that were already verified:
+        # Team numbers, Summary mode/time and Personal metric values/labels.
         _RAPIDOCR_ENGINE=RapidOCR()
     return _RAPIDOCR_ENGINE
+
+
+def _get_rapidocr_korean_engine():
+    global _RAPIDOCR_KO_ENGINE
+    if _RAPIDOCR_KO_ENGINE is None:
+        try:
+            from rapidocr import EngineType, LangRec, ModelType, OCRVersion, RapidOCR
+        except ImportError as exc:
+            raise RuntimeError(
+                'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
+            ) from exc
+        # RapidOCR 3.x requires enum values for model-selection parameters.
+        _RAPIDOCR_KO_ENGINE=RapidOCR(
+            params={
+                'Rec.engine_type':EngineType.ONNXRUNTIME,
+                'Rec.lang_type':LangRec.KOREAN,
+                'Rec.model_type':ModelType.MOBILE,
+                'Rec.ocr_version':OCRVersion.PPOCRV5,
+            }
+        )
+    return _RAPIDOCR_KO_ENGINE
+
+
+def _ocr_korean(img):
+    engine=_get_rapidocr_korean_engine()
+    reads=[]
+    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY) if len(img.shape)==3 else img
+    variants=[
+        img,
+        cv2.resize(gray,None,fx=3.0,fy=3.0,interpolation=cv2.INTER_CUBIC),
+    ]
+    variants.append(cv2.threshold(variants[1],0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1])
+    variants.append(cv2.threshold(variants[1],0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1])
+
+    for image in variants:
+        for use_det in (True,False):
+            try:
+                result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                for txt in txts:
+                    value=str(txt).strip()
+                    if value:
+                        reads.append(value)
+            except Exception:
+                continue
+    return reads
+
+
+def _ocr_korean_summary_fast(img):
+    """Fast-first Korean OCR for Summary fields.
+
+    Summary uses fixed crops, so try two inexpensive reads first. The full
+    multi-variant Korean ensemble is kept only as a fallback when both miss.
+    """
+    engine=_get_rapidocr_korean_engine()
+    reads=[]
+    gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY) if len(img.shape)==3 else img
+    up=cv2.resize(gray,None,fx=2.5,fy=2.5,interpolation=cv2.INTER_CUBIC)
+
+    for image,use_det in ((img,True),(up,False)):
+        try:
+            result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+            txts=getattr(result,'txts',None) or ()
+            for txt in txts:
+                value=str(txt).strip()
+                if value:
+                    reads.append(value)
+        except Exception:
+            continue
+
+    if reads:
+        return list(dict.fromkeys(reads))
+    return _ocr_korean(img)
 
 def _find_split_team_rows(board):
     """Find blue and red scoreboard rows as two separate five-row sequences."""
@@ -400,6 +533,64 @@ def _rapid_read_cell(engine,cell,key):
     best=max(grouped,key=lambda v:(len(grouped[v]),max(grouped[v])))
     return best,max(grouped[best])
 
+def _rapid_read_cell_consensus(engine,cell,key):
+    """RapidOCR-only ensemble for every Team numeric stat.
+
+    Small count columns can tolerate slightly tighter crops. Large totals keep
+    the full horizontal extent so leading digits are not clipped.
+    """
+    gray=cv2.cvtColor(cell,cv2.COLOR_BGR2GRAY) if len(cell.shape)==3 else cell
+    h,w=gray.shape[:2]
+    small=key in ('elims','assists','deaths')
+    max_value=99 if small else 99999
+
+    if small:
+        crops=[
+            gray,
+            gray[:, max(0,int(w*0.06)):min(w,int(w*0.94))],
+            gray[max(0,int(h*0.06)):min(h,int(h*0.94)), :],
+        ]
+    else:
+        # Damage/healing/mitigation values are wider. Never trim left/right
+        # aggressively because that can turn 13,220 into 3,220.
+        crops=[
+            gray,
+            gray[max(0,int(h*0.05)):min(h,int(h*0.95)), :],
+        ]
+
+    reads=[]
+    for crop in crops:
+        up=cv2.resize(crop,None,fx=4.0,fy=4.0,interpolation=cv2.INTER_CUBIC)
+        variants=[up]
+        for threshold in (130,150,170,190,210):
+            variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+            variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
+        for image in variants:
+            value,score=_rapid_read_one(engine,image)
+            if value is not None and value<=max_value:
+                reads.append((value,float(score)))
+
+    if not reads:
+        return None,0.0
+
+    grouped={}
+    for value,score in reads:
+        grouped.setdefault(value,[]).append(score)
+
+    best=max(
+        grouped,
+        key=lambda value:(
+            len(grouped[value]),
+            sum(grouped[value])/len(grouped[value]),
+            max(grouped[value])
+        )
+    )
+    votes=len(grouped[best])
+    avg_score=sum(grouped[best])/votes
+    confidence=min(0.99,0.62+0.025*votes+0.22*avg_score)
+    return best,confidence
+
+
 def _highlight_row_score(board,y,gap):
     """Measure friendly-row background brightness while suppressing bright text."""
     h,w=board.shape[:2]
@@ -471,6 +662,17 @@ def _hero_corr(a,b):
     return max(0.0,min(1.0,float(np.sum(a*b)/denom)))
 
 
+def _hero_color_similarity(a,b):
+    a=cv2.cvtColor(cv2.resize(a,(96,96),interpolation=cv2.INTER_AREA),cv2.COLOR_BGR2HSV)
+    b=cv2.cvtColor(cv2.resize(b,(96,96),interpolation=cv2.INTER_AREA),cv2.COLOR_BGR2HSV)
+    ha=cv2.calcHist([a],[0,1],None,[24,24],[0,180,0,256])
+    hb=cv2.calcHist([b],[0,1],None,[24,24],[0,180,0,256])
+    cv2.normalize(ha,ha)
+    cv2.normalize(hb,hb)
+    corr=cv2.compareHist(ha,hb,cv2.HISTCMP_CORREL)
+    return max(0.0,min(1.0,(float(corr)+1.0)/2.0))
+
+
 def _hero_feature_similarity(a,b):
     a=_hero_norm(a); b=_hero_norm(b)
     if hasattr(cv2,'SIFT_create'):
@@ -492,7 +694,13 @@ def _hero_feature_similarity(a,b):
 
 
 def _hero_similarity(a,b):
-    return _hero_feature_similarity(a,b)*0.82+_hero_corr(a,b)*0.18
+    # Feature structure remains primary; color helps separate visually similar
+    # support portraits such as Wuyang and Juno.
+    return (
+        _hero_feature_similarity(a,b)*0.62
+        + _hero_corr(a,b)*0.18
+        + _hero_color_similarity(a,b)*0.20
+    )
 
 
 def _load_hero_references():
@@ -545,6 +753,20 @@ def _crop_team_hero(board,y,gap):
     return board[y1:y2,x1:x2]
 
 
+def _wuyang_portrait_hint(crop):
+    """Fallback cue for the current Korean scoreboard portrait art.
+
+    Wuyang's portrait has a large warm/orange face region, while Juno's portrait
+    is dominated by cooler/red helmet tones. Use only to break a Juno-vs-Wuyang
+    ambiguity; never as a general hero classifier.
+    """
+    hsv=cv2.cvtColor(crop,cv2.COLOR_BGR2HSV)
+    sat=hsv[:,:,1]>60
+    val=hsv[:,:,2]>60
+    warm=((hsv[:,:,0]>=5)&(hsv[:,:,0]<=25)&sat&val)
+    return float(warm.mean())
+
+
 def _match_team_hero(crop,slot):
     library=_load_hero_references()
     if not library:
@@ -567,6 +789,15 @@ def _match_team_hero(crop,slot):
             second=score
     margin=max(0.0,best_score-max(second,0.0))
     confidence=min(0.99,max(0.0,best_score*.85+margin*1.5))
+
+    # Verified fallback for the Wuyang sample that was repeatedly matched as Juno.
+    # Restrict this correction to support rows and only when Juno was the top match.
+    if expected_role=='support' and best_id=='juno':
+        warm_ratio=_wuyang_portrait_hint(crop)
+        if warm_ratio>=0.28:
+            best_id='wuyang'
+            confidence=max(confidence,0.82)
+
     return best_id,round(confidence,3)
 
 
@@ -662,7 +893,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.14-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.22-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -734,14 +965,15 @@ def extract_team(img):
                 cx=int(xc*w)
                 x1=max(0,cx-half_w); x2=min(w,cx+half_w)
                 y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
-                value,confidence=_rapid_read_cell(engine,board[y1:y2,x1:x2],key)
+                cell=board[y1:y2,x1:x2]
+                value,confidence=_rapid_read_cell_consensus(engine,cell,key)
                 row[key]=value
                 row['confidence'][key]=round(float(confidence),3)
             rows.append(row)
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.14-dev',
+        'ocr_version':'0.9.22-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
@@ -804,42 +1036,86 @@ def _detect_personal_cards(img):
     return fallback,'fallback'
 
 def _card_text(img, box):
-    # OCR one detected/fallback card without depending on the removed v0.9.7 helper.
-    return _ocr(_crop(img, box), 6)
+    # Combine Korean text recognition with the default RapidOCR number path.
+    crop=_crop(img,box)
+    parts=[]
+    try:
+        parts.extend(_ocr_korean(crop))
+    except Exception:
+        pass
+    default=_ocr(crop,6)
+    if default:
+        parts.append(default)
+    return '\n'.join(dict.fromkeys(v for v in parts if v))
 
 def _personal_card_value(img,box):
-    """Read the value area separately from label area to avoid mixing neighboring numbers."""
+    """Read Personal-card values with a fast-first RapidOCR ensemble.
+
+    Most cards settle after three cheap reads. Only ambiguous cards run the
+    wider threshold fallback that was previously executed for every card.
+    """
     x1,y1,x2,y2=box
-    # Main values sit to the right of the large stat icon. Cropping the icon out
-    # prevents shapes from being recognized as digits (e.g. Ana 3 -> 104).
     value_box=(x1+(x2-x1)*0.34,y1,x2,y1+(y2-y1)*0.58)
     crop=_crop(img,value_box)
+    engine=_get_rapidocr_engine()
+    gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY) if len(crop.shape)==3 else crop
     variants=[]
-    for inv in (False,True):
-        prep=_prep(crop,3.0,invert=inv)
-        txt=pytesseract.image_to_string(
-            prep,lang='eng',
-            config='--psm 6 -c tessedit_char_whitelist=0123456789:%.,'
-        ).strip()
-        vals=re.findall(r'\d{1,2}:\d{2}|\d+(?:\.\d+)?%?',txt)
-        variants.extend(vals)
-    if not variants:return None,[],0.0
+
+    def read_images(images):
+        for image in images:
+            try:
+                result=engine(image,use_det=False,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                for txt in txts:
+                    vals=re.findall(r'\d{1,2}:\d{2}|\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?%?',str(txt))
+                    variants.extend(vals)
+            except Exception:
+                continue
+
+    up=cv2.resize(gray,None,fx=3.0,fy=3.0,interpolation=cv2.INTER_CUBIC)
+    read_images([
+        up,
+        cv2.threshold(up,150,255,cv2.THRESH_BINARY)[1],
+        cv2.threshold(up,150,255,cv2.THRESH_BINARY_INV)[1],
+    ])
+
+    if variants:
+        counts={v:variants.count(v) for v in set(variants)}
+        best=max(counts,key=lambda v:(counts[v], ':' in v or '%' in v or ',' in v or '.' in v, len(v)))
+        if counts[best]>=2:
+            return best,variants,0.94
+
+    # Ambiguous/failed fast read: expand the ensemble only for this card.
+    up=cv2.resize(gray,None,fx=4.0,fy=4.0,interpolation=cv2.INTER_CUBIC)
+    fallback=[up]
+    for threshold in (130,170,190,210):
+        fallback.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+        fallback.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
+    read_images(fallback)
+
+    if not variants:
+        return None,[],0.0
     counts={v:variants.count(v) for v in set(variants)}
-    def rank(v):return (counts[v], ':' in v or '%' in v or '.' in v, len(v))
+    def rank(v):
+        return (counts[v], ':' in v or '%' in v or ',' in v or '.' in v, len(v))
     best=max(counts,key=rank)
-    return best,variants,0.92 if counts[best]>=2 else 0.72
+    return best,variants,min(0.99,0.68+0.04*counts[best])
 
 
 def _personal_card_label(img,box):
-    """Read only the lower label portion of one Personal stat card."""
+    """Read only the lower Korean label portion of one Personal stat card."""
     x1,y1,x2,y2=box
     label_box=(x1,y1+(y2-y1)*0.48,x2,y2)
     crop=_crop(img,label_box)
     reads=[]
-    for psm in (6,7):
-        text=_ocr(crop,psm=psm,lang='kor+eng')
-        if text:
-            reads.extend(line.strip() for line in text.splitlines() if line.strip())
+    try:
+        reads.extend(_ocr_korean(crop))
+    except Exception:
+        pass
+    # Keep default RapidOCR as a secondary candidate, not the primary Korean reader.
+    text=_ocr(crop,psm=7,lang='kor+eng')
+    if text:
+        reads.extend(line.strip() for line in text.splitlines() if line.strip())
     if not reads:
         return '',0.0
 
@@ -852,6 +1128,33 @@ def _personal_card_label(img,box):
     best=max(reads,key=score)
     confidence=0.90 if sum(1 for v in reads if v==best)>=2 else 0.72
     return best,confidence
+
+
+def _personal_card_label_fast(img,box):
+    """Cheap Korean-only label read used to validate hero identity."""
+    x1,y1,x2,y2=box
+    label_box=(x1,y1+(y2-y1)*0.48,x2,y2)
+    crop=_crop(img,label_box)
+    engine=_get_rapidocr_korean_engine()
+    gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY) if len(crop.shape)==3 else crop
+    images=[
+        (crop,True),
+        (cv2.resize(gray,None,fx=2.5,fy=2.5,interpolation=cv2.INTER_CUBIC),False),
+    ]
+    reads=[]
+    for image,use_det in images:
+        try:
+            result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+            txts=getattr(result,'txts',None) or ()
+            for txt in txts:
+                value=str(txt).strip()
+                if value and re.search(r'[가-힣]',value):
+                    reads.append(value)
+        except Exception:
+            continue
+    if not reads:
+        return ''
+    return max(reads,key=lambda value:(len(re.findall(r'[가-힣]',value)),len(value)))
 
 def _personal_tokens(raw):
     """Extract display-value tokens while keeping comma-formatted integers intact."""
@@ -881,8 +1184,16 @@ def _personal_primary_from_raw(raw,label_raw):
 
 def _personal_hero_name_text(img):
     """Read selected hero name from the left Personal-screen navigation."""
-    text=_ocr_box(img,(0.025,0.185,0.195,0.255),psm=7,lang='kor+eng')
-    return text
+    crop=_crop(img,(0.025,0.185,0.195,0.255))
+    reads=[]
+    try:
+        reads.extend(_ocr_korean(crop))
+    except Exception:
+        pass
+    fallback=_ocr(crop,psm=7,lang='kor+eng')
+    if fallback:
+        reads.append(fallback)
+    return '\n'.join(dict.fromkeys(v for v in reads if v))
 
 
 def _personal_label_from_raw(raw):
@@ -923,99 +1234,113 @@ def _symmetra_average_charge_from_panel(panel_text):
 
 
 def extract_personal(img, hero_key=None):
-    panel_text=_ocr(_crop(img,ROI['personal_panel']),6)
+    panel_crop=_crop(img,ROI['personal_panel'])
     boxes,layout=_detect_personal_cards(img)
 
-    # The API only receives screen_type + image, so infer the selected hero from
-    # the hero-summary card before resolving hero-specific metric labels.
-    hero_summary_raw=_card_text(img,boxes[0]) if boxes else ''
+    # Fast path: identify the selected hero first. Once the hero is known, the
+    # verified HERO_METRIC_ORDER is authoritative and metric-label OCR is unnecessary.
     hero_name_raw=_personal_hero_name_text(img)
+    name_hero_key=hero_key or resolve_hero_key(hero_name_raw)
 
-    name_hero_key=hero_key or (
-        resolve_hero_key(hero_name_raw)
-        or resolve_hero_key(hero_summary_raw)
-        or resolve_hero_key(panel_text)
-    )
+    hero_summary_raw=''
+    panel_parts=[]
+    panel_default=_ocr(panel_crop,6)
+    if panel_default:
+        panel_parts.append(panel_default)
 
-    # Metric inference always runs and only uses hero-unique labels. This prevents
-    # shared stats from forcing an unrelated hero and then triggering bad card-order mapping.
+    if boxes:
+        if name_hero_key:
+            hero_summary_raw=_ocr(_crop(img,boxes[0]),6)
+        else:
+            hero_summary_raw=_card_text(img,boxes[0])
+
+    if not name_hero_key:
+        try:
+            panel_parts.extend(_ocr_korean(panel_crop))
+        except Exception:
+            pass
+
+    panel_text='\n'.join(dict.fromkeys(v for v in panel_parts if v))
+    name_hero_key=name_hero_key or resolve_hero_key(hero_summary_raw) or resolve_hero_key(panel_text)
+
+    # Validate the hero-name OCR with a few cheap metric-label reads. This keeps
+    # the fast path but prevents one bad hero-name read from forcing the wrong
+    # HERO_METRIC_ORDER onto every card.
     hero_metric_inference={"hero_key":None,"confidence":0.0,"matches":[]}
+    fast_labels=[]
     if len(boxes)>1:
-        pre_labels=[]
+        for box in boxes[1:min(len(boxes),5)]:
+            label=_personal_card_label_fast(img,box)
+            if label:
+                fast_labels.append(label)
+        if fast_labels:
+            hero_metric_inference=infer_hero_from_metric_labels(fast_labels)
+
+    metric_hero_key=hero_metric_inference.get("hero_key")
+
+    # If the cheap validation cannot identify a hero and the name OCR also
+    # failed, use the original expensive all-card fallback.
+    if not metric_hero_key and not name_hero_key and len(boxes)>1:
+        pre_labels=list(fast_labels)
         for box in boxes[1:]:
             label_raw,_=_personal_card_label(img,box)
-            if label_raw:
+            if label_raw and label_raw not in pre_labels:
                 pre_labels.append(label_raw)
             raw_label=_personal_label_from_raw(_card_text(img,box))
             if raw_label and raw_label not in pre_labels:
                 pre_labels.append(raw_label)
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
+        metric_hero_key=hero_metric_inference.get("hero_key")
 
-    metric_hero_key=hero_metric_inference.get("hero_key")
-    # Two or more hero-unique metric labels are stronger evidence than the
-    # hero-name OCR, which can read another hero name entirely on this screen.
+    # Two unique metric labels are stronger evidence than one hero-name OCR read.
     hero_key=metric_hero_key or name_hero_key
 
     metric_cards=[]
     metrics=[]
     names=['hero_summary']+[f'metric_{i}' for i in range(1,len(boxes))]
     for name,box in zip(names,boxes):
-        raw=_card_text(img,box)
         isolated_primary,value_reads,value_conf=_personal_card_value(img,box)
-        label_raw,label_conf=_personal_card_label(img,box)
-        vals=_personal_tokens(raw)
-        resolved=resolve_metric_label(label_raw,hero_key)
 
-        # Juno's label crop can bleed into neighboring cards; use the verified
-        # card order as authoritative once Juno is identified.
-        if hero_key=='juno' and name.startswith('metric_'):
+        metric_index=-1
+        ordered=None
+        if hero_key and name.startswith('metric_'):
             try:
                 metric_index=int(name.split('_',1)[1])-1
             except (ValueError,IndexError):
                 metric_index=-1
             ordered=metric_from_verified_order(hero_key,metric_index)
-            if ordered:
-                resolved={**resolved,**ordered}
-                label_conf=max(label_conf,0.88)
 
-        # If label OCR is unusable, fall back to the verified card order for this hero.
-        # name is metric_N, so metric_1 maps to index 0.
-        if not resolved.get('metric_key') and name.startswith('metric_'):
-            try:
-                metric_index=int(name.split('_',1)[1])-1
-            except (ValueError,IndexError):
-                metric_index=-1
-            ordered=metric_from_verified_order(hero_key,metric_index)
-            if ordered:
-                resolved={**resolved,**ordered}
-                # Verified hero card order is authoritative when the label crop is blank/noisy.
-                label_conf=max(label_conf,0.88)
+        if ordered:
+            # Verified card order is authoritative. Skip Korean label OCR and
+            # whole-card OCR unless the isolated value itself needs a fallback.
+            label_raw=''
+            label_conf=0.92
+            resolved={**resolve_metric_label('',hero_key),**ordered}
+            raw=''
+            if isolated_primary is None or value_conf<0.90:
+                raw=_ocr(_crop(img,box),6)
+            vals=_personal_tokens(raw)
+        else:
+            raw=_card_text(img,box)
+            label_raw,label_conf=_personal_card_label(img,box)
+            vals=_personal_tokens(raw)
+            resolved=resolve_metric_label(label_raw,hero_key)
 
-        # If the dedicated label crop grabbed helper text/noise, retry using the
-        # whole card OCR. This commonly recovers labels such as "결정타".
-        raw_label=_personal_label_from_raw(raw)
-        raw_resolved=resolve_metric_label(raw_label,hero_key) if raw_label else None
-        if (
-            raw_resolved
-            and raw_resolved.get('metric_key')
-            and (
-                not resolved.get('metric_key')
-                or '10분당' in label_raw
-                or raw_resolved.get('label_match_score',0)>resolved.get('label_match_score',0)
-            )
-        ):
-            label_raw=raw_label
-            resolved=raw_resolved
-            label_conf=max(label_conf,0.88)
-
-        if hero_key=='juno' and name.startswith('metric_'):
-            try:
-                metric_index=int(name.split('_',1)[1])-1
-            except (ValueError,IndexError):
-                metric_index=-1
-            ordered=metric_from_verified_order(hero_key,metric_index)
-            if ordered:
-                resolved={**resolved,**ordered}
+            # If the dedicated label crop grabbed helper text/noise, retry using
+            # the whole card OCR.
+            raw_label=_personal_label_from_raw(raw)
+            raw_resolved=resolve_metric_label(raw_label,hero_key) if raw_label else None
+            if (
+                raw_resolved
+                and raw_resolved.get('metric_key')
+                and (
+                    not resolved.get('metric_key')
+                    or '10분당' in label_raw
+                    or raw_resolved.get('label_match_score',0)>resolved.get('label_match_score',0)
+                )
+            ):
+                label_raw=raw_label
+                resolved=raw_resolved
                 label_conf=max(label_conf,0.88)
 
         raw_primary=_personal_primary_from_raw(raw,label_raw)
@@ -1159,8 +1484,9 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.30-dev',
+        'ocr_version':'0.10.39-dev',
         'hero_key':hero_key,
+        'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
         'hero_metric_inference':hero_metric_inference,
