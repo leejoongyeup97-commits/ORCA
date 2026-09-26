@@ -1035,7 +1035,9 @@ def extract_personal(img, hero_key=None):
             def _mmss_seconds(value):
                 mm,ss=value.split(':',1)
                 return int(mm)*60+int(ss)
-            play_time=max(panel_times,key=_mmss_seconds)
+            plausible=[v for v in panel_times if _mmss_seconds(v)<=45*60]
+            if plausible:
+                play_time=max(plausible,key=_mmss_seconds)
 
     # Recover obviously clipped integer totals from the visible per-10 helper.
     if play_time:
@@ -1069,7 +1071,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.16-dev',
+        'ocr_version':'0.10.17-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
