@@ -10,6 +10,7 @@ import {
   type MatchReviewDraft,
 } from "@/lib/review-draft";
 import { getStoredOcrBundle, type StoredOcrBundle } from "@/lib/ocr-integration";
+import { normalizeSideForGameMode } from "@/lib/match-rules";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   getMatchBackendAdapter,
@@ -123,6 +124,7 @@ export default function MatchDetailPage() {
     setNotice("");
     const patch: EditableMatchFields = {
       ...form,
+      side: normalizeSideForGameMode(form.game_mode, form.side),
       played_at: fromLocalDateTime(playedAtLocal, match.editable.played_at),
     };
     try {
@@ -147,6 +149,7 @@ export default function MatchDetailPage() {
     try {
       const saved = await getMatchBackendAdapter().updateMatchImport(match.match_id, {
         ...form,
+        side: normalizeSideForGameMode(form.game_mode, form.side),
         played_at: fromLocalDateTime(playedAtLocal, match.editable.played_at),
       });
       await getMatchBackendAdapter().confirmMatch({
@@ -308,15 +311,24 @@ export default function MatchDetailPage() {
                   <input value={form.map_name} onChange={(e) => setForm({ ...form, map_name: e.target.value })} placeholder="예: 왕의 길" className="field-input" />
                 </Field>
                 <Field label="게임 모드">
-                  <input value={form.game_mode} onChange={(e) => setForm({ ...form, game_mode: e.target.value })} placeholder="예: 경쟁전 · 호위" className="field-input" />
+                  <input
+                    value={form.game_mode}
+                    onChange={(e) => {
+                      const gameMode = e.target.value;
+                      setForm({
+                        ...form,
+                        game_mode: gameMode,
+                        side: normalizeSideForGameMode(gameMode, form.side),
+                      });
+                    }}
+                    placeholder="예: 경쟁전 · 호위"
+                    className="field-input"
+                  />
                 </Field>
                 <Field label="결과">
                   <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value as MatchResult })} className="field-input">
                     {(Object.keys(RESULT_LABELS) as MatchResult[]).map((result) => <option key={result} value={result}>{RESULT_LABELS[result]}</option>)}
                   </select>
-                </Field>
-                <Field label="내 주 영웅">
-                  <input value={form.my_hero} onChange={(e) => setForm({ ...form, my_hero: e.target.value })} placeholder="예: 리퍼" className="field-input" />
                 </Field>
                 <Field label="시즌">
                   <input value={form.season} onChange={(e) => setForm({ ...form, season: e.target.value })} placeholder="예: Season 20" className="field-input" />
@@ -325,7 +337,12 @@ export default function MatchDetailPage() {
                   <input value={form.patch_label} onChange={(e) => setForm({ ...form, patch_label: e.target.value })} placeholder="예: 2026-09-15" className="field-input" />
                 </Field>
                 <Field label="공격 / 수비">
-                  <select value={form.side} onChange={(e) => setForm({ ...form, side: e.target.value as MatchSide })} className="field-input">
+                  <select
+                    value={normalizeSideForGameMode(form.game_mode, form.side)}
+                    disabled={normalizeSideForGameMode(form.game_mode, form.side) === "neutral"}
+                    onChange={(e) => setForm({ ...form, side: e.target.value as MatchSide })}
+                    className="field-input disabled:cursor-not-allowed disabled:opacity-65"
+                  >
                     <option value="unknown">미확인</option>
                     <option value="attack">선공</option>
                     <option value="defense">선수비</option>
@@ -428,7 +445,6 @@ export default function MatchDetailPage() {
                 <InfoRow label="맵" value={form.map_name || "미확인"} />
                 <InfoRow label="모드" value={form.game_mode || "미확인"} />
                 <InfoRow label="결과" value={RESULT_LABELS[form.result]} />
-                <InfoRow label="영웅" value={form.my_hero || "미확인"} />
                 <InfoRow label="시즌" value={form.season || "미확인"} />
                 <InfoRow label="패치" value={form.patch_label || "미확인"} />
                 <InfoRow label="공수" value={form.side === "attack" ? "선공" : form.side === "defense" ? "선수비" : form.side === "neutral" ? "해당 없음" : "미확인"} />
