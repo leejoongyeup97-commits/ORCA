@@ -18,14 +18,14 @@ type FilterKey = "all" | HypothesisCategory;
 type Readiness = "insufficient_data" | "candidate";
 
 const PRIORITY_META: Record<HypothesisPriority, { label: string; className: string }> = {
-  high: { label: "우선 검증", className: "bg-[rgba(249,158,26,0.14)] text-[var(--orange)]" },
-  medium: { label: "중간", className: "bg-[rgba(102,169,255,0.12)] text-[#9bc6ff]" },
+  high: { label: "우선 검증", className: "bg-transparent text-[var(--orange)]" },
+  medium: { label: "중간", className: "bg-transparent text-[#aeb4bf]" },
   explore: { label: "탐색", className: "bg-[#171e2a] text-[var(--muted)]" },
 };
 
 const READINESS_META: Record<Readiness, { label: string; className: string }> = {
   insufficient_data: { label: "데이터 부족", className: "bg-[#171e2a] text-[var(--muted)]" },
-  candidate: { label: "검증 대기", className: "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" },
+  candidate: { label: "검증 대기", className: "bg-transparent text-[#9fcaae]" },
 };
 
 function countAvailable(matches: MatchListItem[], key: HypothesisDataKey) {
@@ -194,11 +194,11 @@ export default function HypothesesPage() {
         </section>
 
         {loading ? (
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-6 py-16 text-center text-sm text-[var(--muted)]">
+          <div className="rounded-md border border-[var(--line)] bg-transparent px-6 py-16 text-center text-sm text-[var(--muted)]">
             가설 준비 상태를 계산하는 중...
           </div>
         ) : visible.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-6 py-16 text-center text-sm text-[var(--muted)]">
+          <div className="rounded-md border border-[var(--line)] bg-transparent px-6 py-16 text-center text-sm text-[var(--muted)]">
             조건에 맞는 가설이 없습니다.
           </div>
         ) : (
@@ -241,7 +241,7 @@ export default function HypothesesPage() {
                   </div>
 
                   <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
-                    <p className="m-0 text-[9px] font-black text-[var(--muted)]">필요 데이터</p>
+                    <p className="m-0 text-[9px] font-semibold text-[var(--muted)]">필요 데이터</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {item.requiredData.map((key) => {
                         const count = countAvailable(matches, key);
@@ -290,7 +290,7 @@ function Metric({
   accent?: boolean;
   success?: boolean;
 }) {
-  const valueClass = success ? "text-[#8ee9aa]" : accent ? "text-[var(--orange)]" : "text-white";
+  const valueClass = success ? "text-[#9fcaae]" : accent ? "text-[var(--orange)]" : "text-white";
 
   return (
     <div className="border-r border-[var(--line)] px-4 py-5 first:pl-0 last:border-r-0">
