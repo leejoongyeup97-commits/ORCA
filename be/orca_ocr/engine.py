@@ -1201,8 +1201,9 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.30-dev',
+        'ocr_version':'0.10.31-dev',
         'hero_key':hero_key,
+        'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
         'hero_metric_inference':hero_metric_inference,
