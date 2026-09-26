@@ -589,6 +589,19 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "biotic_grenade_kills","healing_amplified","players_saved","enemies_slept",
         "healing_prevented","scoped_accuracy","sleep_dart_accuracy","nano_boost_assists",
     ],
+    "genji": [
+        "ultimates_reflected","final_blows","swift_strike_resets",
+        "dragonblade_kills","solo_kills","reflected_damage",
+    ],
+    "domina": [
+        "weapon_beam_accuracy","environmental_kills","objective_contest_time",
+        "weapon_shot_accuracy","crystal_charge_damage","players_saved",
+        "knockback_kills","self_healing",
+    ],
+    "doomfist": [
+        "overhealth_generated","objective_contest_time","rocket_punch_kills",
+        "meteor_strike_kills","players_saved","seismic_slam_kills",
+    ],
     "dmon": [
         "fusion_repeater_accuracy","limit_break_kills","objective_contest_time",
         "fusion_repeater_kills","damage_amplified","players_saved","surging_strike_kills",
@@ -728,7 +741,7 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "molten_core_kills","solo_kills","hammer_kills",
     ],
     "kiriko": [
-        "critical_hit_accuracy","players_saved","kitsune_rush_assists",
+        "critical_hit_accuracy","kitsune_rush_assists","players_saved",
         "kunai_kills","weapon_accuracy","negative_effects_cleansed",
     ],
     "freja": [
@@ -793,6 +806,43 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "orbital_ray_healing","orbital_ray_assists",
     ],
 }
+
+
+def validate_personal_metric_config() -> None:
+    """Fail fast when a hero's fixed Personal-card mapping becomes inconsistent."""
+    errors=[]
+
+    metric_heroes=set(HERO_METRICS)
+    order_heroes=set(HERO_METRIC_ORDER)
+
+    missing_orders=sorted(metric_heroes-order_heroes)
+    if missing_orders:
+        errors.append("missing HERO_METRIC_ORDER: " + ", ".join(missing_orders))
+
+    extra_orders=sorted(order_heroes-metric_heroes)
+    if extra_orders:
+        errors.append("unknown heroes in HERO_METRIC_ORDER: " + ", ".join(extra_orders))
+
+    common_keys=set(COMMON_METRICS)
+    for hero_key,order in HERO_METRIC_ORDER.items():
+        if not order:
+            errors.append(f"{hero_key}: empty metric order")
+            continue
+
+        duplicates=sorted({key for key in order if order.count(key)>1})
+        if duplicates:
+            errors.append(f"{hero_key}: duplicate metric keys: {', '.join(duplicates)}")
+
+        hero_keys=set(HERO_METRICS.get(hero_key,{}))
+        unknown=[key for key in order if key not in hero_keys and key not in common_keys]
+        if unknown:
+            errors.append(f"{hero_key}: unknown metric keys: {', '.join(unknown)}")
+
+    if errors:
+        raise RuntimeError("Invalid Personal metric configuration | " + " | ".join(errors))
+
+
+validate_personal_metric_config()
 
 
 def metric_from_verified_order(hero_key: str | None, metric_index: int) -> dict[str, Any] | None:
