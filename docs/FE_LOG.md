@@ -15,6 +15,16 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-26 · 경기 등록 검수 화면 OCR 재실행 버튼
+- 상태: DONE
+- 내용:
+  - 경기 등록 검수에서 OCR 처리 완료 후 `OCR 다시 실행` 버튼 노출
+  - 같은 경기의 원본 File 객체와 기존 match_id를 재사용해 OCR만 다시 실행
+  - OCR 재실행 중에는 완료/다음 버튼 비활성화
+- 관련: `fe/src/app/matches/new/page.tsx`
+- 검증: Frontend Check build 성공
+- 완료 커밋: 7dedb1aa0b2ca18239fca378f589d21b14cada4f
+
 ### 2026-09-26 · BE/DB Personal OCR 계약 반영
 - 상태: DONE
 - 내용:
