@@ -904,24 +904,29 @@ def extract_personal(img, hero_key=None):
     # the hero-summary card before resolving hero-specific metric labels.
     hero_summary_raw=_card_text(img,boxes[0]) if boxes else ''
     hero_name_raw=_personal_hero_name_text(img)
-    if not hero_key:
-        hero_key=(
-            resolve_hero_key(hero_name_raw)
-            or resolve_hero_key(hero_summary_raw)
-            or resolve_hero_key(panel_text)
-        )
 
-    # If hero-name OCR failed, infer hero from the combination of hero-specific
-    # labels visible on the Personal screen (e.g. hook + pig pen => Roadhog).
+    name_hero_key=hero_key or (
+        resolve_hero_key(hero_name_raw)
+        or resolve_hero_key(hero_summary_raw)
+        or resolve_hero_key(panel_text)
+    )
+
+    # Metric inference always runs and only uses hero-unique labels. This prevents
+    # shared stats from forcing an unrelated hero and then triggering bad card-order mapping.
     hero_metric_inference={"hero_key":None,"confidence":0.0,"matches":[]}
-    if not hero_key and len(boxes)>1:
+    if len(boxes)>1:
         pre_labels=[]
         for box in boxes[1:]:
             label_raw,_=_personal_card_label(img,box)
             if label_raw:
                 pre_labels.append(label_raw)
         hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
-        hero_key=hero_metric_inference.get("hero_key")
+
+    metric_hero_key=hero_metric_inference.get("hero_key")
+    if name_hero_key and metric_hero_key and name_hero_key!=metric_hero_key:
+        hero_key=None
+    else:
+        hero_key=metric_hero_key or name_hero_key
 
     metric_cards=[]
     metrics=[]
@@ -1035,7 +1040,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.8-dev',
+        'ocr_version':'0.10.9-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
