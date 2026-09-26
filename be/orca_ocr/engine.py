@@ -1023,14 +1023,20 @@ def extract_personal(img, hero_key=None):
             })
 
     play_time=None
-    # Prefer the hero-summary card. If its OCR misses the time entirely, fall
-    # back to the longest mm:ss value on the Personal panel; objective/contest
-    # times are shorter in normal Personal-stat layouts.
-    hero_times=re.findall(r'\b\d{1,2}:\d{2}\b',hero_summary_raw)
+    # Prefer the hero-summary card. Normalize common OCR damage in the time:
+    # 0001.22 -> 01:22, and 90:50 -> 00:50 when the leading 0 was read as 9.
+    hero_times=[]
+    for raw_time in re.findall(r'\b\d{1,4}[.:]\d{2}\b',hero_summary_raw):
+        left,right=re.split(r'[.:]',raw_time,1)
+        left=left.lstrip('0') or '0'
+        if len(left)==2 and left.startswith('9') and int(left)>45:
+            left='0'+left[1:]
+        candidate=f"{int(left):02d}:{right}"
+        mm,ss=(int(v) for v in candidate.split(':'))
+        if ss<60 and mm*60+ss<=45*60:
+            hero_times.append(candidate)
     if hero_times:
-        plausible=[v for v in hero_times if (lambda p:int(p[0])*60+int(p[1]))(v.split(':',1))<=45*60]
-        if plausible:
-            play_time=plausible[-1]
+        play_time=hero_times[-1]
     if play_time is None and metric_cards:
         summary_primary=str(metric_cards[0].get('primary_value') or '')
         if re.fullmatch(r'\d{1,2}:\d{2}',summary_primary):
@@ -1079,7 +1085,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.19-dev',
+        'ocr_version':'0.10.20-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
