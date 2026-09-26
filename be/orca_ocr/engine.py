@@ -5,6 +5,7 @@ from typing import Any
 import cv2
 import numpy as np
 import pytesseract
+from orca_ocr.personal_metrics import infer_hero_from_metric_labels, metric_from_verified_order, resolve_hero_key, resolve_metric_label
 
 
 def _configure_tesseract() -> str:
@@ -65,6 +66,53 @@ def _ocr_box(img, box, psm=7, lang='kor+eng', whitelist=None):
     return _ocr(_crop(img, box), psm=psm, lang=lang, whitelist=whitelist)
 
 
+def _summary_result_reads(img):
+    """Read Summary result text with several crops/PSM modes.
+
+    The large WIN/LOSS label is visually stylized and a single OCR pass can miss
+    one Korean syllable, so keep multiple raw candidates for robust matching.
+    """
+    boxes=[
+        (0.670,0.545,0.825,0.640),
+        (0.680,0.555,0.805,0.635),
+        (0.675,0.565,0.940,0.735),
+    ]
+    reads=[]
+    for box in boxes:
+        crop=_crop(img,box)
+        for psm in (6,7,11):
+            try:
+                txt=_ocr(crop,psm=psm,lang='kor+eng')
+                if txt:
+                    reads.append(txt)
+            except Exception:
+                pass
+    return reads
+
+
+def _summary_result_from_text(reads):
+    combined='\n'.join(reads or [])
+    compact=re.sub(r'[^가-힣A-Za-z]','',combined).lower()
+
+    # Korean UI labels. Removing whitespace/punctuation first also catches "승 리".
+    if '승리' in compact:
+        return 'win','ocr_keyword'
+    if '패배' in compact:
+        return 'loss','ocr_keyword'
+    if '무승부' in compact or '무승' in compact:
+        return 'draw','ocr_keyword'
+
+    # English fallback in case the client language changes.
+    if 'victory' in compact or re.search(r'\bwin\b',combined,re.I):
+        return 'win','ocr_keyword'
+    if 'defeat' in compact or re.search(r'\bloss\b',combined,re.I):
+        return 'loss','ocr_keyword'
+    if 'draw' in compact or 'tie' in compact:
+        return 'draw','ocr_keyword'
+
+    return None,None
+
+
 def extract_summary(img):
     # Fixed fields on the right-side summary card. Keeping the full card OCR is useful
     # for debugging, but each field is read independently so labels cannot steal values.
@@ -79,8 +127,17 @@ def extract_summary(img):
     }
     field_raw = {k: _ocr_box(img, b, 7) for k,b in boxes.items()}
 
-    result_text = field_raw['result'] + '\n' + text
-    result = 'win' if '승리' in result_text else 'loss' if '패배' in result_text else None
+    # Map OCR is optional. A failure here must never fail the whole Summary extraction.
+    try:
+        field_raw['map_name'] = _ocr_box(img, (0.670, 0.155, 0.930, 0.220), 7)
+    except Exception as exc:
+        field_raw['map_name'] = ''
+        field_raw['map_name_error'] = f'{type(exc).__name__}: {exc}'
+
+    result_reads=_summary_result_reads(img)
+    # Preserve the original fixed result crop in debug output as well.
+    result_reads.insert(0,field_raw['result'])
+    result_reads.append(text)
 
     duration = None
     # The fixed duration crop can overlap the date/time. Prefer the labelled value
@@ -94,11 +151,38 @@ def extract_summary(img):
 
     score = None
     score_source = field_raw['score'] + '\n' + text
-    patterns = [r'(\d+)\s*(?:VS|V5|V[S5])\s*(\d+)', r'최종\s*점수\s*[:：]?\s*(\d)\s*[1Il|]?5\s*(\d)']
+    patterns = [
+        r'(\d+)\s*(?:VS|V5|V[S5])\s*(\d+)',
+        # Common OCR collapse of "1 VS 0" -> "115 0" / "145 0".
+        # V is frequently read as 1 or 4, and S as 5.
+        r'최종\s*점수\s*[:：]?\s*(\d)\s*[VvYy14Il|]\s*[Ss5]\s*(\d)',
+        r'최종\s*점수\s*[:：]?\s*(\d)\s*[1Il|]?5\s*(\d)',
+        # "최종" itself is often unreadable. As long as OCR still sees "점수",
+        # accept the same VS-confused separator immediately after it.
+        r'점수\s*[:：]?\s*(\d)\s*[VvYy14Il|]\s*[Ss5]\s*(\d)',
+        r'점수\s*[:：]?\s*(\d)\s*[1Il|]?5\s*(\d)',
+    ]
     for pat in patterns:
         m = re.search(pat, score_source, re.I)
         if m:
             score = [int(m.group(1)), int(m.group(2))]; break
+
+    # Final fallback for collapsed OCR such as "점수: 115 0" or "점수: 145 0".
+    # Interpret 1?5 as "1 VS" only in the immediate score context.
+    if score is None:
+        m=re.search(r'점수\s*[:：]?\s*(\d)(?:1|4)5\s*(\d)',score_source,re.I)
+        if m:
+            score=[int(m.group(1)),int(m.group(2))]
+
+    result,result_source=_summary_result_from_text(result_reads)
+    if result is None and score and len(score)==2:
+        if score[0]>score[1]:
+            result='win'
+        elif score[0]<score[1]:
+            result='loss'
+        else:
+            result='draw'
+        result_source='final_score'
 
     mode = None
     mode_source = field_raw['mode'] + '\n' + text
@@ -106,64 +190,38 @@ def extract_summary(img):
     if m: mode = m.group(1).strip(' ·ㆍ|')
     elif '혼합' in mode_source: mode = '혼합'
 
+    map_name = None
+    map_raw = field_raw.get('map_name', '').strip()
+    if map_raw:
+        # Keep the first non-empty OCR line and trim surrounding UI punctuation/noise.
+        map_lines = []
+        for line in map_raw.splitlines():
+            cleaned = re.sub(r'^[^0-9A-Za-z가-힣]+|[^0-9A-Za-z가-힣 ]+$', '', line).strip()
+            if cleaned:
+                map_lines.append(cleaned)
+        if map_lines:
+            map_name = map_lines[0]
+
     played_at_raw = None
     date_source = field_raw['date'] + '\n' + text
     m = re.search(r'(\d{1,2}/\d{1,2}/\d{2,4}\s*[-–]\s*\d{1,2}:\d{2})', date_source)
-    if m: played_at_raw = m.group(1)
+    if m:
+        played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.9.1-dev','result':result,
+        'screen_type':'summary','ocr_version':'0.9.17-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
-        'played_at_raw':played_at_raw,
+        'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
             'duration':0.98 if duration is not None else 0.0,
             'final_score':0.82 if score else 0.0,
             'mode':0.92 if mode else 0.0,
-            'result':0.95 if result else 0.0,
+            'map_name':0.92 if map_name else 0.0,
+            'result':0.97 if result_source=='ocr_keyword' else 0.90 if result_source=='final_score' else 0.0,
             'played_at_raw':0.95 if played_at_raw else 0.0,
         },
-        'field_raw':field_raw,'raw_text':text
+        'field_raw':field_raw,'result_reads':result_reads,'raw_text':text
     }
-
-def _read_number(cell):
-    """Read one scoreboard number quickly and reject unstable guesses."""
-    if cell is None or cell.size == 0:
-        return None, 0.0
-
-    gray=cv2.cvtColor(cell,cv2.COLOR_BGR2GRAY) if len(cell.shape)==3 else cell
-    gray=cv2.resize(gray,None,fx=3.0,fy=3.0,interpolation=cv2.INTER_CUBIC)
-
-    # Scoreboard digits are bright. Remove most dark UI/background pixels first.
-    _,bright=cv2.threshold(gray,150,255,cv2.THRESH_BINARY)
-    bright=cv2.morphologyEx(bright,cv2.MORPH_CLOSE,np.ones((2,2),np.uint8))
-
-    reads=[]
-    for image in (gray,bright):
-        for psm in (7,13):
-            data=pytesseract.image_to_data(
-                image,lang='eng',
-                config=f'--psm {psm} -c tessedit_char_whitelist=0123456789',
-                output_type=pytesseract.Output.DICT,
-            )
-            for text,conf in zip(data.get('text',[]),data.get('conf',[])):
-                digits=re.sub(r'\D','',text or '')
-                try: score=float(conf)
-                except (TypeError,ValueError): score=-1
-                if digits and score>=20:
-                    reads.append((int(digits),score))
-
-    if not reads:
-        return None,0.0
-
-    # Agreement wins. OCR confidence only breaks ties.
-    grouped={}
-    for value,score in reads:
-        grouped.setdefault(value,[]).append(score)
-    best=max(grouped,key=lambda v:(len(grouped[v]),sum(grouped[v])/len(grouped[v])))
-    support=len(grouped[best])
-    mean_conf=sum(grouped[best])/support
-    confidence=min(0.99,(0.55+0.12*support)+(max(0.0,mean_conf)/100)*0.2)
-    return best,round(confidence,2)
 
 def _runs(mask, min_len=2):
     runs=[]; st=None
@@ -224,32 +282,6 @@ def _find_stat_columns(board):
         seg=col_energy[lo:hi]
         out[k]=(lo+int(np.argmax(np.convolve(seg,np.ones(5)/5,mode='same'))))/board.shape[1] if len(seg) else a
     return out
-
-def _read_number_fast(board, cx, y, half_h, base_half_w, key):
-    """Use a tight crop first; retry wider only when the read is missing/weak."""
-    h,w=board.shape[:2]
-    def read(hw):
-        x1=max(0,cx-hw); x2=min(w,cx+hw)
-        y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
-        return _read_number(board[y1:y2,x1:x2])
-
-    val,conf=read(base_half_w)
-    if val is not None and conf>=0.78:
-        return val,conf
-
-    wide_val,wide_conf=read(int(base_half_w*1.35))
-    if wide_val is None:
-        return val,conf
-    if val is None:
-        return wide_val,wide_conf
-    if wide_val==val:
-        return val,max(conf,wide_conf)
-
-    # Two independent crops disagree: do not pretend the value is reliable.
-    # Keep the stronger candidate for manual review, but lower confidence sharply.
-    if wide_conf>conf:
-        return wide_val,min(wide_conf,0.45)
-    return val,min(conf,0.45)
 
 _RAPIDOCR_ENGINE=None
 
@@ -361,83 +393,352 @@ def _highlight_row_score(board,y,gap):
     p70_v=float(np.percentile(samples,70))
     return median_v*0.70+p70_v*0.30
 
-def _detect_me_slot(board,y_px):
-    """Detect the highlighted friendly row. Return None when separation is ambiguous."""
-    blue=[float(y) for y in y_px[:5]]
-    if len(blue)<5:
-        return None,0.0,0.0
-    gap=float(np.median(np.diff(blue)))
-    if gap<=1:
-        return None,0.0,0.0
+_HERO_NAME_KO={
+    'ana':'아나','anran':'안란','ashe':'애쉬','baptiste':'바티스트','bastion':'바스티온',
+    'brigitte':'브리기테','cassidy':'캐서디','dmon':'디몬','domina':'도미나','doomfist':'둠피스트',
+    'dva':'디바','echo':'에코','emre':'엠레','freja':'프레야','genji':'겐지','hanzo':'한조',
+    'hazard':'해저드','illari':'일리아리','jetpack-cat':'제트팩 캣','junker-queen':'정커퀸',
+    'junkrat':'정크랫','juno':'주노','kiriko':'키리코','lifeweaver':'라이프위버','lucio':'루시우',
+    'mauga':'마우가','mei':'메이','mercy':'메르시','mizuki':'미즈키','moira':'모이라',
+    'orisa':'오리사','pharah':'파라','ramattra':'라마트라','reaper':'리퍼','reinhardt':'라인하르트',
+    'roadhog':'로드호그','shion':'시온','sierra':'시에라','sigma':'시그마','sojourn':'소전',
+    'soldier-76':'솔저: 76','sombra':'솜브라','symmetra':'시메트라','torbjorn':'토르비욘',
+    'tracer':'트레이서','vendetta':'벤데타','venture':'벤처','widowmaker':'위도우메이커',
+    'winston':'윈스턴','wrecking-ball':'레킹볼','wuyang':'우양','zarya':'자리야','zenyatta':'젠야타',
+}
 
-    scores=[_highlight_row_score(board,y,gap) for y in blue]
-    order=np.argsort(scores)[::-1]
-    best_idx=int(order[0]); second_idx=int(order[1])
-    best=float(scores[best_idx]); second=float(scores[second_idx])
-    margin_pct=(best-second)/max(abs(second),1.0)*100.0
 
-    arr=np.array(scores,dtype=np.float32)
-    median=float(np.median(arr))
-    mad=float(np.median(np.abs(arr-median)))
-    robust_z=(best-median)/max(mad,1.0)
+def _hero_name_ko(hero_key):
+    if not hero_key:
+        return None
+    return _HERO_NAME_KO.get(str(hero_key),str(hero_key))
 
-    confident=margin_pct>=4.0 and robust_z>=1.0
-    if not confident:
-        return None,round(margin_pct,2),0.0
 
-    confidence=min(0.99,0.50+0.50*min(1.0,max(0.0,(margin_pct-4.0)/16.0)))
-    return best_idx+1,round(margin_pct,2),round(confidence,3)
+_HERO_REFERENCE_CACHE=None
+_HERO_ROLE_CACHE=None
+
+
+def _hero_role_for_slot(slot:int)->str:
+    if slot==1:
+        return 'tank'
+    if slot in (2,3):
+        return 'damage'
+    return 'support'
+
+
+def _hero_norm(img,size=160):
+    h,w=img.shape[:2]
+    x1=int(w*.10); x2=int(w*.90)
+    y1=int(h*.05); y2=int(h*.95)
+    roi=img[y1:y2,x1:x2]
+    gray=cv2.cvtColor(roi,cv2.COLOR_BGR2GRAY)
+    gray=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(gray)
+    return cv2.resize(gray,(size,size),interpolation=cv2.INTER_AREA)
+
+
+def _hero_corr(a,b):
+    a=_hero_norm(a).astype(np.float32); b=_hero_norm(b).astype(np.float32)
+    a-=float(a.mean()); b-=float(b.mean())
+    denom=float(np.linalg.norm(a)*np.linalg.norm(b))
+    if denom<=1e-6:
+        return 0.0
+    return max(0.0,min(1.0,float(np.sum(a*b)/denom)))
+
+
+def _hero_feature_similarity(a,b):
+    a=_hero_norm(a); b=_hero_norm(b)
+    if hasattr(cv2,'SIFT_create'):
+        det=cv2.SIFT_create(nfeatures=240); norm=cv2.NORM_L2
+    else:
+        det=cv2.ORB_create(nfeatures=300,fastThreshold=6); norm=cv2.NORM_HAMMING
+    ka,da=det.detectAndCompute(a,None); kb,db=det.detectAndCompute(b,None)
+    if da is None or db is None or len(ka)<4 or len(kb)<4:
+        return 0.0
+    pairs=cv2.BFMatcher(norm).knnMatch(da,db,k=2)
+    good=0
+    for pair in pairs:
+        if len(pair)<2:
+            continue
+        m,n=pair
+        if m.distance<0.74*n.distance:
+            good+=1
+    return min(1.0,good/max(8,min(len(ka),len(kb))))
+
+
+def _hero_similarity(a,b):
+    return _hero_feature_similarity(a,b)*0.82+_hero_corr(a,b)*0.18
+
+
+def _load_hero_references():
+    global _HERO_REFERENCE_CACHE,_HERO_ROLE_CACHE
+    if _HERO_REFERENCE_CACHE is not None:
+        return _HERO_REFERENCE_CACHE
+    root=Path(__file__).resolve().parent/'hero_references'
+    library={}
+    roles={}
+    manifest=root/'manifest.json'
+    if manifest.exists():
+        try:
+            import json
+            payload=json.loads(manifest.read_text(encoding='utf-8'))
+            raw_roles=payload.get('roles',{}) if isinstance(payload,dict) else {}
+            if isinstance(raw_roles,dict):
+                roles={str(k):str(v) for k,v in raw_roles.items()}
+        except Exception:
+            roles={}
+    if root.exists():
+        for hero_dir in root.iterdir():
+            if not hero_dir.is_dir():
+                continue
+            refs=[]
+            for p in hero_dir.iterdir():
+                if p.suffix.lower() not in ('.png','.jpg','.jpeg','.webp'):
+                    continue
+                img=cv2.imread(str(p),cv2.IMREAD_COLOR)
+                if img is not None:
+                    refs.append(img)
+            if refs:
+                library[hero_dir.name]=refs
+    _HERO_REFERENCE_CACHE=library
+    _HERO_ROLE_CACHE=roles
+    return library
+
+
+def _team_hero_row_centers(board):
+    """Fixed Team portrait-row geometry, independent from numeric OCR row detection."""
+    h=board.shape[0]
+    # Five blue rows, VS gap, five red rows in the current Team scoreboard layout.
+    return [v*h for v in (0.092,0.167,0.242,0.317,0.392,0.598,0.673,0.748,0.823,0.898)]
+
+
+def _crop_team_hero(board,y,gap):
+    h,w=board.shape[:2]
+    half_h=max(10,int(gap*.42))
+    x1=int(w*.034); x2=int(w*.112)
+    y1=max(0,int(round(y))-half_h); y2=min(h,int(round(y))+half_h)
+    return board[y1:y2,x1:x2]
+
+
+def _match_team_hero(crop,slot):
+    library=_load_hero_references()
+    if not library:
+        return None,0.0
+    expected_role=_hero_role_for_slot(slot)
+    roles=_HERO_ROLE_CACHE or {}
+    best_id=None; best_score=-1.0; second=-1.0
+    for hero_id,refs in library.items():
+        if roles and roles.get(hero_id) != expected_role:
+            continue
+        scores=sorted((_hero_similarity(crop,ref) for ref in refs),reverse=True)
+        if not scores:
+            score=0.0
+        else:
+            top=scores[:2]
+            score=sum(top)/len(top)
+        if score>best_score:
+            second=best_score; best_score=score; best_id=hero_id
+        elif score>second:
+            second=score
+    margin=max(0.0,best_score-max(second,0.0))
+    confidence=min(0.99,max(0.0,best_score*.85+margin*1.5))
+    return best_id,round(confidence,3)
+
+
+def _team_color_block_rows(board):
+    """Detect actual blue/red scoreboard block heights and derive visible row centers.
+
+    Overwatch compresses a team block when a player has left. A 4-player team is
+    therefore four rows tall rather than five rows with one empty hole.
+    """
+    h,w=board.shape[:2]
+    b,g,r=cv2.split(board)
+
+    blue_mask=(
+        (b.astype(np.int16) > r.astype(np.int16)*1.05) &
+        (b.astype(np.int16) > g.astype(np.int16)*0.90) &
+        (b > 70)
+    )
+    red_mask=(
+        (r.astype(np.int16) > g.astype(np.int16)*1.15) &
+        (r.astype(np.int16) > b.astype(np.int16)*1.15) &
+        (r > 70)
+    )
+
+    x1=int(w*0.02); x2=int(w*0.98)
+
+    def largest_run(mask):
+        profile=mask[:,x1:x2].mean(axis=1).astype(np.float32)
+        profile=np.convolve(profile,np.ones(5,dtype=np.float32)/5.0,mode='same')
+        active=profile>0.15
+        runs=[]; st=None
+        for i,v in enumerate(active):
+            if v and st is None:
+                st=i
+            if st is not None and (not v or i==len(active)-1):
+                en=i if not v else i+1
+                if en-st>=20:
+                    runs.append((st,en,float(profile[st:en].mean())))
+                st=None
+        if not runs:
+            return None
+        return max(runs,key=lambda item:(item[1]-item[0],item[2]))
+
+    blue_run=largest_run(blue_mask)
+    red_run=largest_run(red_mask)
+    if not blue_run or not red_run:
+        return None
+
+    blue_h=float(blue_run[1]-blue_run[0])
+    red_h=float(red_run[1]-red_run[0])
+    # Friendly team is expected to have five rows in normal play and gives a stable
+    # row-height reference even when the enemy team has a leaver.
+    base_row_h=blue_h/5.0 if blue_h>0 else h*0.075
+    blue_count=max(1,min(5,int(round(blue_h/max(base_row_h,1.0)))))
+    red_count=max(1,min(5,int(round(red_h/max(base_row_h,1.0)))))
+
+    def centers(run,count):
+        a,b,_=run
+        row_h=(b-a)/max(count,1)
+        return [a+(i+0.5)*row_h for i in range(count)]
+
+    return {
+        'blue_rows':centers(blue_run,blue_count),
+        'red_rows':centers(red_run,red_count),
+        'blue_count':blue_count,
+        'red_count':red_count,
+        'blue_run':[int(blue_run[0]),int(blue_run[1])],
+        'red_run':[int(red_run[0]),int(red_run[1])],
+    }
+
 
 def extract_team(img):
-    """Read Team scoreboard stats with RapidOCR and split blue/red row detection."""
+    """Read Team scoreboard stats, including compressed 5v4 / 4v5 scoreboards."""
+    global _HERO_ROLE_CACHE
     board=_crop(img,ROI['team_board']); h,w=board.shape[:2]
-    y_px,row_detection=_find_split_team_rows(board)
-    if len(y_px)<10:
+    layout=_team_color_block_rows(board)
+
+    if layout:
+        blue_rows=[float(y) for y in layout['blue_rows']]
+        red_rows=[float(y) for y in layout['red_rows']]
+        y_px=blue_rows+red_rows
+        row_detection='team_color_blocks'
+    else:
+        legacy_rows,row_detection=_find_split_team_rows(board)
+        blue_rows=[float(y) for y in legacy_rows[:5]]
+        red_rows=[float(y) for y in legacy_rows[5:10]]
+        y_px=blue_rows+red_rows
+        layout={
+            'blue_count':len(blue_rows),
+            'red_count':len(red_rows),
+            'blue_run':None,
+            'red_run':None,
+        }
+
+    if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.11-dev','players':[],
-            'layout_detection':row_detection,'stat_reading':'rapidocr_split_rows_v1',
+            'screen_type':'team','ocr_version':'0.9.14-dev','players':[],
+            'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
-            'hero_matching_status':'pending_reference_library'
+            'hero_matching_status':'scoreboard_native_v1',
+            'visible_player_count':0,
         }
 
     x_cols=_find_stat_columns(board)
-    gap=float(np.median(np.diff(y_px[:5]))) if len(y_px)>=5 else h*0.085
-    half_h=max(8,int(gap*0.36))
+    blue_gap=float(np.median(np.diff(blue_rows))) if len(blue_rows)>=2 else h*0.075
+    red_gap=float(np.median(np.diff(red_rows))) if len(red_rows)>=2 else blue_gap
     engine=_get_rapidocr_engine()
-    me_slot,me_margin,me_confidence=_detect_me_slot(board,y_px)
+
+    # is_me detection expects friendly rows only; pad nowhere, because blue may also
+    # be compressed in future leaver cases.
+    me_slot=None; me_margin=0.0; me_confidence=0.0
+    if len(blue_rows)>=2:
+        scores=[_highlight_row_score(board,y,blue_gap) for y in blue_rows]
+        order=np.argsort(scores)[::-1]
+        if len(order)>=2:
+            best_idx=int(order[0]); second_idx=int(order[1])
+            best=float(scores[best_idx]); second=float(scores[second_idx])
+            margin_pct=(best-second)/max(abs(second),1.0)*100.0
+            arr=np.array(scores,dtype=np.float32)
+            median=float(np.median(arr))
+            mad=float(np.median(np.abs(arr-median)))
+            robust_z=(best-median)/max(mad,1.0)
+            if margin_pct>=4.0 and robust_z>=1.0:
+                me_slot=best_idx+1
+                me_margin=round(margin_pct,2)
+                me_confidence=round(min(0.99,0.50+0.50*min(1.0,max(0.0,(margin_pct-4.0)/16.0))),3)
+
+    hero_library=_load_hero_references()
     rows=[]
 
-    for idx,y in enumerate(y_px[:10]):
-        row={
-            'team':'blue' if idx<5 else 'red',
-            'slot':idx%5+1,
-            'hero_id':None,
-            'is_me':((idx+1)==me_slot) if (idx<5 and me_slot is not None) else (None if idx<5 else False),
-            'confidence':{}
-        }
-        for key,xc in x_cols.items():
-            half_w=int(w*(0.034 if key in ('elims','assists','deaths') else 0.054))
-            cx=int(xc*w)
-            x1=max(0,cx-half_w); x2=min(w,cx+half_w)
-            y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
-            value,confidence=_rapid_read_cell(engine,board[y1:y2,x1:x2],key)
-            row[key]=value
-            row['confidence'][key]=round(float(confidence),3)
-        rows.append(row)
+    groups=(('blue',blue_rows,blue_gap),('red',red_rows,red_gap))
+    for team_name,team_rows,team_gap in groups:
+        partial=len(team_rows)<5
+        half_h=max(8,int(team_gap*0.36))
+        for local_idx,y in enumerate(team_rows):
+            slot=local_idx+1
+            hero_crop=_crop_team_hero(board,y,team_gap)
+
+            if partial:
+                # In a compressed team the missing role may be in the middle, so row
+                # index no longer guarantees tank/damage/support. Match across all roles.
+                roles_backup=_HERO_ROLE_CACHE
+                try:
+                    _HERO_ROLE_CACHE={}
+                    hero_id,hero_confidence=_match_team_hero(hero_crop,slot)
+                finally:
+                    _HERO_ROLE_CACHE=roles_backup
+            else:
+                hero_id,hero_confidence=_match_team_hero(hero_crop,slot)
+
+            row={
+                'team':team_name,
+                'slot':slot,
+                'hero_key':hero_id,
+                'hero_id':_hero_name_ko(hero_id),
+                'is_me':(
+                    (slot==me_slot) if (team_name=='blue' and me_slot is not None)
+                    else (None if team_name=='blue' else False)
+                ),
+                'confidence':{'hero_id':hero_confidence},
+            }
+
+            for key,xc in x_cols.items():
+                half_w=int(w*(0.034 if key in ('elims','assists','deaths') else 0.054))
+                cx=int(xc*w)
+                x1=max(0,cx-half_w); x2=min(w,cx+half_w)
+                y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
+                value,confidence=_rapid_read_cell(engine,board[y1:y2,x1:x2],key)
+                row[key]=value
+                row['confidence'][key]=round(float(confidence),3)
+            rows.append(row)
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.11-dev',
+        'ocr_version':'0.9.14-dev',
         'players':rows,
         'layout_detection':row_detection,
-        'stat_reading':'rapidocr_split_rows_v1',
-        'row_centers':[round(float(y),2) for y in y_px[:10]],
+        'stat_reading':'rapidocr_variable_rows_v1',
+        'row_centers':{
+            'blue':[round(float(y),2) for y in blue_rows],
+            'red':[round(float(y),2) for y in red_rows],
+        },
+        'team_counts':{
+            'blue':len(blue_rows),
+            'red':len(red_rows),
+        },
+        'team_block_bounds':{
+            'blue':layout.get('blue_run'),
+            'red':layout.get('red_run'),
+        },
         'me_detection_method':'row_highlight',
         'me_detection_slot':me_slot,
         'me_detection_confidence':me_confidence,
         'me_detection_margin_pct':me_margin,
-        'hero_matching_status':'pending_reference_library'
+        'hero_matching_status':'scoreboard_native_v1',
+        'visible_player_count':len(rows),
+        'hero_reference_heroes':len(hero_library),
+        'hero_reference_images':sum(len(v) for v in hero_library.values()),
     }
 
 def _detect_personal_cards(img):
@@ -462,7 +763,7 @@ def _detect_personal_cards(img):
     if len(uniq)>=6:
         # infer regular card width/height from screen geometry; boxes begin just left of accent bar.
         stat=[]
-        for x,y,bw,bh in uniq[:7]:
+        for x,y,bw,bh in uniq[:8]:
             x1=max(0,(x-w*.018)/w); x2=min(1,(x+w*.235)/w)
             y1=max(0,(y-h*.025)/h); y2=min(1,(y+h*.145)/h)
             stat.append((x1,y1,x2,y2))
@@ -470,10 +771,10 @@ def _detect_personal_cards(img):
         top=min(stat,key=lambda b:b[1])
         hero=(max(.18,top[0]-.255),top[1],top[0]-.004,top[3])
         boxes=[hero]+stat
-        return boxes[:8],'detected_orange_bars'
+        return boxes[:9],'detected_orange_bars'
     fallback=[(0.205,0.190,0.455,0.400),(0.460,0.190,0.710,0.400),(0.715,0.190,0.965,0.400),
               (0.205,0.405,0.455,0.620),(0.460,0.405,0.710,0.620),(0.715,0.405,0.965,0.620),
-              (0.205,0.625,0.455,0.840),(0.460,0.625,0.710,0.840)]
+              (0.205,0.625,0.455,0.840),(0.460,0.625,0.710,0.840),(0.715,0.625,0.965,0.840)]
     return fallback,'fallback'
 
 def _card_text(img, box):
@@ -483,47 +784,259 @@ def _card_text(img, box):
 def _personal_card_value(img,box):
     """Read the value area separately from label area to avoid mixing neighboring numbers."""
     x1,y1,x2,y2=box
-    # In these cards the prominent value occupies upper ~55%; label is lower portion.
-    value_box=(x1,y1,x2,y1+(y2-y1)*0.58)
+    # Main values sit to the right of the large stat icon. Cropping the icon out
+    # prevents shapes from being recognized as digits (e.g. Ana 3 -> 104).
+    value_box=(x1+(x2-x1)*0.34,y1,x2,y1+(y2-y1)*0.58)
     crop=_crop(img,value_box)
     variants=[]
     for inv in (False,True):
         prep=_prep(crop,3.0,invert=inv)
-        txt=pytesseract.image_to_string(prep,lang='eng',config='--psm 6 -c tessedit_char_whitelist=0.2.556789:%.,').strip()
+        txt=pytesseract.image_to_string(
+            prep,lang='eng',
+            config='--psm 6 -c tessedit_char_whitelist=0123456789:%.,'
+        ).strip()
         vals=re.findall(r'\d{1,2}:\d{2}|\d+(?:\.\d+)?%?',txt)
         variants.extend(vals)
-    # prefer semantically richer tokens, then agreement
     if not variants:return None,[],0.0
     counts={v:variants.count(v) for v in set(variants)}
     def rank(v):return (counts[v], ':' in v or '%' in v or '.' in v, len(v))
     best=max(counts,key=rank)
     return best,variants,0.92 if counts[best]>=2 else 0.72
 
-def extract_personal(img):
+
+def _personal_card_label(img,box):
+    """Read only the lower label portion of one Personal stat card."""
+    x1,y1,x2,y2=box
+    label_box=(x1,y1+(y2-y1)*0.48,x2,y2)
+    crop=_crop(img,label_box)
+    reads=[]
+    for psm in (6,7):
+        text=_ocr(crop,psm=psm,lang='kor+eng')
+        if text:
+            reads.extend(line.strip() for line in text.splitlines() if line.strip())
+    if not reads:
+        return '',0.0
+
+    # Prefer text containing Korean letters and avoid tokens that are only numeric.
+    def score(value):
+        korean=len(re.findall(r'[가-힣]',value))
+        numeric_only=bool(re.fullmatch(r'[\d\s:%.]+',value))
+        return (not numeric_only,korean,len(value))
+
+    best=max(reads,key=score)
+    confidence=0.90 if sum(1 for v in reads if v==best)>=2 else 0.72
+    return best,confidence
+
+def _personal_tokens(raw):
+    """Extract display-value tokens while keeping comma-formatted integers intact."""
+    return re.findall(r'\d{1,2}:\d{2}|\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?%?',raw or '')
+
+
+def _personal_primary_from_raw(raw,label_raw):
+    """Prefer the value rendered in the whole card over isolated value OCR."""
+    tokens=_personal_tokens(raw)
+    if not tokens:
+        return None
+
+    label=label_raw or ''
+    if '명중률' in label or '적중률' in label:
+        pct=next((v for v in tokens if v.endswith('%')),None)
+        if pct:
+            return pct
+    if '시간' in label:
+        tm=next((v for v in tokens if ':' in v),None)
+        if tm:
+            return tm
+
+    # The first visible number is the main card value. Per-10-minute values appear
+    # later and must not replace it.
+    return tokens[0]
+
+
+def _personal_hero_name_text(img):
+    """Read selected hero name from the left Personal-screen navigation."""
+    text=_ocr_box(img,(0.025,0.185,0.195,0.255),psm=7,lang='kor+eng')
+    return text
+
+
+def _personal_label_from_raw(raw):
+    """Recover a metric label from whole-card OCR when the lower label crop is poor."""
+    lines=[line.strip() for line in (raw or '').splitlines() if line.strip()]
+    candidates=[]
+    for line in lines:
+        # Per-10-minute helper text is not the metric label.
+        if '10분당' in line or '평균:' in line or '평균：' in line:
+            continue
+        stripped=re.sub(r'^[^A-Za-z가-힣]+','',line).strip()
+        stripped=re.sub(r'^\d+(?:[.,]\d+)?%?\s*','',stripped).strip()
+        if not stripped:
+            continue
+        korean=len(re.findall(r'[가-힣]',stripped))
+        if korean>=2:
+            candidates.append((korean,len(stripped),stripped))
+    if not candidates:
+        return ''
+    return max(candidates,key=lambda item:(item[0],item[1]))[2]
+
+
+def _symmetra_average_charge_from_panel(panel_text):
+    """Fallback for the fixed Symmetra average-charge card when its value crop is faint."""
+    if not panel_text:
+        return None
+    compact=panel_text.replace('\r','')
+    pos=compact.find('평균 충전 계수')
+    if pos<0:
+        pos=compact.find('평균 중전 계수')
+    if pos<0:
+        return None
+    before=compact[max(0,pos-120):pos]
+    decimals=re.findall(r'\b\d+(?:\.\d+)\b',before)
+    if not decimals:
+        return None
+    return decimals[-1]
+
+
+def extract_personal(img, hero_key=None):
     panel_text=_ocr(_crop(img,ROI['personal_panel']),6)
     boxes,layout=_detect_personal_cards(img)
+
+    # The API only receives screen_type + image, so infer the selected hero from
+    # the hero-summary card before resolving hero-specific metric labels.
+    hero_summary_raw=_card_text(img,boxes[0]) if boxes else ''
+    hero_name_raw=_personal_hero_name_text(img)
+    if not hero_key:
+        hero_key=(
+            resolve_hero_key(hero_name_raw)
+            or resolve_hero_key(hero_summary_raw)
+            or resolve_hero_key(panel_text)
+        )
+
+    # If hero-name OCR failed, infer hero from the combination of hero-specific
+    # labels visible on the Personal screen (e.g. hook + pig pen => Roadhog).
+    hero_metric_inference={"hero_key":None,"confidence":0.0,"matches":[]}
+    if not hero_key and len(boxes)>1:
+        pre_labels=[]
+        for box in boxes[1:]:
+            label_raw,_=_personal_card_label(img,box)
+            if label_raw:
+                pre_labels.append(label_raw)
+        hero_metric_inference=infer_hero_from_metric_labels(pre_labels)
+        hero_key=hero_metric_inference.get("hero_key")
+
     metric_cards=[]
+    metrics=[]
     names=['hero_summary']+[f'metric_{i}' for i in range(1,len(boxes))]
     for name,box in zip(names,boxes):
         raw=_card_text(img,box)
-        primary,value_reads,conf=_personal_card_value(img,box)
-        vals=re.findall(r'\d{1,2}:\d{2}|\d+(?:\.\d+)?%?',raw)
-        metric_cards.append({'slot':name,'primary_value':primary,'value_reads':value_reads,
-                             'values':vals,'raw_text':raw,'confidence':conf})
-    # Generic, label-aware facts stay authoritative when clearly present in whole-panel OCR.
+        isolated_primary,value_reads,value_conf=_personal_card_value(img,box)
+        label_raw,label_conf=_personal_card_label(img,box)
+        vals=_personal_tokens(raw)
+        resolved=resolve_metric_label(label_raw,hero_key)
+
+        # If label OCR is unusable, fall back to the verified card order for this hero.
+        # name is metric_N, so metric_1 maps to index 0.
+        if not resolved.get('metric_key') and name.startswith('metric_'):
+            try:
+                metric_index=int(name.split('_',1)[1])-1
+            except (ValueError,IndexError):
+                metric_index=-1
+            ordered=metric_from_verified_order(hero_key,metric_index)
+            if ordered:
+                resolved={**resolved,**ordered}
+
+        # If the dedicated label crop grabbed helper text/noise, retry using the
+        # whole card OCR. This commonly recovers labels such as "결정타".
+        raw_label=_personal_label_from_raw(raw)
+        raw_resolved=resolve_metric_label(raw_label,hero_key) if raw_label else None
+        if (
+            raw_resolved
+            and raw_resolved.get('metric_key')
+            and (
+                not resolved.get('metric_key')
+                or '10분당' in label_raw
+                or raw_resolved.get('label_match_score',0)>resolved.get('label_match_score',0)
+            )
+        ):
+            label_raw=raw_label
+            resolved=raw_resolved
+            label_conf=max(label_conf,0.88)
+
+        raw_primary=_personal_primary_from_raw(raw,label_raw)
+        # Trust the isolated numeric OCR when repeated reads agree. It excludes
+        # icons/helper text and is more reliable than whole-card OCR in cases such
+        # as Ana 3 -> 104, saved players 4 -> 0, slept enemies 6 -> 4, scoped 73% -> 0.
+        if isolated_primary is not None and value_conf>=0.90:
+            primary=isolated_primary
+        else:
+            primary=raw_primary if raw_primary is not None else isolated_primary
+
+        # The Symmetra average-charge value can be too faint for the individual
+        # card crop while still being present in the whole-panel OCR.
+        if (
+            primary is None
+            and hero_key=='symmetra'
+            and resolved.get('metric_key')=='average_charge'
+        ):
+            primary=_symmetra_average_charge_from_panel(panel_text)
+            if primary is not None:
+                value_conf=max(value_conf,0.82)
+
+        if raw_primary is not None:
+            value_conf=max(value_conf,0.90)
+        card={
+            'slot':name,
+            'label_raw':label_raw,
+            'primary_value':primary,
+            'value_reads':value_reads,
+            'values':vals,
+            'raw_text':raw,
+            'confidence':{
+                'value':value_conf,
+                'label':label_conf,
+            },
+            **resolved,
+        }
+        metric_cards.append(card)
+        if primary is not None and name!='hero_summary':
+            metrics.append({
+                'metric_key':resolved['metric_key'],
+                'scope':resolved['scope'],
+                'label_raw':label_raw,
+                'label_normalized':resolved['label_normalized'],
+                'value':primary,
+                'confidence':round(min(value_conf,label_conf),2),
+                'needs_review':resolved['needs_review'] or value_conf<0.70 or label_conf<0.70,
+            })
+
     play_time=None
-    m=re.search(r'\b(\d{1,2}:\d{2})\b[^\n]*\n?[^\n]*플레이\s*시간|플레이\s*시간[^\n]*(\d{1,2}:\d{2})',panel_text)
-    if m:play_time=m.group(1) or m.group(2)
-    if not play_time:
-        m=re.search(r'\b(\d{1,2}:\d{2})\b',panel_text)
-        if m:play_time=m.group(1)
+    # Play time belongs to the hero summary card. Reading the whole panel can
+    # accidentally pick objective/contest time from another metric card.
+    hero_times=re.findall(r'\b\d{1,2}:\d{2}\b',hero_summary_raw)
+    if hero_times:
+        play_time=hero_times[-1]
+
     known={}
     m=re.search(r'(\d{1,3})%[^\n]*\n?[^\n]*무기\s*명중률|무기\s*명중률[^\n]*(\d{1,3})%',panel_text)
     if m:known['weapon_accuracy']=(m.group(1) or m.group(2))+'%'
+    m=re.search(r'(\d{1,3})%[^\n]*\n?[^\n]*치명타\s*(?:명중률|적중률)|치명타\s*(?:명중률|적중률)[^\n]*(\d{1,3})%',panel_text)
+    if m:known['critical_hit_accuracy']=(m.group(1) or m.group(2))+'%'
     m=re.search(r'10분당\s*평균\s*[:：]?\s*(\d+(?:\.\d+)?)',panel_text)
     if m:known['per_10_min_average']=m.group(1)
-    return {'screen_type':'personal','ocr_version':'0.9.9.1-dev','play_time':play_time,
-            'known_metrics':known,'layout_detection':layout,'metric_cards':metric_cards,'raw_text':panel_text}
+
+    return {
+        'screen_type':'personal',
+        'ocr_version':'0.10.5-dev',
+        'hero_key':hero_key,
+        'hero_name_raw':hero_name_raw,
+        'hero_summary_raw':hero_summary_raw,
+        'hero_metric_inference':hero_metric_inference,
+        'play_time':play_time,
+        'known_metrics':known,
+        'metrics':metrics,
+        'layout_detection':layout,
+        'metric_cards':metric_cards,
+        'raw_text':panel_text,
+    }
 
 def _event_type(label):
     if '시작' in label:return 'start'
