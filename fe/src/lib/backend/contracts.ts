@@ -45,6 +45,18 @@ export type OcrReviewState = {
   message: string;
 };
 
+export type OcrExecutionProgress = {
+  stage: "starting" | "file_start" | "file_success" | "file_error" | "finalizing" | "completed";
+  current: number;
+  total: number;
+  percent: number;
+  success_count: number;
+  error_count: number;
+  message: string;
+  filename?: string;
+  screen_type?: BackendScreenType;
+};
+
 export type CreateMatchDraftFile = {
   client_file_id: string;
   screen_type: BackendScreenType;
@@ -149,7 +161,10 @@ export interface MatchManagementAdapter extends MatchBackendAdapter {
   listMatchImports(): Promise<MatchListItem[]>;
   updateMatchImport(matchId: string, patch: Partial<EditableMatchFields>): Promise<MatchImportView>;
   deleteMatchImport(matchId: string): Promise<void>;
-  runMockOcr(matchId: string): Promise<MatchImportView>;
+  runMockOcr(
+    matchId: string,
+    options?: { onProgress?: (progress: OcrExecutionProgress) => void },
+  ): Promise<MatchImportView>;
   setOcrState(
     matchId: string,
     status: Extract<MatchImportStatus, "processing_ocr" | "needs_review" | "failed">,
