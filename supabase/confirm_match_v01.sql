@@ -130,75 +130,6 @@ on public.map_submaps for select
 to authenticated
 using (true);
 
--- Human-readable Korea Standard Time helper columns. Canonical timestamps remain
--- timestamptz; these helper columns exist only for easy DB inspection.
-create or replace function public.sync_match_kst_columns()
-returns trigger
-language plpgsql
-security invoker
-set search_path = public
-as $orca$
-begin
-  new.played_at_kst := case
-    when new.played_at is null then null
-    else new.played_at at time zone 'Asia/Seoul'
-  end;
-  new.created_at_kst := case
-    when new.created_at is null then null
-    else new.created_at at time zone 'Asia/Seoul'
-  end;
-  return new;
-end;
-$orca$;
-
-drop trigger if exists matches_sync_kst_columns on public.matches;
-create trigger matches_sync_kst_columns
-before insert or update of played_at, created_at
-on public.matches
-for each row
-execute function public.sync_match_kst_columns();
-
-create or replace function public.sync_created_at_kst()
-returns trigger
-language plpgsql
-security invoker
-set search_path = public
-as $orca$
-begin
-  new.created_at_kst := case
-    when new.created_at is null then null
-    else new.created_at at time zone 'Asia/Seoul'
-  end;
-  return new;
-end;
-$orca$;
-
-drop trigger if exists match_players_sync_created_at_kst on public.match_players;
-create trigger match_players_sync_created_at_kst
-before insert or update of created_at
-on public.match_players
-for each row
-execute function public.sync_created_at_kst();
-
-drop trigger if exists my_hero_details_sync_created_at_kst on public.my_hero_details;
-create trigger my_hero_details_sync_created_at_kst
-before insert or update of created_at
-on public.my_hero_details
-for each row
-execute function public.sync_created_at_kst();
-
--- Backfill KST helper values for rows that already exist.
-update public.matches
-set
-  played_at_kst = case when played_at is null then null else played_at at time zone 'Asia/Seoul' end,
-  created_at_kst = case when created_at is null then null else created_at at time zone 'Asia/Seoul' end;
-
-update public.match_players
-set created_at_kst = created_at at time zone 'Asia/Seoul';
-
-update public.my_hero_details
-set created_at_kst = created_at at time zone 'Asia/Seoul';
-
 -- Resolve season/patch whenever matches.played_at changes. This also keeps the
 -- legacy FE strings in editable without making them the canonical DB values.
 create or replace function public.apply_match_context_from_played_at()
@@ -341,6 +272,75 @@ on public.my_hero_details
 for all
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- Human-readable Korea Standard Time helper columns. Canonical timestamps remain
+-- timestamptz; these helper columns exist only for easy DB inspection.
+create or replace function public.sync_match_kst_columns()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $orca$
+begin
+  new.played_at_kst := case
+    when new.played_at is null then null
+    else new.played_at at time zone 'Asia/Seoul'
+  end;
+  new.created_at_kst := case
+    when new.created_at is null then null
+    else new.created_at at time zone 'Asia/Seoul'
+  end;
+  return new;
+end;
+$orca$;
+
+drop trigger if exists matches_sync_kst_columns on public.matches;
+create trigger matches_sync_kst_columns
+before insert or update of played_at, created_at
+on public.matches
+for each row
+execute function public.sync_match_kst_columns();
+
+create or replace function public.sync_created_at_kst()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $orca$
+begin
+  new.created_at_kst := case
+    when new.created_at is null then null
+    else new.created_at at time zone 'Asia/Seoul'
+  end;
+  return new;
+end;
+$orca$;
+
+drop trigger if exists match_players_sync_created_at_kst on public.match_players;
+create trigger match_players_sync_created_at_kst
+before insert or update of created_at
+on public.match_players
+for each row
+execute function public.sync_created_at_kst();
+
+drop trigger if exists my_hero_details_sync_created_at_kst on public.my_hero_details;
+create trigger my_hero_details_sync_created_at_kst
+before insert or update of created_at
+on public.my_hero_details
+for each row
+execute function public.sync_created_at_kst();
+
+-- Backfill KST helper values for rows that already exist.
+update public.matches
+set
+  played_at_kst = case when played_at is null then null else played_at at time zone 'Asia/Seoul' end,
+  created_at_kst = case when created_at is null then null else created_at at time zone 'Asia/Seoul' end;
+
+update public.match_players
+set created_at_kst = created_at at time zone 'Asia/Seoul';
+
+update public.my_hero_details
+set created_at_kst = created_at at time zone 'Asia/Seoul';
 
 create or replace function public.confirm_orca_match(
   p_match_id uuid,
