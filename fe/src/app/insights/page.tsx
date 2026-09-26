@@ -145,12 +145,12 @@ export default function InsightsPage() {
             : "최근 10경기와 이전 구간의 승률이 현재 표본에서는 비슷하게 관찰됩니다.";
 
   return (
-    <main className="min-h-screen px-5 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-[1240px]">
-        <section className="mb-7">
-          <p className="mb-2 text-sm font-semibold text-[var(--orange)]">인사이트</p>
-          <h1 className="m-0 text-3xl font-bold tracking-[-0.03em] md:text-4xl">최근 변화와 다음 검증 포인트</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+    <main className="min-h-screen px-4 py-7 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1320px]">
+        <section className="mb-6 border-b border-[var(--line)] pb-6">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">인사이트</p>
+          <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">최근 변화와 다음 검증 포인트</h1>
+          <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--muted)]">
             현재 데이터에서 관찰되는 변화와 아직 부족한 데이터를 분리해서 보여줍니다. 원인으로 단정하지 않고 다음 검증 방향을 안내합니다.
           </p>
         </section>
@@ -161,25 +161,20 @@ export default function InsightsPage() {
           </div>
         ) : (
           <>
-            <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <section className="mb-8 grid grid-cols-2 border-b border-[var(--line)] lg:grid-cols-4">
               <Metric label="확정 경기" value={String(confirmed.length)} />
               <Metric label="전체 승률" value={overall === null ? "-" : `${overall}%`} />
               <Metric label="최근 10경기" value={recentRate === null ? "-" : `${recentRate}%`} accent />
-              <Metric
-                label="최근 변화"
-                value={delta === null ? "-" : `${delta > 0 ? "+" : ""}${delta}%p`}
-                success={delta !== null && delta > 0}
-                warning={delta !== null && delta < 0}
-              />
+              <Metric label="최근 변화" value={delta === null ? "-" : `${delta > 0 ? "+" : ""}${delta}%p`} success={delta !== null && delta > 0} warning={delta !== null && delta < 0} />
             </section>
 
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-              <section className="space-y-5">
-                <section className="rounded-2xl border border-[rgba(102,169,255,0.24)] bg-[rgba(102,169,255,0.05)] p-5">
+            <div className="grid gap-8 xl:grid-cols-[1fr_300px]">
+              <section className="space-y-8">
+                <section className="border-t border-[var(--line)] pt-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="m-0 text-sm font-bold text-[#9bc6ff]">현재 요약</p>
-                      <p className="mt-2 text-sm leading-6 text-[#c9d0dc]">{summaryText}</p>
+                      <p className="m-0 text-[13px] font-semibold text-white">현재 요약</p>
+                      <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">{summaryText}</p>
                     </div>
                     <span className="hidden rounded-xl border border-[rgba(102,169,255,0.2)] bg-[#0d1118] px-3 py-2 text-[10px] font-black text-[#9bc6ff] sm:block">
                       자동 요약
@@ -187,8 +182,8 @@ export default function InsightsPage() {
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
-                  <div className="border-b border-[var(--line)] px-5 py-4">
+                <section className="overflow-hidden border-t border-[var(--line)]">
+                  <div className="border-b border-[var(--line-soft)] px-1 py-3">
                     <p className="m-0 text-sm font-bold">맵별 관찰값</p>
                     <p className="mt-1 text-[10px] text-[var(--muted)]">최소 3경기 이상 있는 맵만 표시합니다.</p>
                   </div>
@@ -198,16 +193,16 @@ export default function InsightsPage() {
                   ) : (
                     <div className="divide-y divide-[var(--line)]">
                       {observedMaps.map((item) => (
-                        <div key={item.name} className="px-5 py-4">
+                        <div key={item.name} className="px-1 py-3">
                           <div className="flex items-center justify-between gap-4">
                             <div>
                               <p className="m-0 text-xs font-bold text-white">{item.name}</p>
                               <p className="mt-1 text-[10px] text-[var(--muted)]">{item.games}경기</p>
                             </div>
-                            <span className="text-sm font-black text-[#9bc6ff]">{item.rate}%</span>
+                            <span className="text-[12px] font-semibold text-[#cfd2d8]">{item.rate}%</span>
                           </div>
-                          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#171e2a]">
-                            <div className="h-full rounded-full bg-[#9bc6ff]" style={{ width: `${item.rate}%` }} />
+                          <div className="mt-3 h-1 overflow-hidden rounded-sm bg-[#1b1d21]">
+                            <div className="h-full bg-[var(--orange)]" style={{ width: `${item.rate}%` }} />
                           </div>
                         </div>
                       ))}
@@ -215,7 +210,7 @@ export default function InsightsPage() {
                   )}
                 </section>
 
-                <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+                <section className="border-t border-[var(--line)] pt-4">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="m-0 text-sm font-bold">데이터 완성도</p>
@@ -224,7 +219,7 @@ export default function InsightsPage() {
                     <Link href="/matches" className="text-[10px] font-bold text-[#9bc6ff] no-underline hover:text-white">경기 수정 →</Link>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-0 border-t border-[var(--line-soft)] sm:grid-cols-2">
                     <Completeness label="승패" value={completeness.result} />
                     <Completeness label="맵" value={completeness.map} />
                     <Completeness label="내 영웅" value={completeness.hero} />
@@ -236,12 +231,12 @@ export default function InsightsPage() {
               <aside className="space-y-5">
                 <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
                   <p className="m-0 text-sm font-bold">가설 준비 상태</p>
-                  <div className="mt-4 rounded-xl border border-[var(--line)] bg-[#0d1118] p-4">
+                  <div className="mt-4 border-t border-[var(--line)] py-4">
                     <p className="m-0 text-[10px] text-[var(--muted)]">현재 기본 데이터만으로 검증 대기 가능한 가설</p>
                     <p className="mb-0 mt-2 text-3xl font-black text-white">{readyBasicHypotheses}</p>
                     <p className="mb-0 mt-1 text-[10px] text-[var(--muted)]">전체 {PREDEFINED_HYPOTHESES.length}개 Library</p>
                   </div>
-                  <Link href="/hypotheses" className="mt-3 block rounded-xl bg-[var(--orange)] px-4 py-3 text-center text-xs font-black text-black no-underline">
+                  <Link href="/hypotheses" className="mt-3 inline-block rounded-md border border-[var(--line)] px-3 py-2 text-[11px] font-medium text-white no-underline hover:bg-[#17181b]">
                     가설 Library 보기
                   </Link>
                 </section>
@@ -255,7 +250,7 @@ export default function InsightsPage() {
                       <p className="text-xs text-[var(--muted)]">우선 가설의 필수 데이터가 준비되었습니다.</p>
                     ) : (
                       missingHighPriority.map(({ hypothesis, missing }) => (
-                        <div key={hypothesis.id} className="rounded-xl border border-[var(--line)] bg-[#0d1118] p-3">
+                        <div key={hypothesis.id} className="border-b border-r border-[var(--line-soft)] px-1 py-3">
                           <p className="m-0 text-[11px] font-bold text-white">{hypothesis.title}</p>
                           <p className="mb-0 mt-2 text-[9px] leading-4 text-[var(--muted)]">
                             필요: {missing.map((key) => HYPOTHESIS_DATA_LABELS[key]).join(" · ")}
@@ -290,22 +285,22 @@ function Metric({
   const color = success ? "text-[#8ee9aa]" : warning ? "text-[#ff9b9b]" : accent ? "text-[#9bc6ff]" : "text-white";
 
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+    <div className="border-r border-[var(--line)] px-4 py-5 first:pl-0 last:border-r-0">
       <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
-      <p className={`mb-0 mt-2 text-2xl font-black ${color}`}>{value}</p>
+      <p className={`mb-0 mt-2 text-[24px] font-semibold tracking-[-0.03em] ${color}`}>{value}</p>
     </div>
   );
 }
 
 function Completeness({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[#0d1118] p-3">
+    <div className="border-b border-r border-[var(--line-soft)] px-1 py-3">
       <div className="flex items-center justify-between gap-4">
         <span className="text-[10px] font-bold text-white">{label}</span>
         <span className="text-[10px] font-black text-[#9bc6ff]">{value}%</span>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#171e2a]">
-        <div className="h-full rounded-full bg-[#9bc6ff]" style={{ width: `${value}%` }} />
+      <div className="mt-2 h-1 overflow-hidden rounded-sm bg-[#1b1d21]">
+        <div className="h-full bg-[var(--orange)]" style={{ width: `${value}%` }} />
       </div>
     </div>
   );
