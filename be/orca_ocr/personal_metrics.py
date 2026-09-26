@@ -79,6 +79,16 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
         "surging_strike_kills": {"aliases": ["돌진 강타로 처치", "밀쳐내기로 처치"]},
     },
+    "dva": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "ultimates_negated": {"aliases": ["궁극기 차단", "차단"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "micro_missiles_kills": {"aliases": ["마이크로 미사일로 처치"]},
+        "call_mech_kills": {"aliases": ["메카 호출로 처치"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "booster_kills": {"aliases": ["부스터로 처치", "밀쳐내기로 처치"]},
+        "self_destruct_kills": {"aliases": ["자폭으로 처치"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -89,6 +99,7 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "domina": ["도미나"],
     "doomfist": ["둠피스트", "DOOMFIST"],
     "dmon": ["D.Mon", "DMon", "디몬"],
+    "dva": ["D.VA", "D.Va", "DVA", "디바"],
 }
 
 
@@ -110,6 +121,11 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "dmon": [
         "fusion_repeater_accuracy","limit_break_kills","objective_contest_time",
         "fusion_repeater_kills","damage_amplified","players_saved","surging_strike_kills",
+    ],
+    "dva": [
+        "weapon_accuracy","ultimates_negated","objective_contest_time",
+        "micro_missiles_kills","call_mech_kills","players_saved",
+        "booster_kills","self_destruct_kills",
     ],
 }
 
