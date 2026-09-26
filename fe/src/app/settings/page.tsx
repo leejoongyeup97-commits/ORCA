@@ -165,7 +165,7 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-[1120px]">
         <section className="mb-8 border-b border-[var(--line)] pb-6">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">설정</p>
-          <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] text-white md:text-[32px]">개발 환경 및 데이터</h1>
+          <h1 className="m-0 text-[30px] font-semibold tracking-[-0.03em] text-white">개발 환경 및 데이터</h1>
           <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">
             실제 백엔드 연결 전까지 브라우저에 저장되는 Mock 데이터를 관리합니다.
           </p>
@@ -230,13 +230,13 @@ export default function SettingsPage() {
             />
             <span>
               <span className="block text-xs font-medium text-white">경기 등록 화면에서 자동으로 새 파일 확인</span>
-              <span className="mt-1 block text-[10px] leading-5 text-[var(--muted)]">
+              <span className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">
                 폴더 읽기 권한이 유지된 경우에만 자동 실행합니다. 브라우저가 권한 재확인을 요구하면 버튼 한 번만 누르면 됩니다.
               </span>
             </span>
           </label>
 
-          <p className="mb-0 mt-3 text-[9px] leading-4 text-[var(--muted)]">
+          <p className="mb-0 mt-3 text-[11px] leading-4 text-[var(--muted)]">
             브라우저 보안상 Windows 전체 경로 문자열은 표시하지 않고, 선택한 폴더 자체의 접근 권한을 안전하게 저장합니다.
           </p>
         </section>
@@ -253,7 +253,7 @@ export default function SettingsPage() {
               <Row label="Mock 저장 항목" value={String(storageCount)} />
             </dl>
             <div className="mt-4 border-t border-[var(--line-soft)] pt-4">
-              <p className="m-0 text-[10px] leading-5 text-[var(--muted)]">
+              <p className="m-0 text-[11px] leading-5 text-[var(--muted)]">
                 실제 Supabase 연결 후에는 경기 원본과 상태가 서버에 저장되고, 이 Mock 저장소는 개발용으로만 남깁니다.
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function SettingsPage() {
 function FolderStatus({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-r border-[var(--line)] px-4 py-3 first:pl-0 last:border-r-0">
-      <p className="m-0 text-[9px] font-medium text-[var(--muted)]">{label}</p>
+      <p className="m-0 text-[11px] font-medium text-[var(--muted)]">{label}</p>
       <p className="mb-0 mt-1 truncate text-xs font-medium text-white">{value}</p>
     </div>
   );
