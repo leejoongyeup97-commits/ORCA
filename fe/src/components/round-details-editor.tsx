@@ -33,6 +33,14 @@ export default function RoundDetailsEditor({
     ]);
   }
 
+  function loadExampleRounds() {
+    onChange([
+      { order: 1, submap: "예시 세부맵 A", result: "win" },
+      { order: 2, submap: "예시 세부맵 B", result: "loss" },
+      { order: 3, submap: "예시 세부맵 C", result: "win" },
+    ]);
+  }
+
   function updateRound(index: number, patch: Partial<RoundDetail>) {
     onChange(
       rounds.map((round, rowIndex) =>
@@ -75,9 +83,20 @@ export default function RoundDetailsEditor({
       {loading ? (
         <p className="mt-4 text-[12px] text-[var(--muted)]">세부맵 기준 데이터를 불러오는 중...</p>
       ) : submaps.length === 0 ? (
-        <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
-          현재 맵/모드에 등록된 세부맵 기준 데이터가 없습니다.
-        </p>
+        <div className="mt-4 border-y border-[var(--line)] py-4">
+          <p className="m-0 text-[12px] leading-6 text-[var(--muted)]">
+            현재 맵/모드에 등록된 세부맵 기준 데이터가 없습니다.
+          </p>
+          {process.env.NODE_ENV === "development" && (
+            <button
+              type="button"
+              onClick={loadExampleRounds}
+              className="app-secondary-button mt-3 cursor-pointer"
+            >
+              예시 데이터 채우기
+            </button>
+          )}
+        </div>
       ) : rounds.length === 0 ? (
         <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
           아직 입력된 세트가 없습니다. ‘세트 추가’를 눌러 1세트부터 기록하세요.
@@ -97,11 +116,15 @@ export default function RoundDetailsEditor({
                 className="field-input"
               >
                 <option value="">세부맵 선택</option>
-                {submaps.map((submap) => (
-                  <option key={submap.submap_key} value={submap.submap_name}>
-                    {submap.submap_name}
-                  </option>
-                ))}
+                {submaps.length > 0 ? (
+                  submaps.map((submap) => (
+                    <option key={submap.submap_key} value={submap.submap_name}>
+                      {submap.submap_name}
+                    </option>
+                  ))
+                ) : round.submap ? (
+                  <option value={round.submap}>{round.submap}</option>
+                ) : null}
               </select>
 
               <select
