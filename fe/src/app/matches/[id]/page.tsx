@@ -68,8 +68,8 @@ function formatDate(value: string) {
 
 function referenceGameMode(value: string): "control" | "flashpoint" | null {
   const normalized = value.trim().toLowerCase();
-  if (normalized === "control" || normalized.includes("쟁탈")) return "control";
-  if (normalized === "flashpoint" || normalized.includes("플래시포인트")) return "flashpoint";
+  if (normalized.includes("control") || normalized.includes("쟁탈")) return "control";
+  if (normalized.includes("flashpoint") || normalized.includes("플래시포인트")) return "flashpoint";
   return null;
 }
 
@@ -219,7 +219,7 @@ export default function MatchDetailPage() {
           control_submap: saved.editable.control_submap,
           round_sequence: saved.editable.round_sequence,
           notes: saved.editable.notes,
-          round_details: roundDetails,
+          round_details: roundDetails.filter((round) => round.submap.trim()),
         },
       });
       const confirmed = await getMatchBackendAdapter().getMatchImport(match.match_id);
