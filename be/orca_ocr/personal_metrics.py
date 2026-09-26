@@ -89,6 +89,16 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "booster_kills": {"aliases": ["부스터로 처치", "밀쳐내기로 처치"]},
         "self_destruct_kills": {"aliases": ["자폭으로 처치"]},
     },
+    "ramattra": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "ravenous_vortex_kills": {"aliases": ["탐식의 소용돌이로 처치", "탐식의 소용돌이로 저치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "pummel_accuracy": {"aliases": ["응징 명중률"]},
+        "annihilation_efficiency": {"aliases": ["절멸 활용도"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "pummel_kills": {"aliases": ["응징으로 처치"]},
+        "annihilation_kills": {"aliases": ["절멸로 처치"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -100,6 +110,7 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "doomfist": ["둠피스트", "DOOMFIST"],
     "dmon": ["D.Mon", "DMon", "디몬"],
     "dva": ["D.VA", "D.Va", "DVA", "디바"],
+    "ramattra": ["라마트라", "RAMATTRA"],
 }
 
 
@@ -126,6 +137,11 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "weapon_accuracy","ultimates_negated","objective_contest_time",
         "micro_missiles_kills","call_mech_kills","players_saved",
         "booster_kills","self_destruct_kills",
+    ],
+    "ramattra": [
+        "weapon_accuracy","ravenous_vortex_kills","objective_contest_time",
+        "pummel_accuracy","annihilation_efficiency","players_saved",
+        "pummel_kills","annihilation_kills",
     ],
 }
 
