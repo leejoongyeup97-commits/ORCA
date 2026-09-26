@@ -249,7 +249,7 @@ export default function MatchDetailPage() {
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <p className="m-0 text-sm font-semibold text-[var(--orange)]">경기 상세</p>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusMeta.className}`}>{statusMeta.label}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusMeta.className}`}>{statusMeta.label}</span>
               </div>
               <h1 className="m-0 break-all text-2xl font-bold tracking-[-0.03em] md:text-3xl">{match.match_id}</h1>
               <p className="mt-2 text-xs text-[var(--muted)]">등록 {formatDate(match.detected_at)} · 이미지 {match.files.length}장</p>
@@ -296,7 +296,7 @@ export default function MatchDetailPage() {
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <p className="m-0 text-sm font-bold">경기 정보 수정</p>
-                  <p className="mt-1 text-[10px] text-[var(--muted)]">OCR 결과가 들어오면 이 값을 검수하고 수정합니다.</p>
+                  <p className="mt-1 text-[11px] text-[var(--muted)]">OCR 결과가 들어오면 이 값을 검수하고 수정합니다.</p>
                 </div>
                 <button type="submit" disabled={busy !== null} className="cursor-pointer rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40">
                   {busy === "save" ? "저장 중..." : "수정 저장"}
@@ -375,19 +375,19 @@ export default function MatchDetailPage() {
               <section className="overflow-hidden border-t border-[var(--line)]">
                 <div className="border-b border-[var(--line)] px-5 py-4">
                   <p className="m-0 text-sm font-bold">실제 OCR 처리 결과</p>
-                  <p className="mt-1 text-[10px] text-[var(--muted)]">
+                  <p className="mt-1 text-[11px] text-[var(--muted)]">
                     Python OCR 서버가 처리한 파일별 성공/실패 상태입니다.
                   </p>
                 </div>
                 <div className="divide-y divide-[var(--line)]">
                   {ocrBundle.files.map((file, index) => (
                     <div key={`${file.filename}-${index}`} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[80px_1fr_auto] sm:items-center">
-                      <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-semibold text-white">{file.screen_type}</span>
+                      <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[11px] font-semibold text-white">{file.screen_type}</span>
                       <div className="min-w-0">
                         <p className="m-0 truncate font-bold text-white">{file.filename}</p>
-                        {!file.ok && file.error && <p className="mt-1 truncate text-[9px] text-[#ff9b9b]">{file.error}</p>}
+                        {!file.ok && file.error && <p className="mt-1 truncate text-[11px] text-[#ff9b9b]">{file.error}</p>}
                       </div>
-                      <span className={`text-[10px] font-semibold ${file.ok ? "text-[#8ee9aa]" : "text-[#ff9b9b]"}`}>
+                      <span className={`text-[11px] font-semibold ${file.ok ? "text-[#8ee9aa]" : "text-[#ff9b9b]"}`}>
                         {file.ok ? "OCR 성공" : "OCR 실패"}
                       </span>
                     </div>
@@ -399,18 +399,18 @@ export default function MatchDetailPage() {
             <section className="overflow-hidden border-t border-[var(--line)]">
               <div className="border-b border-[var(--line)] px-5 py-4">
                 <p className="m-0 text-sm font-bold">스크린샷 메타데이터</p>
-                <p className="mt-1 text-[10px] text-[var(--muted)]">현재는 원본 이미지를 영구 저장하지 않고, 등록 시 OCR 서버에 전달한 뒤 파일 메타데이터를 유지합니다.</p>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">현재는 원본 이미지를 영구 저장하지 않고, 등록 시 OCR 서버에 전달한 뒤 파일 메타데이터를 유지합니다.</p>
               </div>
               <div className="divide-y divide-[var(--line)]">
                 {match.files.map((file, index) => (
                   <div key={file.client_file_id} className="grid gap-2 px-5 py-3 text-xs sm:grid-cols-[42px_90px_1fr_auto] sm:items-center">
-                    <span className="text-[10px] font-semibold text-[var(--muted)]">#{index + 1}</span>
-                    <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[10px] font-semibold text-white">{file.screen_type}</span>
+                    <span className="text-[11px] font-semibold text-[var(--muted)]">#{index + 1}</span>
+                    <span className="w-fit rounded-md bg-[#171e2a] px-2 py-1 text-[11px] font-semibold text-white">{file.screen_type}</span>
                     <div className="min-w-0">
                       <p className="m-0 truncate font-bold text-white">{file.original_name}</p>
-                      <p className="mt-1 truncate text-[9px] text-[var(--muted)]">SHA {file.sha256.slice(0, 16)}…</p>
+                      <p className="mt-1 truncate text-[11px] text-[var(--muted)]">SHA {file.sha256.slice(0, 16)}…</p>
                     </div>
-                    <span className="text-[10px] text-[var(--muted)]">{Math.max(1, Math.round(file.size_bytes / 1024))} KB</span>
+                    <span className="text-[11px] text-[var(--muted)]">{Math.max(1, Math.round(file.size_bytes / 1024))} KB</span>
                   </div>
                 ))}
               </div>
@@ -469,7 +469,7 @@ function Field({ label, children, wide = false }: { label: string; children: Rea
 function CountCard({ label, value, warning = false }: { label: string; value: number; warning?: boolean }) {
   return (
     <div className="rounded-md border border-[var(--line)] bg-transparent p-4">
-      <p className="m-0 text-[10px] text-[var(--muted)]">{label}</p>
+      <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
       <p className={`mb-0 mt-1 text-xl font-semibold ${warning ? "text-[#ff9b9b]" : "text-white"}`}>{value}</p>
     </div>
   );
@@ -478,7 +478,7 @@ function CountCard({ label, value, warning = false }: { label: string; value: nu
 function Step({ number, title, active, done }: { number: string; title: string; active: boolean; done: boolean }) {
   return (
     <div className={`flex items-center gap-3 rounded-md border px-3 py-3 ${active ? "border-[rgba(249,158,26,0.4)] bg-[var(--orange-soft)]" : "border-[var(--line)] bg-transparent"}`}>
-      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-semibold ${done ? "bg-[rgba(121,227,156,0.13)] text-[#8ee9aa]" : active ? "bg-[var(--orange)] text-black" : "bg-[#171e2a] text-[var(--muted)]"}`}>
+      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-semibold ${done ? "bg-[rgba(121,227,156,0.13)] text-[#8ee9aa]" : active ? "bg-[var(--orange)] text-black" : "bg-[#171e2a] text-[var(--muted)]"}`}>
         {done ? "✓" : number}
       </span>
       <span className={`text-xs font-bold ${active ? "text-white" : "text-[var(--muted)]"}`}>{title}</span>
