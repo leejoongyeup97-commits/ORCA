@@ -190,9 +190,19 @@ export function loadReviewDraft(matchId: string, defaultHero = ""): MatchReviewD
       };
     });
 
+    const usedHeroDetailIds = new Set<string>();
+    const heroDetails = parsed.hero_details.map((item) => {
+      const migrated = migrateHeroDetail(item, defaultHero);
+      if (!migrated.id || usedHeroDetailIds.has(migrated.id)) {
+        migrated.id = crypto.randomUUID();
+      }
+      usedHeroDetailIds.add(migrated.id);
+      return migrated;
+    });
+
     return {
       players,
-      hero_details: parsed.hero_details.map((item) => migrateHeroDetail(item, defaultHero)),
+      hero_details: heroDetails,
       updated_at: asString(parsed.updated_at) || new Date().toISOString(),
     };
   } catch {
