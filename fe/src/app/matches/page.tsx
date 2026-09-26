@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import EmptyState from "@/components/empty-state";
 import {
   getMatchBackendAdapter,
@@ -72,6 +72,8 @@ export default function MatchesPage() {
   const [patchFilter, setPatchFilter] = useState(searchParams.get("patch") ?? "all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const deleteTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -97,6 +99,12 @@ export default function MatchesPage() {
     const next = params.toString();
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
   }, [filter, patchFilter, pathname, query, router, seasonFilter]);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
 
   const actionCount = matches.filter((match) => match.status === "needs_review" || match.status === "failed").length;
 
@@ -163,25 +171,43 @@ export default function MatchesPage() {
     });
   }
 
-  async function deleteSelected() {
-    const ids = Array.from(selectedIds);
+  async function performBulkDelete(ids: string[]) {
     if (ids.length === 0) return;
-
-    const ok = window.confirm(`선택한 경기 ${ids.length}개를 한 번에 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`);
-    if (!ok) return;
-
     setDeleting(true);
+    setPendingDeleteIds([]);
     try {
       const adapter = getMatchBackendAdapter();
       for (const id of ids) {
         await adapter.deleteMatchImport(id);
         removeReviewDraft(id);
       }
-      setMatches((current) => current.filter((match) => !selectedIds.has(match.match_id)));
+      setMatches((current) => current.filter((match) => !ids.includes(match.match_id)));
       setSelectedIds(new Set());
     } finally {
       setDeleting(false);
     }
+  }
+
+  function deleteSelected() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0 || pendingDeleteIds.length > 0) return;
+
+    const ok = window.confirm(`선택한 경기 ${ids.length}개를 삭제할까요? 5초 동안 실행 취소할 수 있습니다.`);
+    if (!ok) return;
+
+    setPendingDeleteIds(ids);
+    deleteTimerRef.current = window.setTimeout(() => {
+      deleteTimerRef.current = null;
+      void performBulkDelete(ids);
+    }, 5000);
+  }
+
+  function undoBulkDelete() {
+    if (deleteTimerRef.current !== null) {
+      window.clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    setPendingDeleteIds([]);
   }
 
   return (
@@ -252,16 +278,24 @@ export default function MatchesPage() {
               >
                 {allVisibleSelected ? "현재 목록 선택 해제" : `현재 목록 전체 선택 (${visible.length})`}
               </button>
-              {selectedIds.size > 0 && (
+              {pendingDeleteIds.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={undoBulkDelete}
+                  className="app-danger-button cursor-pointer"
+                >
+                  선택 {pendingDeleteIds.length}개 삭제 취소
+                </button>
+              ) : selectedIds.size > 0 ? (
                 <button
                   type="button"
                   disabled={deleting}
-                  onClick={() => void deleteSelected()}
-                  className="cursor-pointer rounded-md border border-[#5b3237] bg-[#241416] px-3 py-2 text-[11px] font-semibold text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
+                  onClick={deleteSelected}
+                  className="app-danger-button cursor-pointer"
                 >
                   {deleting ? "삭제 중..." : `선택 ${selectedIds.size}개 삭제`}
                 </button>
-              )}
+              ) : null}
               {(seasonFilter !== "all" || patchFilter !== "all" || query) && (
                 <button
                   type="button"
