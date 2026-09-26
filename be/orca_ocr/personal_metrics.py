@@ -58,7 +58,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
         "weapon_shot_accuracy": {"aliases": ["무기 사격 명중률"]},
         "crystal_charge_damage": {"aliases": ["수정 발사 피해"]},
-        "players_saved": {"aliases": ["보호한 플레이어"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
         "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
         "self_healing": {"aliases": ["자가 치유"]},
     },
