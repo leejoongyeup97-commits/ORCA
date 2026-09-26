@@ -584,8 +584,7 @@ begin
   for v_detail in
     select value from jsonb_array_elements(coalesce(p_my_hero_details, '[]'::jsonb))
   loop
-    -- Match OCR fallback to the same hero only. Never let the latest Personal
-    -- screenshot overwrite another hero in multi-hero matches.
+    -- Use OCR fallback from the same hero only.
     v_personal_ocr := null;
     v_hero_specific := '{}'::jsonb;
     v_ocr_accuracy := null;
@@ -672,8 +671,8 @@ begin
     );
   end loop;
 
-  -- Backward-safe fallback for older FE versions that send no hero-detail array:
-  -- save one row per detected hero instead of keeping only the latest Personal OCR.
+  -- Backward-safe fallback for older FE versions with no hero-detail array:
+  -- save the latest Personal OCR once per detected hero.
   if jsonb_array_length(coalesce(p_my_hero_details, '[]'::jsonb)) = 0 then
     for v_personal_ocr in
       select distinct on (u.ocr_raw->>'hero_key') u.ocr_raw
@@ -719,84 +718,7 @@ begin
         nullif(v_personal_ocr->>'hero_key',''),
         nullif(v_personal_ocr->>'play_time',''),
         case
-          when coalesce(v_personal_ocr->>'play_time','') ~ '^[0-9]{1,3}:[0-9]{2}
-  -- New structured round contract. Legacy control_submap / round_sequence stay
-  -- in matches.editable for compatibility, but are not converted because they do
-  -- not contain enough information to reconstruct every submap safely.
-  if jsonb_typeof(p_manual_fields->'round_details') = 'array' then
-    delete from public.rounds
-     where match_id = p_match_id and user_id = v_user_id;
-
-    for v_round in
-      select value
-      from jsonb_array_elements(p_manual_fields->'round_details')
-    loop
-      insert into public.rounds (
-        user_id, match_id, round_order, submap, result
-      ) values (
-        v_user_id,
-        p_match_id,
-        nullif(v_round->>'order','')::integer,
-        nullif(v_round->>'submap',''),
-        case
-          when v_round->>'result' in ('win','loss','draw','unknown')
-            then v_round->>'result'
-          else 'unknown'
-        end
-      );
-    end loop;
-  end if;
-
-  update public.matches
-  set
-    editable = coalesce(editable, '{}'::jsonb) || coalesce(p_match, '{}'::jsonb),
-    played_at = coalesce(nullif(p_match->>'played_at','')::timestamptz, played_at),
-    map = coalesce(nullif(p_match->>'map_name',''), map),
-    mode = coalesce(nullif(p_match->>'game_mode',''), mode),
-    result = coalesce(nullif(p_match->>'result',''), result),
-    side = coalesce(
-      case
-        when p_match->>'side' in ('attack','defense','neutral','unknown')
-          then p_match->>'side'
-        else null
-      end,
-      side
-    ),
-    duration_seconds = coalesce(
-      case
-        when coalesce(p_match->>'match_duration','') ~ '^[0-9]{1,3}:[0-9]{2}$' then
-          split_part(p_match->>'match_duration', ':', 1)::integer * 60
-          + split_part(p_match->>'match_duration', ':', 2)::integer
-        else null
-      end,
-      duration_seconds
-    ),
-    import_status = 'confirmed'
-  where id = p_match_id and user_id = v_user_id;
-
-  return jsonb_build_object(
-    'match_id', p_match_id,
-    'status', 'confirmed',
-    'season_id', (select season_id from public.matches where id = p_match_id),
-    'patch_id', (select patch_id from public.matches where id = p_match_id),
-    'season', (
-      select s.season_name
-      from public.matches m
-      left join public.seasons s on s.id = m.season_id
-      where m.id = p_match_id
-    ),
-    'patch_label', (
-      select p.patch_label
-      from public.matches m
-      left join public.patches p on p.id = m.patch_id
-      where m.id = p_match_id
-    )
-  );
-end;
-$$;
-
-grant execute on function public.confirm_orca_match(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
- then
+          when coalesce(v_personal_ocr->>'play_time','') ~ '^[0-9]{1,3}:[0-9]{2}$' then
             split_part(v_personal_ocr->>'play_time', ':', 1)::integer * 60
             + split_part(v_personal_ocr->>'play_time', ':', 2)::integer
           else null
