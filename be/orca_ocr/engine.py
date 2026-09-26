@@ -442,6 +442,46 @@ def _rapid_read_cell(engine,cell,key):
     best=max(grouped,key=lambda v:(len(grouped[v]),max(grouped[v])))
     return best,max(grouped[best])
 
+def _tesseract_read_cell(cell,key):
+    """Cross-check compact scoreboard numbers with Tesseract.
+
+    RapidOCR occasionally confuses a narrow 7 with 1 on the Team screen.
+    Multiple threshold/PSM reads give a stable consensus for the small integer
+    columns without affecting the large damage/healing totals.
+    """
+    if key not in ('elims','assists','deaths'):
+        return None,0.0
+    gray=cv2.cvtColor(cell,cv2.COLOR_BGR2GRAY) if len(cell.shape)==3 else cell
+    up=cv2.resize(gray,None,fx=4.0,fy=4.0,interpolation=cv2.INTER_CUBIC)
+    variants=[up]
+    for threshold in (150,180,200):
+        variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+
+    reads=[]
+    for image in variants:
+        for psm in (6,7,10):
+            txt=pytesseract.image_to_string(
+                image,
+                lang='eng',
+                config=f'--psm {psm} -c tessedit_char_whitelist=0123456789'
+            ).strip()
+            digits=re.sub(r'\D','',txt)
+            if digits:
+                try:
+                    value=int(digits)
+                except ValueError:
+                    continue
+                if value<=99:
+                    reads.append(value)
+
+    if not reads:
+        return None,0.0
+    counts={value:reads.count(value) for value in set(reads)}
+    best=max(counts,key=lambda value:counts[value])
+    confidence=min(0.99,0.70+0.03*counts[best])
+    return best,confidence
+
+
 def _highlight_row_score(board,y,gap):
     """Measure friendly-row background brightness while suppressing bright text."""
     h,w=board.shape[:2]
@@ -704,7 +744,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.14-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.15-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -776,14 +816,20 @@ def extract_team(img):
                 cx=int(xc*w)
                 x1=max(0,cx-half_w); x2=min(w,cx+half_w)
                 y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
-                value,confidence=_rapid_read_cell(engine,board[y1:y2,x1:x2],key)
+                cell=board[y1:y2,x1:x2]
+                value,confidence=_rapid_read_cell(engine,cell,key)
+                tess_value,tess_confidence=_tesseract_read_cell(cell,key)
+                if tess_value is not None:
+                    if value is None or tess_value==value or tess_confidence>=0.88:
+                        value=tess_value
+                        confidence=max(float(confidence),float(tess_confidence))
                 row[key]=value
                 row['confidence'][key]=round(float(confidence),3)
             rows.append(row)
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.14-dev',
+        'ocr_version':'0.9.15-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
