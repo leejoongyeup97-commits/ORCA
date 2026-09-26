@@ -29,6 +29,10 @@ export type StoredOcrBundle = {
 
 const STORAGE_PREFIX = "ow-insight-ocr-results:";
 
+function asString(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
 function secondsToClock(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "";
   const total = Math.round(value);
