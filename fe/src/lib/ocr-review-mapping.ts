@@ -88,18 +88,19 @@ export function applyPersonalOcrResults(
   const myPlayer = draft.players.find((player) => player.is_me);
 
   const heroDetails = results.map((result, index) => {
-    const current = draft.hero_details[index] ?? draft.hero_details[0];
+    const current = draft.hero_details[index];
     const metrics = Array.isArray(result.metrics)
       ? result.metrics.map(normalizeMetric).filter((item): item is ReviewHeroMetric => Boolean(item))
       : current?.metrics ?? [];
 
     return {
+      // Never reuse hero #1's id for newly discovered Personal cards.
       id: current?.id || crypto.randomUUID(),
       hero:
         asString(result.hero_id) ||
         current?.hero ||
         (index === 0 ? myPlayer?.hero || "" : ""),
-      hero_key: asString(result.hero_key),
+      hero_key: asString(result.hero_key) || current?.hero_key || "",
       play_time: asString(result.play_time) || current?.play_time || "",
       metrics,
     };
