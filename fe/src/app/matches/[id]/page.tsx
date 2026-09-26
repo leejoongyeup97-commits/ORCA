@@ -10,8 +10,9 @@ import {
   toConfirmPlayers,
   type MatchReviewDraft,
 } from "@/lib/review-draft";
-import { getStoredOcrBundle, type StoredOcrBundle } from "@/lib/ocr-integration";
+import { getStoredOcrBundle, runRealOcrForMatch, type OcrProgressEvent, type StoredOcrBundle } from "@/lib/ocr-integration";
 import { normalizeSideForGameMode } from "@/lib/match-rules";
+import { getSavedScreenshotFilesByName } from "@/lib/screenshot-folder";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   getMatchBackendAdapter,
@@ -252,18 +253,79 @@ export default function MatchDetailPage() {
 
   async function rerunOcr() {
     if (!match) return;
+
     setBusy("ocr");
     setNotice("");
     setOcrProgress(null);
+
     try {
-      const updated = await getMatchBackendAdapter().runMockOcr(match.match_id, {
-        onProgress: setOcrProgress,
-      });
+      const processable = match.files.filter((file) =>
+        ["summary", "team", "personal", "replay"].includes(file.screen_type),
+      );
+      const filenames = processable.map((file) => file.original_name);
+      const localFiles = await getSavedScreenshotFilesByName(filenames);
+      const missing = filenames.filter((name) => !localFiles.has(name));
+
+      if (missing.length > 0) {
+        throw new Error(
+          `원본 스크린샷을 찾지 못했습니다: ${missing.join(", ")}. 설정의 스크린샷 폴더를 확인해 주세요.`,
+        );
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+      const total = processable.length;
+
+      const handleProgress = (event: OcrProgressEvent) => {
+        if (event.stage === "file_success") successCount += 1;
+        if (event.stage === "file_error") errorCount += 1;
+
+        const fileStage =
+          event.stage === "file_start" ||
+          event.stage === "file_success" ||
+          event.stage === "file_error" ||
+          event.stage === "file_skipped";
+
+        const completed =
+          event.stage === "file_start"
+            ? Math.max(0, event.current)
+            : fileStage
+              ? Math.min(total, event.current)
+              : event.stage === "completed"
+                ? total
+                : successCount + errorCount;
+
+        setOcrProgress({
+          stage:
+            event.stage === "file_skipped"
+              ? "file_error"
+              : event.stage,
+          current: completed,
+          total,
+          percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+          success_count: successCount,
+          error_count: errorCount,
+          message: event.message,
+          filename: event.filename,
+          screen_type: event.screen_type,
+        });
+      };
+
+      const updated = await runRealOcrForMatch(
+        getMatchBackendAdapter(),
+        match.match_id,
+        processable.map((meta) => ({
+          screen_type: meta.screen_type,
+          file: localFiles.get(meta.original_name)!,
+        })),
+        { onProgress: handleProgress },
+      );
+
       setMatch(updated);
       setForm(updated.editable);
       setPlayedAtLocal(toLocalDateTime(updated.editable.played_at));
       setOcrBundle(getStoredOcrBundle(match.match_id));
-      setNotice("OCR을 다시 실행했습니다.");
+      setNotice("실제 OCR을 다시 실행했습니다.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "OCR 재실행에 실패했습니다.";
       setOcrProgress((previous) => ({
