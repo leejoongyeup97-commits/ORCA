@@ -479,28 +479,49 @@ def fetch_patchnote(url: str) -> dict:
             if published_date:
                 break
 
-    # Keep only the article-like portion when the title can be located.
+    # Keep only the article portion. The Nexon page sometimes exposes the
+    # title through metadata while the visible title has slightly different
+    # whitespace, so fall back to the first patch-note title with the same date.
     start = 0
     if title:
         normalized_title = _clean_inline(title)
         for index, line in enumerate(lines):
-            if normalized_title == line or normalized_title in line:
+            normalized_line = _clean_inline(line)
+            if normalized_title == normalized_line or normalized_title in normalized_line:
                 start = index + 1
                 break
+        else:
+            for index, line in enumerate(lines):
+                if "패치 노트" in line and _to_iso_date(line) == published_date:
+                    start = index + 1
+                    break
 
     body_lines = lines[start:]
 
-    # Drop common site chrome before the first meaningful patch-note heading.
+    # Drop common site chrome.
     chrome_tokens = {
         "게임정보", "영웅", "시즌", "소식", "커뮤니티", "고객지원", "계정연동",
-        "PLAY NOW", "넥슨 ID 로그인", "전체", "공지사항", "패치노트", "이벤트", "넥슨공지",
-        "PATCHNOTE",
+        "play now", "news", "넥슨 id 로그인", "전체", "공지사항", "패치노트", "이벤트", "넥슨공지",
+        "patchnote",
     }
-    body_lines = [line for line in body_lines if line not in chrome_tokens]
+    body_lines = [
+        line for line in body_lines
+        if _clean_inline(line).lower() not in chrome_tokens
+    ]
 
-    # Remove one standalone publication date near the top.
+    # Remove one standalone publication date or relative-time label near the top.
     if body_lines and _to_iso_date(body_lines[0]) == published_date:
         body_lines = body_lines[1:]
+    while body_lines and _RELATIVE_TIME_RE.fullmatch(_clean_inline(body_lines[0])):
+        body_lines = body_lines[1:]
+
+    # Everything after the share/list controls belongs to the site footer.
+    footer_index = next(
+        (index for index, line in enumerate(body_lines) if "URL 공유하기" in line),
+        None,
+    )
+    if footer_index is not None:
+        body_lines = body_lines[:footer_index]
 
     body_text = "\n".join(body_lines).strip()
     if not body_text:
