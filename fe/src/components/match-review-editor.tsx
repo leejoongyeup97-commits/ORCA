@@ -186,20 +186,20 @@ export default function MatchReviewEditor({
       <div className="flex flex-col gap-3 border-b border-[var(--line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="m-0 text-sm font-bold">OCR 구조화 데이터 검수</p>
-          <p className="mt-1 text-[10px] text-[var(--muted)]">
+          <p className="mt-1 text-[11px] text-[var(--muted)]">
             OCR 값을 확인하고 수정한 최종값이 경기 확정 시 DB에 저장됩니다.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {savedAt && (
-            <span className="text-[9px] text-[var(--muted)]">
+            <span className="text-[11px] text-[var(--muted)]">
               자동 저장 {savedAt}
             </span>
           )}
           <button
             type="button"
             onClick={resetDraft}
-            className="cursor-pointer rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
+            className="cursor-pointer rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-bold text-[var(--muted)] hover:text-white"
           >
             초기화
           </button>
@@ -255,7 +255,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
+      className={`cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-bold transition ${
         active
           ? "border-[rgba(249,158,26,0.42)] bg-[#17181b] text-[#d8dade]"
           : "border-[var(--line)] bg-[#121823] text-[var(--muted)] hover:text-white"
@@ -313,10 +313,10 @@ function ScoreboardTable({
     <div className="border-b border-[var(--line)] last:border-b-0">
       <div className="flex items-center gap-2 bg-[#111722] px-5 py-3">
         <span className="text-xs font-semibold text-white">{title}</span>
-        <span className="text-[9px] text-[var(--muted)]">5명</span>
+        <span className="text-[11px] text-[var(--muted)]">5명</span>
       </div>
 
-      <div className="grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 text-[9px] font-semibold text-[var(--muted)]">
+      <div className="grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 text-[11px] font-semibold text-[var(--muted)]">
         <span>나</span>
         <span>영웅 표시명</span>
         <span>hero_key</span>
@@ -338,7 +338,7 @@ function ScoreboardTable({
           <button
             type="button"
             onClick={() => onSetMe(player.id)}
-            className={`cursor-pointer rounded-lg border text-[9px] font-semibold ${
+            className={`cursor-pointer rounded-lg border text-[11px] font-semibold ${
               player.is_me
                 ? "border-[rgba(249,158,26,0.45)] bg-[#17181b] text-[#d8dade]"
                 : "border-[var(--line)] bg-transparent text-[var(--muted)]"
@@ -388,7 +388,7 @@ function CellInput({
       }
       inputMode={numeric ? "numeric" : "text"}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-[var(--line)] bg-[#0a0d12] px-2 py-2 text-[10px] text-white outline-none placeholder:text-[#525c6e] focus:border-[var(--orange)]"
+      className="w-full rounded-lg border border-[var(--line)] bg-[#0a0d12] px-2 py-2 text-[11px] text-white outline-none placeholder:text-[#525c6e] focus:border-[var(--orange)]"
     />
   );
 }
@@ -424,7 +424,7 @@ function HeroDetailEditor({
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-[9px] text-[var(--muted)]">
+                <p className="mt-1 text-[11px] text-[var(--muted)]">
                   표시명은 metric_key 기준 고정 라벨을 사용합니다. OCR 원문 라벨은 디버깅용으로만 보관합니다.
                 </p>
               </div>
@@ -432,7 +432,7 @@ function HeroDetailEditor({
                 <button
                   type="button"
                   onClick={() => onRemove(item.id)}
-                  className="cursor-pointer rounded-lg border border-[#503336] px-3 py-2 text-[9px] font-bold text-[#ff9b9b]"
+                  className="cursor-pointer rounded-lg border border-[#503336] px-3 py-2 text-[11px] font-bold text-[#ff9b9b]"
                 >
                   삭제
                 </button>
@@ -471,13 +471,13 @@ function HeroDetailEditor({
                 <p className="m-0 text-[11px] font-bold text-white">
                   Personal metrics
                 </p>
-                <span className="text-[9px] text-[var(--muted)]">
+                <span className="text-[11px] text-[var(--muted)]">
                   {item.metrics.length}개
                 </span>
               </div>
 
               {item.metrics.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[var(--line)] px-4 py-5 text-center text-[10px] text-[var(--muted)]">
+                <div className="rounded-lg border border-dashed border-[var(--line)] px-4 py-5 text-center text-[11px] text-[var(--muted)]">
                   OCR에서 전달된 metrics가 없습니다.
                 </div>
               ) : (
@@ -502,7 +502,7 @@ function HeroDetailEditor({
                             </span>
                           )}
                         </div>
-                        <p className="mb-0 mt-1 break-all text-[9px] text-[var(--muted)]">
+                        <p className="mb-0 mt-1 break-all text-[11px] text-[var(--muted)]">
                           {metric.metric_key} · {metric.scope}
                           {metric.confidence !== null
                             ? ` · confidence ${Math.round(metric.confidence * 100)}%`
@@ -550,7 +550,7 @@ function HeroField({
 }) {
   return (
     <label>
-      <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">
+      <span className="mb-2 block text-[11px] font-bold text-[var(--muted)]">
         {label}
       </span>
       {children}

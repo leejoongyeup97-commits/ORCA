@@ -36,7 +36,7 @@ export default function LoginPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-md border border-[var(--line)] bg-[#151619] text-xs font-semibold text-[var(--orange-2)]">
               OR
             </div>
-            <p className="mb-0 mt-5 text-[10px] font-medium tracking-[0.16em] text-[var(--muted)]">ORCA</p>
+            <p className="mb-0 mt-5 text-[11px] font-medium tracking-[0.16em] text-[var(--muted)]">ORCA</p>
             <h1 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-white">
               Overwatch Result Correlation Analysis
             </h1>
@@ -46,7 +46,7 @@ export default function LoginPage() {
           </div>
 
           <div className="border-t border-[var(--line)] pt-4">
-            <p className="m-0 text-[10px] leading-5 text-[var(--muted)]">
+            <p className="m-0 text-[11px] leading-5 text-[var(--muted)]">
               개발 버전 · Frontend v0.12
             </p>
           </div>
@@ -59,7 +59,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="m-0 text-[10px] font-medium tracking-[0.16em] text-[var(--muted)]">ORCA ACCOUNT</p>
+          <p className="m-0 text-[11px] font-medium tracking-[0.16em] text-[var(--muted)]">ORCA ACCOUNT</p>
           <h2 className="mb-0 mt-2 text-[24px] font-semibold text-white">로그인</h2>
           <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">
             {config.configured ? "Supabase 계정으로 로그인합니다." : "현재는 Mock 모드로 사용할 수 있습니다."}

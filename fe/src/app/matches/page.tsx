@@ -45,7 +45,7 @@ function countType(match: MatchListItem, type: string) {
 
 function MatchStatus({ status }: { status: MatchImportStatus }) {
   const meta = STATUS_META[status];
-  return <span className={`rounded-md px-2 py-1 text-[10px] font-semibold ${meta.className}`}>{meta.label}</span>;
+  return <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${meta.className}`}>{meta.label}</span>;
 }
 
 export default function MatchesPage() {
@@ -165,7 +165,7 @@ export default function MatchesPage() {
         <section className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">경기 데이터</p>
-            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] md:text-[32px]">경기 목록</h1>
+            <h1 className="m-0 text-[30px] font-semibold tracking-[-0.03em]">경기 목록</h1>
             <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">
               등록한 경기의 업로드, OCR, 검수 상태와 확정 데이터를 한곳에서 관리합니다.
             </p>
@@ -207,7 +207,7 @@ export default function MatchesPage() {
               <select
                 value={seasonFilter}
                 onChange={(event) => setSeasonFilter(event.target.value)}
-                className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#c7c9ce] outline-none"
+                className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#c7c9ce] outline-none"
               >
                 <option value="all">시즌 전체</option>
                 {seasonOptions.map((season) => <option key={season} value={season}>{season}</option>)}
@@ -215,7 +215,7 @@ export default function MatchesPage() {
               <select
                 value={patchFilter}
                 onChange={(event) => setPatchFilter(event.target.value)}
-                className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#c7c9ce] outline-none"
+                className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#c7c9ce] outline-none"
               >
                 <option value="all">패치 전체</option>
                 {patchOptions.map((patch) => <option key={patch} value={patch}>{patch}</option>)}
@@ -223,7 +223,7 @@ export default function MatchesPage() {
               <button
                 type="button"
                 onClick={toggleSelectAllVisible}
-                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#c7c9ce] hover:border-[#4b5668]"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] font-medium text-[#c7c9ce] hover:border-[#4b5668]"
               >
                 {allVisibleSelected ? "현재 목록 선택 해제" : `현재 목록 전체 선택 (${visible.length})`}
               </button>
@@ -232,7 +232,7 @@ export default function MatchesPage() {
                   type="button"
                   disabled={deleting}
                   onClick={() => void deleteSelected()}
-                  className="cursor-pointer rounded-md border border-[#5b3237] bg-[#241416] px-3 py-2 text-[10px] font-semibold text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
+                  className="cursor-pointer rounded-md border border-[#5b3237] bg-[#241416] px-3 py-2 text-[11px] font-semibold text-[#ff9b9b] hover:bg-[#34191f] disabled:cursor-wait disabled:opacity-50"
                 >
                   {deleting ? "삭제 중..." : `선택 ${selectedIds.size}개 삭제`}
                 </button>
@@ -245,7 +245,7 @@ export default function MatchesPage() {
                     setPatchFilter("all");
                     setQuery("");
                   }}
-                  className="cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-[10px] font-medium text-[var(--muted)] hover:text-white"
+                  className="cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-[11px] font-medium text-[var(--muted)] hover:text-white"
                 >
                   필터 초기화
                 </button>
@@ -285,7 +285,7 @@ export default function MatchesPage() {
 
                     <div>
                       <p className="m-0 text-sm font-bold text-white">{formatDate(match.editable.played_at || match.detected_at)}</p>
-                      <p className="mt-1 truncate text-[10px] text-[var(--muted)]">{match.match_id.slice(0, 16)}...</p>
+                      <p className="mt-1 truncate text-[11px] text-[var(--muted)]">{match.match_id.slice(0, 16)}...</p>
                     </div>
 
                     <div>
@@ -298,13 +298,13 @@ export default function MatchesPage() {
                         <span className={`text-xs font-semibold ${result.className}`}>{result.label}</span>
                         {match.editable.my_hero && <span className="text-xs text-[#aeb4bf]">{match.editable.my_hero}</span>}
                       </div>
-                      <p className="mb-0 mt-1 truncate text-[10px] text-[var(--muted)]">
+                      <p className="mb-0 mt-1 truncate text-[11px] text-[var(--muted)]">
                         {match.editable.game_mode || "게임 모드 미확인"} · 이미지 {match.files.length}장
                       </p>
                       {(match.editable.season || match.editable.patch_label) && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {match.editable.season && <span className="rounded-sm bg-[#151619] px-2 py-1 text-[9px] font-bold text-[#b8c0cf]">{match.editable.season}</span>}
-                          {match.editable.patch_label && <span className="rounded-sm bg-[#151619] px-2 py-1 text-[9px] font-bold text-[#aeb4bf]">{match.editable.patch_label}</span>}
+                          {match.editable.season && <span className="rounded-sm bg-[#151619] px-2 py-1 text-[11px] font-bold text-[#b8c0cf]">{match.editable.season}</span>}
+                          {match.editable.patch_label && <span className="rounded-sm bg-[#151619] px-2 py-1 text-[11px] font-bold text-[#aeb4bf]">{match.editable.patch_label}</span>}
                         </div>
                       )}
                     </div>
@@ -352,7 +352,7 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
 function DataChip({ label, value }: { label: string; value: number }) {
   return (
     <div className="border-l border-[var(--line-soft)] px-2 py-1 text-center">
-      <span className="block text-[9px] text-[var(--muted)]">{label}</span>
+      <span className="block text-[11px] text-[var(--muted)]">{label}</span>
       <strong className="mt-0.5 block text-[11px] text-white">{value}</strong>
     </div>
   );

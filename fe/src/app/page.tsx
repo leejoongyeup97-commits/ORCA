@@ -68,7 +68,7 @@ export default function DashboardPage() {
         <section className="flex flex-col gap-5 border-b border-[var(--line)] pb-7 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Overview</p>
-            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.03em] text-white md:text-[32px]">대시보드</h1>
+            <h1 className="m-0 text-[30px] font-semibold tracking-[-0.03em] text-white">대시보드</h1>
             <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--muted)]">
               경기 수집, 검수, 분석 준비 상태를 한곳에서 확인합니다.
             </p>
@@ -93,7 +93,7 @@ export default function DashboardPage() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h2 className="m-0 text-[14px] font-semibold text-white">최근 경기</h2>
+                <h2 className="m-0 text-[15px] font-semibold text-white">최근 경기</h2>
                 <p className="mt-1 text-[11px] text-[var(--muted)]">최근 등록된 경기 6건</p>
               </div>
               <Link href="/matches" className="text-[11px] font-medium text-[var(--muted)] no-underline hover:text-white">
@@ -124,7 +124,7 @@ export default function DashboardPage() {
                         <span className="block truncate text-[13px] font-medium text-white">
                           {match.editable.map_name || "맵 미확인"}
                         </span>
-                        <span className="mt-1 block truncate text-[10px] text-[var(--muted)]">
+                        <span className="mt-1 block truncate text-[11px] text-[var(--muted)]">
                           {match.editable.my_hero || "영웅 미확인"} · 이미지 {match.files.length}장
                         </span>
                       </span>
@@ -140,7 +140,7 @@ export default function DashboardPage() {
 
           <aside className="space-y-7">
             <section>
-              <h2 className="m-0 text-[14px] font-semibold text-white">확인 필요</h2>
+              <h2 className="m-0 text-[15px] font-semibold text-white">확인 필요</h2>
               <div className="mt-3 border-t border-[var(--line)]">
                 <InfoRow label="검수 또는 오류" value={stats.needsAction} emphasize={stats.needsAction > 0} />
                 <InfoRow label="OCR 처리 중" value={stats.ocr} />
@@ -148,7 +148,7 @@ export default function DashboardPage() {
             </section>
 
             <section>
-              <h2 className="m-0 text-[14px] font-semibold text-white">바로가기</h2>
+              <h2 className="m-0 text-[15px] font-semibold text-white">바로가기</h2>
               <div className="mt-3 border-t border-[var(--line)]">
                 <SimpleLink href="/matches">경기 목록</SimpleLink>
                 <SimpleLink href="/analysis">분석</SimpleLink>
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 function Stat({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "warning" }) {
   return (
     <div className="border-r border-[var(--line)] px-3 py-5 first:pl-0 last:border-r-0 md:px-5">
-      <p className="m-0 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">{label}</p>
+      <p className="m-0 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">{label}</p>
       <p className={`mb-0 mt-2 text-[24px] font-semibold tracking-[-0.03em] ${tone === "warning" ? "text-[var(--warning)]" : "text-white"}`}>
         {value}
       </p>

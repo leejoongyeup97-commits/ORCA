@@ -117,6 +117,7 @@ export const PERSONAL_METRIC_LABELS: Record<string, string> = {
   "joyride_kills": "조이라이드로 처치",
   "jump_pack_kills": "점프 팩으로 처치",
   "knockback_kills": "밀쳐내기로 처치",
+  "kitsune_rush_assists": "여우길 지원",
   "kunai_kills": "쿠나이로 처치",
   "lasso_shot_damage": "올가미 사격으로 준 피해",
   "life_grip_saves": "구원의 손길로 선방",
