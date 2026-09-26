@@ -3,6 +3,189 @@
 
 create extension if not exists pgcrypto;
 
+-- Match context reference data -------------------------------------------------
+
+create table if not exists public.seasons (
+  id uuid primary key default gen_random_uuid(),
+  season_key text not null unique,
+  season_name text not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz,
+  created_at timestamptz not null default now(),
+  check (ends_at is null or ends_at > starts_at)
+);
+
+create table if not exists public.patches (
+  id uuid primary key default gen_random_uuid()
+);
+
+alter table public.patches add column if not exists patch_label text;
+alter table public.patches add column if not exists effective_from timestamptz;
+alter table public.patches add column if not exists effective_to timestamptz;
+alter table public.patches add column if not exists created_at timestamptz default now();
+
+create unique index if not exists patches_patch_label_uidx
+  on public.patches (patch_label)
+  where patch_label is not null;
+
+alter table public.matches add column if not exists season_id uuid;
+alter table public.matches add column if not exists patch_id uuid;
+
+do $
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'matches_season_id_fkey'
+      and conrelid = 'public.matches'::regclass
+  ) then
+    alter table public.matches
+      add constraint matches_season_id_fkey
+      foreign key (season_id) references public.seasons(id) on delete set null;
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'matches_patch_id_fkey'
+      and conrelid = 'public.matches'::regclass
+  ) then
+    alter table public.matches
+      add constraint matches_patch_id_fkey
+      foreign key (patch_id) references public.patches(id) on delete set null;
+  end if;
+end;
+$;
+
+create index if not exists seasons_period_idx
+  on public.seasons (starts_at desc);
+create index if not exists patches_effective_from_idx
+  on public.patches (effective_from desc);
+create index if not exists matches_season_id_idx
+  on public.matches (season_id);
+create index if not exists matches_patch_id_idx
+  on public.matches (patch_id);
+
+-- Canonical round/set data for Control and Flashpoint.
+create table if not exists public.rounds (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  match_id uuid not null references public.matches(id) on delete cascade,
+  round_order integer not null check (round_order > 0),
+  submap text,
+  result text not null default 'unknown'
+    check (result in ('win','loss','draw','unknown')),
+  created_at timestamptz not null default now(),
+  unique (match_id, round_order)
+);
+
+create index if not exists rounds_match_id_idx
+  on public.rounds (match_id, round_order);
+create index if not exists rounds_submap_idx
+  on public.rounds (submap);
+
+-- Shared reference list used by FE dropdowns.
+create table if not exists public.map_submaps (
+  id uuid primary key default gen_random_uuid(),
+  map_name text not null,
+  game_mode text not null check (game_mode in ('control','flashpoint')),
+  submap_key text not null,
+  submap_name text not null,
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (map_name, submap_key)
+);
+
+create index if not exists map_submaps_lookup_idx
+  on public.map_submaps (map_name, game_mode, sort_order);
+
+alter table public.seasons enable row level security;
+alter table public.patches enable row level security;
+alter table public.rounds enable row level security;
+alter table public.map_submaps enable row level security;
+
+drop policy if exists "seasons_authenticated_read" on public.seasons;
+create policy "seasons_authenticated_read"
+on public.seasons for select
+to authenticated
+using (true);
+
+drop policy if exists "patches_authenticated_read" on public.patches;
+create policy "patches_authenticated_read"
+on public.patches for select
+to authenticated
+using (true);
+
+drop policy if exists "rounds_owner_all" on public.rounds;
+create policy "rounds_owner_all"
+on public.rounds for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "map_submaps_authenticated_read" on public.map_submaps;
+create policy "map_submaps_authenticated_read"
+on public.map_submaps for select
+to authenticated
+using (true);
+
+-- Resolve season/patch whenever matches.played_at changes. This also keeps the
+-- legacy FE strings in editable without making them the canonical DB values.
+create or replace function public.apply_match_context_from_played_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $
+declare
+  v_season_id uuid;
+  v_season_name text;
+  v_patch_id uuid;
+  v_patch_label text;
+begin
+  if new.played_at is null then
+    new.season_id := null;
+    new.patch_id := null;
+    new.editable := coalesce(new.editable, '{}'::jsonb)
+      || jsonb_build_object('season', '', 'patch_label', '');
+    return new;
+  end if;
+
+  select s.id, s.season_name
+    into v_season_id, v_season_name
+  from public.seasons s
+  where s.starts_at <= new.played_at
+    and (s.ends_at is null or new.played_at < s.ends_at)
+  order by s.starts_at desc
+  limit 1;
+
+  select p.id, p.patch_label
+    into v_patch_id, v_patch_label
+  from public.patches p
+  where p.effective_from is not null
+    and p.effective_from <= new.played_at
+    and (p.effective_to is null or new.played_at < p.effective_to)
+  order by p.effective_from desc
+  limit 1;
+
+  new.season_id := v_season_id;
+  new.patch_id := v_patch_id;
+  new.editable := coalesce(new.editable, '{}'::jsonb)
+    || jsonb_build_object(
+      'season', coalesce(v_season_name, ''),
+      'patch_label', coalesce(v_patch_label, '')
+    );
+
+  return new;
+end;
+$;
+
+drop trigger if exists matches_apply_context_from_played_at on public.matches;
+create trigger matches_apply_context_from_played_at
+before insert or update of played_at
+on public.matches
+for each row
+execute function public.apply_match_context_from_played_at();
+
+
 create table if not exists public.match_players (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -101,6 +284,7 @@ declare
   v_hero_specific jsonb;
   v_ocr_accuracy text;
   v_ocr_crit_rate text;
+  v_round jsonb;
 begin
   if v_user_id is null then
     raise exception 'NOT_AUTHENTICATED';
@@ -245,6 +429,33 @@ begin
     );
   end if;
 
+  -- New structured round contract. Legacy control_submap / round_sequence stay
+  -- in matches.editable for compatibility, but are not converted because they do
+  -- not contain enough information to reconstruct every submap safely.
+  if jsonb_typeof(p_manual_fields->'round_details') = 'array' then
+    delete from public.rounds
+     where match_id = p_match_id and user_id = v_user_id;
+
+    for v_round in
+      select value
+      from jsonb_array_elements(p_manual_fields->'round_details')
+    loop
+      insert into public.rounds (
+        user_id, match_id, round_order, submap, result
+      ) values (
+        v_user_id,
+        p_match_id,
+        nullif(v_round->>'order','')::integer,
+        nullif(v_round->>'submap',''),
+        case
+          when v_round->>'result' in ('win','loss','draw','unknown')
+            then v_round->>'result'
+          else 'unknown'
+        end
+      );
+    end loop;
+  end if;
+
   update public.matches
   set
     editable = coalesce(editable, '{}'::jsonb) || coalesce(p_match, '{}'::jsonb),
@@ -264,7 +475,24 @@ begin
     import_status = 'confirmed'
   where id = p_match_id and user_id = v_user_id;
 
-  return jsonb_build_object('match_id', p_match_id, 'status', 'confirmed');
+  return jsonb_build_object(
+    'match_id', p_match_id,
+    'status', 'confirmed',
+    'season_id', (select season_id from public.matches where id = p_match_id),
+    'patch_id', (select patch_id from public.matches where id = p_match_id),
+    'season', (
+      select s.season_name
+      from public.matches m
+      left join public.seasons s on s.id = m.season_id
+      where m.id = p_match_id
+    ),
+    'patch_label', (
+      select p.patch_label
+      from public.matches m
+      left join public.patches p on p.id = m.patch_id
+      where m.id = p_match_id
+    )
+  );
 end;
 $$;
 
