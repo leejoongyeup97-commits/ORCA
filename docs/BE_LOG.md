@@ -4,6 +4,19 @@ Backend, OCR, Supabase 관련 작업 내용과 전달사항을 기록합니다.
 
 ## 현재 로그
 
+### 2026-09-26 · Tesseract D드라이브 감지 회귀 확인
+- 상태: TODO / be-dev 반영 필요
+- 내용:
+  - develop/fe-dev 실행 시 Tesseract가 D드라이브에 설치된 환경에서 `Tesseract OCR executable was not found` 오류 발생
+  - 원인: 최신 `be/orca_ocr/engine.py`의 자동 탐색 경로가 C드라이브 위주로 되돌아가 D드라이브 경로가 빠짐
+  - develop에는 D드라이브 경로 및 `TESSERACT_CMD` 환경변수 탐색을 복구하는 핫픽스 적용
+  - be-dev에도 동일 탐색 로직 반영 필요
+- 관련 경로:
+  - `D:\Tesseract-OCR\tesseract.exe`
+  - `D:\Program Files\Tesseract-OCR\tesseract.exe`
+  - `D:\Program Files (x86)\Tesseract-OCR\tesseract.exe`
+- develop 핫픽스 커밋: 77b4866f973db9de7ba1d4c2ec82b90ec7223a6d
+
 ### 2026-09-20 · 제안사항: 팀 스코어보드 하이라이트 색상으로 내 행 식별
 - 상태: PROPOSAL / 검토 후 작업
 - 제안:
