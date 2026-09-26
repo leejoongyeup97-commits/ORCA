@@ -8,7 +8,10 @@ import {
   type EditableMatchFields,
   type MatchResult,
 } from "@/lib/backend";
-import { runRealOcrForMatch } from "@/lib/ocr-integration";
+import {
+  runRealOcrForMatch,
+  type OcrProgressEvent,
+} from "@/lib/ocr-integration";
 import {
   loadReviewDraft,
   toConfirmHeroDetails,
@@ -32,6 +35,28 @@ type UploadUiState = {
   total: number;
   message: string;
   matchId?: string;
+};
+
+type OcrActivityLog = {
+  id: string;
+  time: string;
+  level: "info" | "success" | "error";
+  message: string;
+};
+
+type OcrActivityState = {
+  running: boolean;
+  current: number;
+  total: number;
+  percent: number;
+  message: string;
+  logs: OcrActivityLog[];
+};
+
+type ErrorDialogState = {
+  title: string;
+  summary: string;
+  raw: string;
 };
 
 type Classification = {
@@ -87,6 +112,18 @@ type ReadyManifest = {
 const TAB_THRESHOLD = 0.18;
 const REPLAY_THRESHOLD = 0.075;
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp"];
+
+function errorText(error: unknown) {
+  if (error instanceof Error) {
+    return error.stack || error.message || String(error);
+  }
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error, null, 2);
+  } catch {
+    return String(error);
+  }
+}
 
 const TYPE_META: Record<ScreenType, { label: string; short: string; description: string }> = {
   summary: { label: "요약", short: "S", description: "경기 시작점" },
@@ -274,7 +311,69 @@ export default function NewMatchPage() {
     message: "",
   });
   const [bulkReviewState, setBulkReviewState] = useState({ running: false, current: 0, total: 0 });
+  const [ocrActivity, setOcrActivity] = useState<OcrActivityState>({
+    running: false,
+    current: 0,
+    total: 0,
+    percent: 0,
+    message: "",
+    logs: [],
+  });
+  const [errorDialog, setErrorDialog] = useState<ErrorDialogState | null>(null);
   const autoScanStartedRef = useRef(false);
+
+  function openErrorDialog(title: string, summary: string, raw: unknown) {
+    setErrorDialog({
+      title,
+      summary,
+      raw: errorText(raw),
+    });
+  }
+
+  function handleOcrProgress(event: OcrProgressEvent) {
+    const log: OcrActivityLog = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      time: new Date().toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      level: event.level,
+      message: event.message,
+    };
+
+    setOcrActivity((current) => ({
+      running: event.stage !== "completed",
+      current: event.current,
+      total: event.total,
+      percent: event.percent,
+      message: event.message,
+      logs: [...current.logs, log].slice(-40),
+    }));
+
+    if (event.level === "error" && event.error) {
+      setErrorDialog((current) =>
+        current ?? {
+          title: "OCR 처리 오류",
+          summary: event.filename
+            ? `${event.filename} 처리 중 오류가 발생했습니다.`
+            : "OCR 처리 중 오류가 발생했습니다.",
+          raw: event.error,
+        },
+      );
+    }
+  }
+
+  function resetOcrActivity(message = "OCR 작업을 준비하고 있습니다.") {
+    setOcrActivity({
+      running: true,
+      current: 0,
+      total: 0,
+      percent: 0,
+      message,
+      logs: [],
+    });
+  }
 
   useEffect(() => {
     let mounted = true;
