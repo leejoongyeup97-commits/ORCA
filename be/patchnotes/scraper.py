@@ -18,6 +18,7 @@ _ALLOWED_HOSTS = {"overwatch.nexon.com"}
 
 _DATE_KO_RE = re.compile(r"(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일")
 _DATE_DOT_RE = re.compile(r"(20\d{2})[.\-/](\d{1,2})[.\-/](\d{1,2})")
+_RELATIVE_TIME_RE = re.compile(r"^(?:방금\s*전|\d+\s*(?:초|분|시간|일|주|개월|달|년)\s*전)$")
 
 
 @dataclass(frozen=True)
