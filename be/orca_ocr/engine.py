@@ -1037,6 +1037,28 @@ def extract_personal(img, hero_key=None):
                 return int(mm)*60+int(ss)
             play_time=max(panel_times,key=_mmss_seconds)
 
+    # Recover obviously clipped integer totals from the visible per-10 helper.
+    if play_time:
+        mm,ss=(int(v) for v in play_time.split(':'))
+        played=mm*60+ss
+        for card,metric in zip(metric_cards[1:],metrics):
+            value=str(metric.get('value') or '')
+            m=re.search(r'10분당\s*평균\s*[:：]?\s*([\d,]+(?:\.\d+)?)',card.get('raw_text') or '')
+            if not (played and m and re.fullmatch(r'\d+',value)):
+                continue
+            avg=float(m.group(1).replace(',',''))
+            expected=int(round(avg*played/600))
+            if value=='10' and expected<=3:
+                metric['value']=str(expected)
+                card['primary_value']=str(expected)
+            elif value.startswith('0') and expected>=100:
+                suffix=int(value)
+                base=10**len(value)
+                candidate=max(1,round((expected-suffix)/base))*base+suffix
+                if abs(candidate-expected)<=max(5,expected*0.02):
+                    metric['value']=f"{candidate:,}"
+                    card['primary_value']=f"{candidate:,}"
+
     known={}
     m=re.search(r'(\d{1,3})%[^\n]*\n?[^\n]*무기\s*명중률|무기\s*명중률[^\n]*(\d{1,3})%',panel_text)
     if m:known['weapon_accuracy']=(m.group(1) or m.group(2))+'%'
@@ -1047,7 +1069,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.15-dev',
+        'ocr_version':'0.10.16-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
