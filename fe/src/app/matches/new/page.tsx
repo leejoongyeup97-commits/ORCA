@@ -1,8 +1,19 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { BACKEND_MODE, getMatchBackendAdapter } from "@/lib/backend";
+import MatchReviewEditor from "@/components/match-review-editor";
+import {
+  BACKEND_MODE,
+  getMatchBackendAdapter,
+  type EditableMatchFields,
+  type MatchResult,
+} from "@/lib/backend";
 import { runRealOcrForMatch } from "@/lib/ocr-integration";
+import {
+  loadReviewDraft,
+  toConfirmHeroDetails,
+  toConfirmPlayers,
+} from "@/lib/review-draft";
 import {
   ensureScreenshotFolderPermission,
   getSavedScreenshotFolder,
@@ -13,7 +24,7 @@ import {
 } from "@/lib/screenshot-folder";
 
 type ScreenType = "summary" | "team" | "personal" | "replay" | "unknown";
-type ReviewStatus = "unreviewed" | "ready_to_upload" | "uploading" | "pending_ocr";
+type ReviewStatus = "unreviewed" | "ready_to_upload" | "uploading" | "pending_ocr" | "confirmed";
 
 type UploadUiState = {
   phase: "idle" | "creating" | "uploading" | "completing" | "done" | "error";
@@ -39,6 +50,9 @@ type DetectedMatch = {
   files: Classification[];
   reviewStatus: ReviewStatus;
   backendMatchId?: string;
+  ocrEditable?: EditableMatchFields;
+  ocrMessage?: string;
+  ocrGeneratedAt?: string | null;
 };
 
 type FolderState = {
@@ -716,6 +730,9 @@ export default function NewMatchPage() {
         ...current,
         reviewStatus: "pending_ocr",
         backendMatchId: completed.matchId,
+        ocrEditable: ocrView.editable,
+        ocrMessage: ocrView.ocr.message,
+        ocrGeneratedAt: ocrView.ocr.generated_at,
       }));
       setUploadState({
         phase: ocrView.status === "failed" ? "error" : "done",
@@ -744,21 +761,115 @@ export default function NewMatchPage() {
   }
 
   async function completeReviewAndNext(match: DetectedMatch) {
-    const currentIndex = matches.findIndex((item) => item.id === match.id);
+    if (match.reviewStatus === "confirmed") {
+      const currentIndex = matches.findIndex((item) => item.id === match.id);
+      const next = matches[currentIndex + 1];
+      if (next) {
+        selectReviewMatch(next);
+      } else {
+        setMessage("이번에 발견된 모든 경기 등록이 끝났습니다.");
+        closeReview();
+      }
+      return;
+    }
 
     if (match.reviewStatus !== "pending_ocr") {
       const completed = await markReady(match);
       if (!completed) return;
-    }
-
-    const next = matches[currentIndex + 1];
-    if (next) {
-      selectReviewMatch(next);
+      setReviewNotice("OCR이 완료되었습니다. 아래 OCR 결과를 확인하고 수정한 뒤 최종 저장해 주세요.");
       return;
     }
 
-    setMessage("이번에 발견된 모든 경기 검수가 끝났습니다.");
-    closeReview();
+    setReviewNotice("아래 OCR 결과를 검수한 뒤 'OCR 검수 완료'를 눌러 주세요.");
+  }
+
+  function updateOcrEditable(matchId: string, patch: Partial<EditableMatchFields>) {
+    patchMatch(matchId, (current) => ({
+      ...current,
+      ocrEditable: {
+        ...(current.ocrEditable ?? {
+          played_at: new Date(current.startedAt).toISOString(),
+          map_name: "",
+          game_mode: "",
+          result: "unknown" as MatchResult,
+          my_hero: "",
+          season: "",
+          patch_label: "",
+          side: "unknown",
+          control_submap: "",
+          round_sequence: "",
+          match_duration: "",
+          notes: "",
+        }),
+        ...patch,
+      },
+    }));
+  }
+
+  async function confirmOcrReview(match: DetectedMatch) {
+    if (!match.backendMatchId) {
+      setReviewNotice("저장된 match_id가 없어 OCR 검수를 완료할 수 없습니다.");
+      return;
+    }
+
+    setUploadState({
+      phase: "completing",
+      current: 1,
+      total: 1,
+      message: "검수한 OCR 값을 저장하고 있습니다...",
+      matchId: match.backendMatchId,
+    });
+
+    try {
+      const adapter = getMatchBackendAdapter();
+      const current = await adapter.getMatchImport(match.backendMatchId);
+      const reviewedMatch = match.ocrEditable ?? current.editable;
+      if (match.ocrEditable) {
+        await adapter.updateMatchImport(match.backendMatchId, match.ocrEditable);
+      }
+
+      const reviewDraft = loadReviewDraft(match.backendMatchId, reviewedMatch.my_hero);
+      await adapter.confirmMatch({
+        contract_version: "0.1",
+        match_id: match.backendMatchId,
+        match: reviewedMatch,
+        players: toConfirmPlayers(reviewDraft),
+        my_hero_details: toConfirmHeroDetails(reviewDraft),
+        manual_fields: {},
+      });
+
+      patchMatch(match.id, (item) => ({
+        ...item,
+        reviewStatus: "confirmed",
+        ocrEditable: reviewedMatch,
+      }));
+      setUploadState({
+        phase: "done",
+        current: 1,
+        total: 1,
+        message: "OCR 검수값 저장 완료",
+        matchId: match.backendMatchId,
+      });
+
+      const currentIndex = matches.findIndex((item) => item.id === match.id);
+      const next = matches[currentIndex + 1];
+      if (next) {
+        setReviewNotice("OCR 검수값을 저장했습니다. 다음 경기로 이동합니다.");
+        selectReviewMatch(next);
+      } else {
+        setMessage("이번에 발견된 모든 경기의 분류 · OCR · 검수가 끝났습니다.");
+        closeReview();
+      }
+    } catch (error) {
+      setUploadState({
+        phase: "error",
+        current: 0,
+        total: 1,
+        message: error instanceof Error ? error.message : "OCR 검수값 저장에 실패했습니다.",
+        matchId: match.backendMatchId,
+      });
+      setReviewNotice("OCR 검수값 저장에 실패했습니다. 값을 확인하고 다시 시도해 주세요.");
+    }
   }
 
   async function rerunOcr(match: DetectedMatch) {
@@ -787,6 +898,13 @@ export default function NewMatchPage() {
         })),
       );
 
+      patchMatch(match.id, (current) => ({
+        ...current,
+        reviewStatus: "pending_ocr",
+        ocrEditable: ocrView.editable,
+        ocrMessage: ocrView.ocr.message,
+        ocrGeneratedAt: ocrView.ocr.generated_at,
+      }));
       setUploadState({
         phase: ocrView.status === "failed" ? "error" : "done",
         current: activeFiles.length,
@@ -813,15 +931,16 @@ export default function NewMatchPage() {
 
 
   async function approveAllWithoutReview() {
-    const targets = matches.filter((item) => item.reviewStatus !== "pending_ocr");
+    const targets = matches.filter(
+      (item) => item.reviewStatus !== "pending_ocr" && item.reviewStatus !== "confirmed",
+    );
     if (targets.length === 0) {
-      setMessage("이번에 발견된 경기는 이미 모두 검수 완료 상태입니다.");
-      closeReview();
+      setMessage("이번에 발견된 경기는 이미 모두 OCR 단계까지 처리되었습니다.");
       return;
     }
 
     const ok = window.confirm(
-      `자동 분류 결과를 그대로 믿고 남은 ${targets.length}개 경기를 한 번에 검수 완료 처리할까요?\n\n미분류나 잘못된 분류가 있어도 그대로 저장됩니다.`,
+      `자동 분류 결과를 그대로 사용해 남은 ${targets.length}개 경기를 한 번에 OCR까지 실행할까요?\n\nOCR 결과는 이후 각 경기에서 직접 검수합니다.`,
     );
     if (!ok) return;
 
@@ -837,8 +956,9 @@ export default function NewMatchPage() {
     setBulkReviewState({ running: false, current: targets.length, total: targets.length });
 
     if (succeeded === targets.length) {
-      setMessage(`${succeeded}개 경기를 검수 건너뛰기로 모두 완료 처리했습니다.`);
-      closeReview();
+      setMessage(`${succeeded}개 경기의 OCR 실행이 끝났습니다. OCR 결과를 순서대로 검수해 주세요.`);
+      const first = targets[0];
+      if (first) selectReviewMatch(first);
     } else {
       setReviewNotice(`${targets.length}개 중 ${succeeded}개 완료. 실패한 경기는 다시 시도해 주세요.`);
     }
@@ -846,7 +966,9 @@ export default function NewMatchPage() {
 
   if (reviewingMatch) {
     const reviewIndex = matches.findIndex((match) => match.id === reviewingMatch.id);
-    const reviewedCount = matches.filter((match) => match.reviewStatus === "pending_ocr").length;
+    const reviewedCount = matches.filter(
+      (match) => match.reviewStatus === "pending_ocr" || match.reviewStatus === "confirmed",
+    ).length;
 
     return (
       <ReviewScreen
@@ -868,6 +990,8 @@ export default function NewMatchPage() {
         onReady={() => markReady(reviewingMatch)}
         onReadyAndNext={() => completeReviewAndNext(reviewingMatch)}
         onRerunOcr={() => rerunOcr(reviewingMatch)}
+        onConfirmOcr={() => confirmOcrReview(reviewingMatch)}
+        onUpdateOcrField={(patch) => updateOcrEditable(reviewingMatch.id, patch)}
         onApproveAll={() => approveAllWithoutReview()}
         bulkReviewState={bulkReviewState}
         uploadState={uploadState}
@@ -953,7 +1077,7 @@ export default function NewMatchPage() {
                       onClick={() => void approveAllWithoutReview()}
                       className="cursor-pointer rounded-xl border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-4 py-2.5 text-xs font-black text-[#8ee9aa] hover:bg-[rgba(121,227,156,0.10)] disabled:cursor-wait disabled:opacity-50"
                     >
-                      {bulkReviewState.running ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}` : "검수 건너뛰고 전체 완료"}
+                      {bulkReviewState.running ? `전체 OCR 중 ${bulkReviewState.current}/${bulkReviewState.total}` : "분류 검수 건너뛰고 전체 OCR"}
                     </button>
                   </div>
                 </div>
@@ -982,7 +1106,10 @@ export default function NewMatchPage() {
                               <span className="rounded-full bg-[rgba(249,158,26,0.14)] px-2 py-1 text-[9px] font-black text-[var(--orange)]">업로드 중</span>
                             )}
                             {match.reviewStatus === "pending_ocr" && (
-                              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2 py-1 text-[9px] font-black text-[#8fc1ff]">OCR 대기</span>
+                              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2 py-1 text-[9px] font-black text-[#8fc1ff]">OCR 검수</span>
+                            )}
+                            {match.reviewStatus === "confirmed" && (
+                              <span className="rounded-full bg-[rgba(121,227,156,0.12)] px-2 py-1 text-[9px] font-black text-[#8ee9aa]">저장 완료</span>
                             )}
                           </div>
                           <p className="ml-9 mt-1 text-xs text-[var(--muted)]">시작 {formatDate(match.startedAt)} · 이미지 {active.length}장</p>
@@ -1011,8 +1138,10 @@ export default function NewMatchPage() {
 
                       <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-[#0d1118] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <span className={`text-xs ${validation.valid ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
-                          {match.reviewStatus === "pending_ocr"
-                            ? "업로드/OCR 완료 · 상세 검수 대기"
+                          {match.reviewStatus === "confirmed"
+                            ? "분류 · OCR · 검수 저장 완료"
+                            : match.reviewStatus === "pending_ocr"
+                              ? "OCR 완료 · 아래에서 결과 검수" 
                             : match.reviewStatus === "uploading"
                               ? "업로드 진행 중"
                               : match.reviewStatus === "ready_to_upload"
@@ -1099,6 +1228,8 @@ function ReviewScreen({
   onReady,
   onReadyAndNext,
   onRerunOcr,
+  onConfirmOcr,
+  onUpdateOcrField,
   onApproveAll,
   bulkReviewState,
   uploadState,
@@ -1121,6 +1252,8 @@ function ReviewScreen({
   onReady: () => void;
   onReadyAndNext: () => void;
   onRerunOcr: () => void;
+  onConfirmOcr: () => void;
+  onUpdateOcrField: (patch: Partial<EditableMatchFields>) => void;
   onApproveAll: () => void;
   bulkReviewState: { running: boolean; current: number; total: number };
   uploadState: UploadUiState;
@@ -1169,7 +1302,7 @@ function ReviewScreen({
               >
                 {bulkReviewState.running
                   ? `전체 처리 중 ${bulkReviewState.current}/${bulkReviewState.total}`
-                  : "검수 건너뛰고 전체 완료"}
+                  : "분류 검수 건너뛰고 전체 OCR"}
               </button>
               <button
                 type="button"
@@ -1193,7 +1326,7 @@ function ReviewScreen({
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {queue.map((item, index) => {
               const valid = validateMatch(item).valid;
-              const done = item.reviewStatus === "pending_ocr";
+              const done = item.reviewStatus === "pending_ocr" || item.reviewStatus === "confirmed";
               const active = item.id === match.id;
 
               return (
@@ -1213,7 +1346,13 @@ function ReviewScreen({
                     경기 {index + 1}
                   </span>
                   <span className="mt-1 block text-[10px] font-bold text-white">
-                    {done ? "완료" : valid ? "검수 가능" : "확인 필요"}
+                    {item.reviewStatus === "confirmed"
+                      ? "저장 완료"
+                      : item.reviewStatus === "pending_ocr"
+                        ? "OCR 검수"
+                        : valid
+                          ? "분류 검수"
+                          : "확인 필요"}
                   </span>
                 </button>
               );
@@ -1367,45 +1506,24 @@ function ReviewScreen({
                 </div>
               )}
 
-              <div className="mt-4 flex gap-2">
-                {match.reviewStatus === "pending_ocr" && match.backendMatchId && (
-                  <button
-                    type="button"
-                    onClick={onRerunOcr}
-                    disabled={
-                      bulkReviewState.running ||
-                      uploadState.phase === "creating" ||
-                      uploadState.phase === "uploading" ||
-                      uploadState.phase === "completing"
-                    }
-                    className="shrink-0 cursor-pointer rounded-xl border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-4 py-3.5 text-xs font-bold text-[#9bc6ff] hover:bg-[rgba(102,169,255,0.13)] disabled:cursor-not-allowed disabled:opacity-35"
-                  >
-                    {uploadState.phase === "completing" ? "OCR 실행 중..." : "OCR 다시 실행"}
-                  </button>
-                )}
+              {match.reviewStatus !== "pending_ocr" && match.reviewStatus !== "confirmed" && (
                 <button
                   type="button"
                   disabled={
                     bulkReviewState.running ||
-                    (match.reviewStatus !== "pending_ocr" && !validation.valid) ||
+                    !validation.valid ||
                     uploadState.phase === "creating" ||
                     uploadState.phase === "uploading" ||
                     uploadState.phase === "completing"
                   }
                   onClick={onReadyAndNext}
-                  className="min-w-0 flex-1 rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="mt-4 w-full rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black transition enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {uploadState.phase === "creating" || uploadState.phase === "uploading" || uploadState.phase === "completing"
-                    ? "처리 중..."
-                    : match.reviewStatus === "pending_ocr"
-                      ? currentIndex < queue.length - 1
-                        ? "다음 경기 검수 →"
-                        : "전체 검수 완료"
-                      : currentIndex < queue.length - 1
-                        ? "검수 완료 · 다음 경기 →"
-                        : "검수 완료 · 전체 검수 끝"}
+                    ? "업로드 · OCR 실행 중..."
+                    : "분류 검수 완료 · OCR 실행"}
                 </button>
-              </div>
+              )}
               {match.reviewStatus !== "pending_ocr" && validation.valid && (
                 <button
                   type="button"
@@ -1424,6 +1542,114 @@ function ReviewScreen({
             </section>
           </aside>
         </div>
+
+        {match.backendMatchId && (match.reviewStatus === "pending_ocr" || match.reviewStatus === "confirmed") && (
+          <section className="mt-5 space-y-4 rounded-2xl border border-[rgba(102,169,255,0.28)] bg-[rgba(102,169,255,0.04)] p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="m-0 text-sm font-bold text-[#9bc6ff]">OCR 결과 검수</p>
+                <p className="mt-1 text-[10px] text-[var(--muted)]">
+                  이미지 분류와 OCR 검수를 이 화면에서 이어서 끝냅니다. 수정한 값이 최종 저장값이 됩니다.
+                </p>
+              </div>
+              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2.5 py-1 text-[9px] font-black text-[#9bc6ff]">
+                {match.reviewStatus === "confirmed" ? "SAVED" : "OCR REVIEW"}
+              </span>
+            </div>
+
+            {match.ocrEditable && (
+              <div className="grid gap-3 md:grid-cols-4">
+                <label>
+                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">결과</span>
+                  <select
+                    className="field-input"
+                    value={match.ocrEditable.result}
+                    disabled={match.reviewStatus === "confirmed"}
+                    onChange={(event) => onUpdateOcrField({ result: event.target.value as MatchResult })}
+                  >
+                    <option value="unknown">미확인</option>
+                    <option value="win">승리</option>
+                    <option value="loss">패배</option>
+                    <option value="draw">무승부</option>
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">게임 모드</span>
+                  <input
+                    className="field-input"
+                    value={match.ocrEditable.game_mode}
+                    disabled={match.reviewStatus === "confirmed"}
+                    onChange={(event) => onUpdateOcrField({ game_mode: event.target.value })}
+                    placeholder="게임 모드"
+                  />
+                </label>
+                <label>
+                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">경기 시간</span>
+                  <input
+                    className="field-input"
+                    value={match.ocrEditable.match_duration}
+                    disabled={match.reviewStatus === "confirmed"}
+                    onChange={(event) => onUpdateOcrField({ match_duration: event.target.value })}
+                    placeholder="예: 14:32"
+                  />
+                </label>
+                <label>
+                  <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">맵</span>
+                  <input
+                    className="field-input"
+                    value={match.ocrEditable.map_name}
+                    disabled={match.reviewStatus === "confirmed"}
+                    onChange={(event) => onUpdateOcrField({ map_name: event.target.value })}
+                    placeholder="맵 이름"
+                  />
+                </label>
+              </div>
+            )}
+
+            {match.ocrMessage && (
+              <div className="rounded-lg border border-[#303847] bg-[#0a0d12] px-3 py-2 text-[10px] text-[var(--muted)]">
+                {match.ocrMessage}
+              </div>
+            )}
+
+            {match.reviewStatus === "pending_ocr" && (
+              <MatchReviewEditor
+                key={`${match.backendMatchId}:${match.ocrGeneratedAt ?? ""}`}
+                matchId={match.backendMatchId}
+                defaultHero={match.ocrEditable?.my_hero ?? ""}
+              />
+            )}
+
+            {match.reviewStatus === "confirmed" ? (
+              <div className="rounded-xl border border-[rgba(121,227,156,0.28)] bg-[rgba(121,227,156,0.06)] px-4 py-3 text-xs font-bold text-[#8ee9aa]">
+                OCR 검수값이 최종 저장되었습니다.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={onRerunOcr}
+                  disabled={uploadState.phase === "completing"}
+                  className="cursor-pointer rounded-xl border border-[rgba(102,169,255,0.35)] bg-[rgba(102,169,255,0.08)] px-5 py-3.5 text-xs font-bold text-[#9bc6ff] hover:bg-[rgba(102,169,255,0.13)] disabled:opacity-35"
+                >
+                  {uploadState.phase === "completing" ? "OCR 실행 중..." : "OCR 다시 실행"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirmOcr}
+                  disabled={uploadState.phase === "completing"}
+                  className="flex-1 cursor-pointer rounded-xl bg-[var(--orange)] px-5 py-3.5 text-sm font-black text-black hover:brightness-110 disabled:opacity-35"
+                >
+                  {uploadState.phase === "completing"
+                    ? "저장 중..."
+                    : currentIndex < queue.length - 1
+                      ? "OCR 검수 완료 · 다음 경기 →"
+                      : "OCR 검수 완료 · 전체 등록 끝"}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </main>
   );
