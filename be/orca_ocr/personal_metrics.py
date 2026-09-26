@@ -171,14 +171,22 @@ def _label_similarity(a: str, b: str) -> float:
 
 
 def infer_hero_from_metric_labels(labels: list[str]) -> dict[str, Any]:
-    """Infer the selected hero from several hero-specific Personal stat labels.
+    """Infer hero only from labels that are unique to one registered hero.
 
-    This is a fallback for cases where the hero-name OCR is poor. A hero must have
-    multiple reasonably strong label matches before we accept the inference.
+    Shared labels such as objective contest time / players saved must never be
+    enough to identify a hero. Two unique metric matches are required.
     """
     normalized=[normalize_metric_label(v) for v in labels if normalize_metric_label(v)]
-    ranked: list[tuple[int, float, str, list[dict[str, Any]]]]=[]
 
+    alias_owners: dict[str,set[str]]={}
+    for owner,metrics in HERO_METRICS.items():
+        for meta in metrics.values():
+            for alias in meta.get("aliases", []):
+                alias_norm=normalize_metric_label(alias)
+                if alias_norm:
+                    alias_owners.setdefault(alias_norm,set()).add(owner)
+
+    ranked: list[tuple[int, float, str, list[dict[str, Any]]]]=[]
     for hero_key,metrics in HERO_METRICS.items():
         hits=[]
         used_keys=set()
@@ -190,7 +198,10 @@ def infer_hero_from_metric_labels(labels: list[str]) -> dict[str, Any]:
                 if metric_key in used_keys:
                     continue
                 for alias in meta.get("aliases", []):
-                    score=_label_similarity(label,normalize_metric_label(alias))
+                    alias_norm=normalize_metric_label(alias)
+                    if len(alias_owners.get(alias_norm,set()))!=1:
+                        continue
+                    score=_label_similarity(label,alias_norm)
                     if best is None or score>best[0]:
                         best=(score,metric_key,alias)
 
@@ -214,7 +225,7 @@ def infer_hero_from_metric_labels(labels: list[str]) -> dict[str, Any]:
     count,total,hero_key,hits=ranked[0]
     second_count=ranked[1][0] if len(ranked)>1 else 0
     confident=count>=2 and count>second_count
-    confidence=min(0.99,0.55+0.10*count+0.08*max(0,count-second_count)) if confident else 0.0
+    confidence=min(0.99,0.60+0.10*count+0.08*max(0,count-second_count)) if confident else 0.0
 
     return {
         "hero_key": hero_key if confident else None,
