@@ -166,7 +166,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     },
     "mizuki": {
         "healing_hat_healing": {"aliases": ["치유의 삿갓으로 치유"]},
-        "enemies_bound": {"aliases": ["속박한 적", "방해한 적"]},
+        "enemies_bound": {"aliases": ["속박한 적", "방해한 적", "방하하 적"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
         "barrier_sanctuary_absorbed": {"aliases": ["결계 성역으로 흡수", "흡수한 피해"]},
         "spirit_shuriken_accuracy": {"aliases": ["영혼 수리검 명중률"]},
