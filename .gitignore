@@ -26,3 +26,12 @@ be/ocr_benchmark/*_montage.jpg
 be/ocr_benchmark/last_*.json
 be/tools/DataTool/
 be/ocr_benchmark/datatool_extract/
+
+# OCR generated benchmark outputs
+be/ocr_benchmark/community_scoreboard_icons/
+be/ocr_benchmark/scoreboard_hero_clusters/
+be/ocr_benchmark/hero_clusters.jpg
+be/ocr_benchmark/hero_coverage_report.json
+be/ocr_benchmark/new_5v5_hero_scan.json
+be/ocr_benchmark/new_5v5_needs_review.jpg
+be/orca_ocr/hero_ground_truth_conflicts.json
