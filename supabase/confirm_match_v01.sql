@@ -378,8 +378,11 @@ create table if not exists public.my_hero_details (
   hero_key text,
   play_time text,
   play_time_seconds integer,
-  accuracy text,
-  crit_rate text,
+  weapon_accuracy text,
+  players_saved text,
+  objective_contest_time text,
+  final_blows text,
+  solo_kills text,
   hero_specific jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   created_at_kst timestamp
@@ -387,7 +390,72 @@ create table if not exists public.my_hero_details (
 
 alter table public.my_hero_details add column if not exists hero_key text;
 alter table public.my_hero_details add column if not exists play_time_seconds integer;
+alter table public.my_hero_details add column if not exists weapon_accuracy text;
+alter table public.my_hero_details add column if not exists players_saved text;
+alter table public.my_hero_details add column if not exists objective_contest_time text;
+alter table public.my_hero_details add column if not exists final_blows text;
+alter table public.my_hero_details add column if not exists solo_kills text;
 alter table public.my_hero_details add column if not exists created_at_kst timestamp;
+
+-- Migrate legacy Personal columns/JSON into the new promoted metric columns.
+-- Keep critical_hit_accuracy in hero_specific because it is not shared by a majority
+-- of heroes in any role.
+do $orca$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='my_hero_details' and column_name='accuracy'
+  ) then
+    execute $sql$
+      update public.my_hero_details
+      set weapon_accuracy = coalesce(
+        nullif(weapon_accuracy,''),
+        nullif(accuracy,''),
+        nullif(hero_specific->>'weapon_accuracy','')
+      )
+    $sql$;
+  else
+    update public.my_hero_details
+    set weapon_accuracy = coalesce(
+      nullif(weapon_accuracy,''),
+      nullif(hero_specific->>'weapon_accuracy','')
+    );
+  end if;
+
+  update public.my_hero_details
+  set
+    players_saved = coalesce(nullif(players_saved,''), nullif(hero_specific->>'players_saved','')),
+    objective_contest_time = coalesce(nullif(objective_contest_time,''), nullif(hero_specific->>'objective_contest_time','')),
+    final_blows = coalesce(nullif(final_blows,''), nullif(hero_specific->>'final_blows','')),
+    solo_kills = coalesce(nullif(solo_kills,''), nullif(hero_specific->>'solo_kills',''));
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='my_hero_details' and column_name='crit_rate'
+  ) then
+    execute $sql$
+      update public.my_hero_details
+      set hero_specific =
+        (coalesce(hero_specific,'{}'::jsonb)
+          - array['weapon_accuracy','players_saved','objective_contest_time','final_blows','solo_kills'])
+        || case
+             when nullif(crit_rate,'') is not null
+               and nullif(hero_specific->>'critical_hit_accuracy','') is null
+             then jsonb_build_object('critical_hit_accuracy', crit_rate)
+             else '{}'::jsonb
+           end
+    $sql$;
+  else
+    update public.my_hero_details
+    set hero_specific =
+      coalesce(hero_specific,'{}'::jsonb)
+      - array['weapon_accuracy','players_saved','objective_contest_time','final_blows','solo_kills'];
+  end if;
+
+  alter table public.my_hero_details drop column if exists accuracy;
+  alter table public.my_hero_details drop column if exists crit_rate;
+end;
+$orca$;
 
 alter table public.match_players enable row level security;
 alter table public.my_hero_details enable row level security;
@@ -527,9 +595,13 @@ declare
   v_player jsonb;
   v_detail jsonb;
   v_personal_ocr jsonb;
+  v_all_metrics jsonb;
   v_hero_specific jsonb;
-  v_ocr_accuracy text;
-  v_ocr_crit_rate text;
+  v_weapon_accuracy text;
+  v_players_saved text;
+  v_objective_contest_time text;
+  v_final_blows text;
+  v_solo_kills text;
   v_round jsonb;
 begin
   if v_user_id is null then
@@ -586,9 +658,13 @@ begin
   loop
     -- Use OCR fallback from the same hero only.
     v_personal_ocr := null;
+    v_all_metrics := '{}'::jsonb;
     v_hero_specific := '{}'::jsonb;
-    v_ocr_accuracy := null;
-    v_ocr_crit_rate := null;
+    v_weapon_accuracy := null;
+    v_players_saved := null;
+    v_objective_contest_time := null;
+    v_final_blows := null;
+    v_solo_kills := null;
 
     if nullif(v_detail->>'hero_key','') is not null then
       select u.ocr_raw
@@ -608,26 +684,45 @@ begin
         jsonb_object_agg(metric->>'metric_key', metric->'value'),
         '{}'::jsonb
       )
-      into v_hero_specific
+      into v_all_metrics
       from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-      where nullif(metric->>'metric_key','') is not null
-        and coalesce(metric->>'scope','') = 'hero_specific';
-
-      select metric->>'value'
-        into v_ocr_accuracy
-      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-      where metric->>'metric_key' = 'weapon_accuracy'
-      limit 1;
-
-      select metric->>'value'
-        into v_ocr_crit_rate
-      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-      where metric->>'metric_key' = 'critical_hit_accuracy'
-      limit 1;
+      where nullif(metric->>'metric_key','') is not null;
     end if;
 
+    -- FE-reviewed hero_specific values override OCR. Legacy accuracy/critical
+    -- fields are accepted until FE migrates to the promoted metric contract.
+    v_all_metrics :=
+      coalesce(v_all_metrics,'{}'::jsonb)
+      ||
+      case
+        when jsonb_typeof(v_detail->'hero_specific') = 'object'
+          then v_detail->'hero_specific'
+        else '{}'::jsonb
+      end
+      ||
+      jsonb_strip_nulls(
+        jsonb_build_object(
+          'weapon_accuracy', nullif(v_detail->>'accuracy',''),
+          'critical_hit_accuracy', nullif(v_detail->>'critical',''),
+          'custom_label', nullif(v_detail->>'custom_label',''),
+          'custom_value', nullif(v_detail->>'custom_value','')
+        )
+      );
+
+    v_weapon_accuracy := nullif(v_all_metrics->>'weapon_accuracy','');
+    v_players_saved := nullif(v_all_metrics->>'players_saved','');
+    v_objective_contest_time := nullif(v_all_metrics->>'objective_contest_time','');
+    v_final_blows := nullif(v_all_metrics->>'final_blows','');
+    v_solo_kills := nullif(v_all_metrics->>'solo_kills','');
+
+    v_hero_specific :=
+      coalesce(v_all_metrics,'{}'::jsonb)
+      - array['weapon_accuracy','players_saved','objective_contest_time','final_blows','solo_kills'];
+
     insert into public.my_hero_details (
-      user_id, match_id, hero_id, hero_key, play_time, play_time_seconds, accuracy, crit_rate, hero_specific
+      user_id, match_id, hero_id, hero_key, play_time, play_time_seconds,
+      weapon_accuracy, players_saved, objective_contest_time, final_blows, solo_kills,
+      hero_specific
     ) values (
       v_user_id,
       p_match_id,
@@ -646,28 +741,12 @@ begin
           + split_part(coalesce(nullif(v_detail->>'play_time',''), nullif(v_personal_ocr->>'play_time','')), ':', 2)::integer
         else null
       end,
-      coalesce(
-        nullif(v_detail->>'accuracy',''),
-        v_ocr_accuracy
-      ),
-      coalesce(
-        nullif(v_detail->>'critical',''),
-        v_ocr_crit_rate
-      ),
-      coalesce(v_hero_specific,'{}'::jsonb)
-      ||
-      case
-        when jsonb_typeof(v_detail->'hero_specific') = 'object'
-          then v_detail->'hero_specific'
-        else '{}'::jsonb
-      end
-      ||
-      jsonb_strip_nulls(
-        jsonb_build_object(
-          'custom_label', nullif(v_detail->>'custom_label',''),
-          'custom_value', nullif(v_detail->>'custom_value','')
-        )
-      )
+      v_weapon_accuracy,
+      v_players_saved,
+      v_objective_contest_time,
+      v_final_blows,
+      v_solo_kills,
+      v_hero_specific
     );
   end loop;
 
@@ -684,33 +763,36 @@ begin
         and nullif(u.ocr_raw->>'hero_key','') is not null
       order by u.ocr_raw->>'hero_key', u.created_at desc
     loop
+      v_all_metrics := '{}'::jsonb;
       v_hero_specific := '{}'::jsonb;
-      v_ocr_accuracy := null;
-      v_ocr_crit_rate := null;
+      v_weapon_accuracy := null;
+      v_players_saved := null;
+      v_objective_contest_time := null;
+      v_final_blows := null;
+      v_solo_kills := null;
 
       select coalesce(
         jsonb_object_agg(metric->>'metric_key', metric->'value'),
         '{}'::jsonb
       )
-      into v_hero_specific
+      into v_all_metrics
       from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-      where nullif(metric->>'metric_key','') is not null
-        and coalesce(metric->>'scope','') = 'hero_specific';
+      where nullif(metric->>'metric_key','') is not null;
 
-      select metric->>'value'
-        into v_ocr_accuracy
-      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-      where metric->>'metric_key' = 'weapon_accuracy'
-      limit 1;
+      v_weapon_accuracy := nullif(v_all_metrics->>'weapon_accuracy','');
+      v_players_saved := nullif(v_all_metrics->>'players_saved','');
+      v_objective_contest_time := nullif(v_all_metrics->>'objective_contest_time','');
+      v_final_blows := nullif(v_all_metrics->>'final_blows','');
+      v_solo_kills := nullif(v_all_metrics->>'solo_kills','');
 
-      select metric->>'value'
-        into v_ocr_crit_rate
-      from jsonb_array_elements(coalesce(v_personal_ocr->'metrics','[]'::jsonb)) metric
-      where metric->>'metric_key' = 'critical_hit_accuracy'
-      limit 1;
+      v_hero_specific :=
+        coalesce(v_all_metrics,'{}'::jsonb)
+        - array['weapon_accuracy','players_saved','objective_contest_time','final_blows','solo_kills'];
 
       insert into public.my_hero_details (
-        user_id, match_id, hero_id, hero_key, play_time, play_time_seconds, accuracy, crit_rate, hero_specific
+        user_id, match_id, hero_id, hero_key, play_time, play_time_seconds,
+        weapon_accuracy, players_saved, objective_contest_time, final_blows, solo_kills,
+        hero_specific
       ) values (
         v_user_id,
         p_match_id,
@@ -723,9 +805,12 @@ begin
             + split_part(v_personal_ocr->>'play_time', ':', 2)::integer
           else null
         end,
-        v_ocr_accuracy,
-        v_ocr_crit_rate,
-        coalesce(v_hero_specific,'{}'::jsonb)
+        v_weapon_accuracy,
+        v_players_saved,
+        v_objective_contest_time,
+        v_final_blows,
+        v_solo_kills,
+        v_hero_specific
       );
     end loop;
   end if;
