@@ -254,7 +254,16 @@ begin
     result = coalesce(nullif(p_match->>'result',''), result),
     duration_seconds = coalesce(
       case
-        when coalesce(p_match->>'match_duration','') ~ '^\\d{1,3}:\\d{2}
+        when coalesce(p_match->>'match_duration','') ~ '^[0-9]{1,3}:[0-9]{2}$' then
+          split_part(p_match->>'match_duration', ':', 1)::integer * 60
+          + split_part(p_match->>'match_duration', ':', 2)::integer
+        else null
+      end,
+      duration_seconds
+    ),
+    import_status = 'confirmed'
+  where id = p_match_id and user_id = v_user_id;
+
   return jsonb_build_object('match_id', p_match_id, 'status', 'confirmed');
 end;
 $$;
