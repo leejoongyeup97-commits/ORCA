@@ -513,7 +513,10 @@ def fetch_patchnote(url: str) -> dict:
     # Remove one standalone publication date or relative-time label near the top.
     if body_lines and _to_iso_date(body_lines[0]) == published_date:
         body_lines = body_lines[1:]
-    while body_lines and _RELATIVE_TIME_RE.fullmatch(_clean_inline(body_lines[0])):
+    while body_lines and re.fullmatch(
+        r"^(?:방금\\s*전|\\d+\\s*(?:초|분|시간|일|주|개월|달|년)\\s*전)$",
+        _clean_inline(body_lines[0]),
+    ):
         body_lines = body_lines[1:]
 
     # Everything after the share/list controls belongs to the site footer.
