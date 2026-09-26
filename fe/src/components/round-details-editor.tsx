@@ -87,15 +87,13 @@ export default function RoundDetailsEditor({
           <p className="m-0 text-[12px] leading-6 text-[var(--muted)]">
             현재 맵/모드에 등록된 세부맵 기준 데이터가 없습니다.
           </p>
-          {process.env.NODE_ENV === "development" && (
-            <button
-              type="button"
-              onClick={loadExampleRounds}
-              className="app-secondary-button mt-3 cursor-pointer"
-            >
-              예시 데이터 채우기
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={loadExampleRounds}
+            className="app-secondary-button mt-3 cursor-pointer"
+          >
+            예시 데이터 채우기
+          </button>
         </div>
       ) : rounds.length === 0 ? (
         <p className="mt-4 border-y border-[var(--line)] py-3 text-[12px] leading-6 text-[var(--muted)]">
