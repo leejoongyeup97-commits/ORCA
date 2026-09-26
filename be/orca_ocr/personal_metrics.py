@@ -382,6 +382,54 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "negative_effects_cleansed": {"aliases": ["부정적인 효과 정화", "부정적인흐과정화"]},
     },
+    "freja": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "lasso_shot_damage": {"aliases": ["올가미 사격으로 준 피해"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "aimed_shot_accuracy": {"aliases": ["정조준 명중률"]},
+        "bonus_ultimate_charge": {"aliases": ["추가 궁극기 충전 획득"]},
+        "solo_kills": {"aliases": ["단독 처치"]},
+        "aimed_shot_kills": {"aliases": ["정조준으로 처치"]},
+    },
+    "hazard": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "jagged_wall_damage": {"aliases": ["날카로운 저항으로 준 피해", "날카로운 저함으로 준 피해"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "spike_downpour_kills": {"aliases": ["가시 소나기로 처치", "가시 소나기 처치"]},
+        "environmental_kills": {"aliases": ["환경 요소로 처치"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "lunge_damage": {"aliases": ["덤벼들기로 준 피해"]},
+    },
+    "hanzo": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "storm_arrow_kills": {"aliases": ["폭풍 화살로 처치"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "recon_assists": {"aliases": ["처치 시야 지원", "저지시야지원"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지", "단독저지"]},
+        "long_range_final_blows": {"aliases": ["장거리 결정타"]},
+        "dragonstrike_kills": {"aliases": ["용의 일격으로 처치", "응의 일격으로저치"]},
+    },
+    "orisa": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "javelin_spin_kills": {"aliases": ["수호의 창으로 처치", "수호의장으로저치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "energy_javelin_kills": {"aliases": ["투창으로 처치"]},
+        "environmental_kills": {"aliases": ["환경 요소로 처치"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "energy_javelin_accuracy": {"aliases": ["투창 명중률"]},
+        "terra_surge_kills": {"aliases": ["대지의 창으로 처치"]},
+    },
+    "wreckingball": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "adaptive_shield_generated": {"aliases": ["생성한 적응형 보호막", "성성한 적응형 보호막"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "piledriver_kills": {"aliases": ["파일드라이버로 처치"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "grapple_kills": {"aliases": ["갈고리 고정으로 처치"]},
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -424,6 +472,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "cassidy": ["캐서디", "CASSIDY"],
     "torbjorn": ["토르비욘", "토르비온", "TORBJORN", "TORBJÖRN"],
     "kiriko": ["키리코", "KIRIKO"],
+    "freja": ["프레야", "FREJA"],
+    "hazard": ["해저드", "HAZARD"],
+    "hanzo": ["한조", "HANZO"],
+    "orisa": ["오리사", "ORISA"],
+    "wreckingball": ["레킹볼", "레킹 볼", "WRECKING BALL"],
 }
 
 
@@ -583,6 +636,28 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "kiriko": [
         "critical_hit_accuracy","players_saved","healing_ofuda_accuracy",
         "kunai_kills","weapon_accuracy","negative_effects_cleansed",
+    ],
+    "freja": [
+        "weapon_accuracy","lasso_shot_damage","final_blows","aimed_shot_accuracy",
+        "bonus_ultimate_charge","solo_kills","aimed_shot_kills",
+    ],
+    "hazard": [
+        "weapon_accuracy","jagged_wall_damage","objective_contest_time",
+        "spike_downpour_kills","environmental_kills","players_saved","lunge_damage",
+    ],
+    "hanzo": [
+        "weapon_accuracy","storm_arrow_kills","final_blows","critical_hit_accuracy",
+        "recon_assists","solo_kills","long_range_final_blows","dragonstrike_kills",
+    ],
+    "orisa": [
+        "weapon_accuracy","javelin_spin_kills","objective_contest_time",
+        "energy_javelin_kills","environmental_kills","players_saved",
+        "energy_javelin_accuracy","terra_surge_kills",
+    ],
+    "wreckingball": [
+        "weapon_accuracy","adaptive_shield_generated","objective_contest_time",
+        "critical_hit_accuracy","piledriver_kills","players_saved",
+        "grapple_kills","knockback_kills",
     ],
 }
 
