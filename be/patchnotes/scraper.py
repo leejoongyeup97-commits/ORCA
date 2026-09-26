@@ -206,7 +206,7 @@ def _extract_patchnote_urls(raw_html: str) -> list[str]:
     """Find detail URLs even when they live inside rendered/script markup."""
     normalized = html_lib.unescape(raw_html).replace(r"\/", "/")
     matches = re.findall(
-        r"(?:https://overwatch\.nexon\.com)?(/news/patchnotes/\d+/[^\"'<>\s?#]+)",
+        r"(?:https://overwatch\.nexon\.com)?(/news/patchnotes/\d+(?:/[^\"'<>\s?#]+)?)",
         normalized,
         flags=re.I,
     )
@@ -218,6 +218,91 @@ def _extract_patchnote_urls(raw_html: str) -> list[str]:
             seen.add(url)
             urls.append(url)
     return urls
+
+
+def _items_from_raw_markup(raw_html: str, limit: int) -> list[PatchNoteItem]:
+    """Recover cards when Nexon's rendered DOM keeps title and route outside a normal <a>."""
+    normalized = html_lib.unescape(raw_html).replace(r"\/", "/")
+    title_pattern = re.compile(
+        r"오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일"
+    )
+    route_pattern = re.compile(
+        r"(?:https://overwatch\.nexon\.com)?(/news/patchnotes/\d+(?:/[^\"'<>\s?#]+)?)",
+        flags=re.I,
+    )
+
+    items: list[PatchNoteItem] = []
+    seen_urls: set[str] = set()
+
+    for match in title_pattern.finditer(normalized):
+        left = max(0, match.start() - 2500)
+        right = min(len(normalized), match.end() + 2500)
+        window = normalized[left:right]
+        route_matches = list(route_pattern.finditer(window))
+        if not route_matches:
+            continue
+
+        title_center = match.start() - left
+        nearest = min(
+            route_matches,
+            key=lambda route: abs(((route.start() + route.end()) // 2) - title_center),
+        )
+        absolute = urljoin(BASE_URL, nearest.group(1))
+        if absolute in seen_urls:
+            continue
+
+        title = _clean_inline(match.group(0))
+        seen_urls.add(absolute)
+        items.append(
+            PatchNoteItem(
+                title=title,
+                published_date=_to_iso_date(title),
+                url=absolute,
+            )
+        )
+        if len(items) >= limit:
+            break
+
+    return items
+
+
+def patchnotes_debug() -> dict:
+    """Small diagnostics payload so we can see what Nexon actually returned on the user's PC."""
+    plain = _fetch_html(LIST_URL)
+    plain_parser = _PageParser()
+    plain_parser.feed(plain)
+
+    result = {
+        "collector_version": "0.2",
+        "chrome_path": _find_chrome_executable(),
+        "plain_html_length": len(plain),
+        "plain_anchor_count": len(plain_parser.anchors),
+        "plain_patch_urls": _extract_patchnote_urls(plain)[:10],
+        "plain_title_hits": re.findall(
+            r"오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일",
+            html_lib.unescape(plain),
+        )[:10],
+    }
+
+    try:
+        rendered = _fetch_rendered_html(LIST_URL)
+        rendered_parser = _PageParser()
+        rendered_parser.feed(rendered)
+        result.update(
+            {
+                "rendered_html_length": len(rendered),
+                "rendered_anchor_count": len(rendered_parser.anchors),
+                "rendered_patch_urls": _extract_patchnote_urls(rendered)[:10],
+                "rendered_title_hits": re.findall(
+                    r"오버워치(?:\s*2)?\s*패치\s*노트\s*[-–—]\s*20\d{2}년\s*\d{1,2}월\s*\d{1,2}일",
+                    html_lib.unescape(rendered),
+                )[:10],
+            }
+        )
+    except Exception as exc:
+        result["rendered_error"] = f"{type(exc).__name__}: {exc}"
+
+    return result
 
 
 def _items_from_html(raw_html: str, limit: int) -> list[PatchNoteItem]:
@@ -232,7 +317,7 @@ def _items_from_html(raw_html: str, limit: int) -> list[PatchNoteItem]:
         parsed = urlparse(absolute)
         if parsed.hostname not in _ALLOWED_HOSTS:
             continue
-        if not re.match(r"^/news/patchnotes/\d+/", parsed.path):
+        if not re.match(r"^/news/patchnotes/\d+(?:/|$)", parsed.path):
             continue
         if absolute in seen:
             continue
@@ -265,6 +350,9 @@ def list_patchnotes(limit: int = 20) -> list[dict]:
     if not items:
         rendered_html = _fetch_rendered_html(LIST_URL)
         items = _items_from_html(rendered_html, limit)
+
+        if not items:
+            items = _items_from_raw_markup(rendered_html, limit)
 
         # Last fallback: if clickable cards do not expose anchor text cleanly,
         # discover their URLs from the rendered DOM and read each detail page.
