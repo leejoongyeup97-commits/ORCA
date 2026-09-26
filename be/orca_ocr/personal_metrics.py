@@ -70,6 +70,15 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
         "seismic_slam_kills": {"aliases": ["지진 강타로 처치", "지진 강타로 저지"]},
     },
+    "dmon": {
+        "fusion_repeater_accuracy": {"aliases": ["융합 연발총 명중률"]},
+        "limit_break_kills": {"aliases": ["한계 돌파로 처치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "fusion_repeater_kills": {"aliases": ["융합 연발총으로 처치", "융합 연발총로 처치"]},
+        "damage_amplified": {"aliases": ["공격력 증폭"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "surging_strike_kills": {"aliases": ["돌진 강타로 처치", "밀쳐내기로 처치"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -79,6 +88,7 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "genji": ["겐지"],
     "domina": ["도미나"],
     "doomfist": ["둠피스트", "DOOMFIST"],
+    "dmon": ["D.Mon", "DMon", "디몬"],
 }
 
 
