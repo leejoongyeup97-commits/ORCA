@@ -411,7 +411,7 @@ function HeroDetailEditor({
       <div className="space-y-4">
         {items.map((item, index) => (
           <div
-            key={item.id}
+            key={`${item.id}-${index}`}
             className="rounded-md border border-[var(--line)] bg-transparent p-4"
           >
             <div className="mb-4 flex items-center justify-between gap-3">
