@@ -1028,8 +1028,10 @@ def extract_personal(img, hero_key=None):
     # times are shorter in normal Personal-stat layouts.
     hero_times=re.findall(r'\b\d{1,2}:\d{2}\b',hero_summary_raw)
     if hero_times:
-        play_time=hero_times[-1]
-    else:
+        plausible=[v for v in hero_times if (lambda p:int(p[0])*60+int(p[1]))(v.split(':',1))<=45*60]
+        if plausible:
+            play_time=plausible[-1]
+    if play_time is None:
         panel_times=re.findall(r'\b\d{1,2}:\d{2}\b',panel_text)
         if panel_times:
             def _mmss_seconds(value):
@@ -1071,7 +1073,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.17-dev',
+        'ocr_version':'0.10.18-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
