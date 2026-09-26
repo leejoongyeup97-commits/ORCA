@@ -442,43 +442,49 @@ def _rapid_read_cell(engine,cell,key):
     best=max(grouped,key=lambda v:(len(grouped[v]),max(grouped[v])))
     return best,max(grouped[best])
 
-def _tesseract_read_cell(cell,key):
-    """Cross-check compact scoreboard numbers with Tesseract.
+def _rapid_read_cell_consensus(engine,cell,key):
+    """RapidOCR-only ensemble for compact scoreboard counts.
 
-    RapidOCR occasionally confuses a narrow 7 with 1 on the Team screen.
-    Multiple threshold/PSM reads give a stable consensus for the small integer
-    columns without affecting the large damage/healing totals.
+    Use several crops/threshold variants and majority vote so a single 7->1
+    misread cannot dominate the final Team stat.
     """
     if key not in ('elims','assists','deaths'):
-        return None,0.0
+        return _rapid_read_cell(engine,cell,key)
+
     gray=cv2.cvtColor(cell,cv2.COLOR_BGR2GRAY) if len(cell.shape)==3 else cell
-    up=cv2.resize(gray,None,fx=4.0,fy=4.0,interpolation=cv2.INTER_CUBIC)
-    variants=[up]
-    for threshold in (150,180,200):
-        variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+    h,w=gray.shape[:2]
+    crops=[
+        gray,
+        gray[:, max(0,int(w*0.08)):min(w,int(w*0.92))],
+        gray[max(0,int(h*0.08)):min(h,int(h*0.92)), :],
+    ]
 
     reads=[]
-    for image in variants:
-        for psm in (6,7,10):
-            txt=pytesseract.image_to_string(
-                image,
-                lang='eng',
-                config=f'--psm {psm} -c tessedit_char_whitelist=0123456789'
-            ).strip()
-            digits=re.sub(r'\D','',txt)
-            if digits:
-                try:
-                    value=int(digits)
-                except ValueError:
-                    continue
-                if value<=99:
-                    reads.append(value)
+    for crop in crops:
+        up=cv2.resize(crop,None,fx=4.0,fy=4.0,interpolation=cv2.INTER_CUBIC)
+        variants=[up]
+        for threshold in (130,150,170,190,210):
+            variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+            variants.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
+        for image in variants:
+            value,score=_rapid_read_one(engine,image)
+            if value is not None and value<=99:
+                reads.append((value,float(score)))
 
     if not reads:
         return None,0.0
-    counts={value:reads.count(value) for value in set(reads)}
-    best=max(counts,key=lambda value:counts[value])
-    confidence=min(0.99,0.70+0.03*counts[best])
+
+    grouped={}
+    for value,score in reads:
+        grouped.setdefault(value,[]).append(score)
+
+    best=max(
+        grouped,
+        key=lambda value:(len(grouped[value]), sum(grouped[value])/len(grouped[value]), max(grouped[value]))
+    )
+    votes=len(grouped[best])
+    avg_score=sum(grouped[best])/votes
+    confidence=min(0.99,0.65+0.03*votes+0.20*avg_score)
     return best,confidence
 
 
@@ -744,7 +750,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.15-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.16-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -817,19 +823,14 @@ def extract_team(img):
                 x1=max(0,cx-half_w); x2=min(w,cx+half_w)
                 y1=max(0,int(y)-half_h); y2=min(h,int(y)+half_h)
                 cell=board[y1:y2,x1:x2]
-                value,confidence=_rapid_read_cell(engine,cell,key)
-                tess_value,tess_confidence=_tesseract_read_cell(cell,key)
-                if tess_value is not None:
-                    if value is None or tess_value==value or tess_confidence>=0.88:
-                        value=tess_value
-                        confidence=max(float(confidence),float(tess_confidence))
+                value,confidence=_rapid_read_cell_consensus(engine,cell,key)
                 row[key]=value
                 row['confidence'][key]=round(float(confidence),3)
             rows.append(row)
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.15-dev',
+        'ocr_version':'0.9.16-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
