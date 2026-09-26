@@ -15,6 +15,19 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-26 · BE/DB Personal OCR 계약 반영
+- 상태: DONE
+- 내용:
+  - Team OCR의 `hero_id=한글 표시명`, `hero_key=영문 내부 key` 구분 반영
+  - Personal OCR의 `metrics[]`를 고정 필드가 아닌 동적 반복 검수 UI로 변경
+  - `metric_key`, `scope`, `needs_review`, confidence를 유지하고 값만 사용자가 수정 가능하도록 변경
+  - 검수 완료 시 `hero_specific={ metric_key: value }`로 변환하고 `weapon_accuracy` / `critical_hit_accuracy`는 accuracy / critical 필드로 전달
+  - Supabase 확정 처리를 `confirm_orca_match` RPC 호출로 변경하여 검수된 최종값을 DB에 전달
+  - 기존 nickname 입력 컬럼 제거 방향 유지
+- 관련: `fe/src/lib/review-draft.ts`, `fe/src/lib/ocr-review-mapping.ts`, `fe/src/lib/ocr-integration.ts`, `fe/src/components/match-review-editor.tsx`, `fe/src/lib/backend/contracts.ts`, `fe/src/lib/backend/supabase-adapter.ts`
+- 검증: Frontend Check 성공
+- 완료 커밋: ae2e3f4e31b7394e98e91acf47af2d9ff65f5c1b
+
 ### 2026-09-20 · 내 닉네임 Pool 제거
 - 상태: DONE
 - 내용:
