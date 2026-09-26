@@ -1,3 +1,4 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
 @import "tailwindcss";
 
 :root {
@@ -28,7 +29,8 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
   background: var(--bg);
 }
 
@@ -76,6 +78,25 @@ textarea { font: inherit; }
   background: var(--panel-3);
 }
 
+.app-button,
+.app-orange-button,
+.app-secondary-button,
+.app-danger-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 6px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .app-orange-button {
   background: var(--orange);
   color: #17120d;
@@ -86,4 +107,36 @@ textarea { font: inherit; }
 .app-orange-button:hover {
   background: var(--orange-2);
   border-color: var(--orange-2);
+}
+
+.app-secondary-button {
+  background: transparent;
+  color: #d5d6d9;
+  border: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.app-secondary-button:hover {
+  background: #151619;
+  color: #fff;
+}
+
+.app-danger-button {
+  background: transparent;
+  color: #d98b91;
+  border: 1px solid #4b2f33;
+  font-weight: 500;
+}
+
+.app-danger-button:hover {
+  background: #1c1214;
+}
+
+button:disabled,
+.app-button[aria-disabled="true"],
+.app-orange-button[aria-disabled="true"],
+.app-secondary-button[aria-disabled="true"],
+.app-danger-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
