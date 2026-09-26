@@ -185,10 +185,10 @@ export default function MatchesPage() {
           <span><strong className="font-semibold text-white">{matches.filter((m) => m.status === "confirmed").length}</strong> 확정</span>
         </section>
 
-        <section className="border-y border-[var(--line)]">
-          <div className="border-b border-[var(--line)] py-3">
+        <section className="border-t border-[var(--line)]">
+          <div className="border-b border-[var(--line)] py-2.5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1">
               <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>전체 {matches.length}</FilterButton>
               <FilterButton active={filter === "action"} onClick={() => setFilter("action")}>확인 필요 {actionCount}</FilterButton>
               <FilterButton active={filter === "pending_ocr"} onClick={() => setFilter("pending_ocr")}>OCR 대기</FilterButton>
@@ -199,15 +199,15 @@ export default function MatchesPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="맵 · 영웅 · 시즌 · 패치 · 경기 ID 검색"
-                className="w-full rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-xs text-white outline-none placeholder:text-[#657083] focus:border-[var(--orange)] xl:w-[300px]"
+                className="w-full rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[11px] text-white outline-none placeholder:text-[#666a73] focus:border-[#474a51] xl:w-[300px]"
               />
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-3">
+            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[var(--line-soft)] pt-2">
               <select
                 value={seasonFilter}
                 onChange={(event) => setSeasonFilter(event.target.value)}
-                className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-[10px] font-bold text-white outline-none"
+                className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#c7c9ce] outline-none"
               >
                 <option value="all">시즌 전체</option>
                 {seasonOptions.map((season) => <option key={season} value={season}>{season}</option>)}
@@ -215,7 +215,7 @@ export default function MatchesPage() {
               <select
                 value={patchFilter}
                 onChange={(event) => setPatchFilter(event.target.value)}
-                className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-[10px] font-bold text-white outline-none"
+                className="rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#c7c9ce] outline-none"
               >
                 <option value="all">패치 전체</option>
                 {patchOptions.map((patch) => <option key={patch} value={patch}>{patch}</option>)}
@@ -223,7 +223,7 @@ export default function MatchesPage() {
               <button
                 type="button"
                 onClick={toggleSelectAllVisible}
-                className="cursor-pointer rounded-md border border-[var(--line)] bg-[#111214] px-3 py-2 text-[10px] font-bold text-white hover:border-[#4b5668]"
+                className="cursor-pointer rounded-md border border-[var(--line)] bg-transparent px-3 py-2 text-[10px] font-medium text-[#c7c9ce] hover:border-[#4b5668]"
               >
                 {allVisibleSelected ? "현재 목록 선택 해제" : `현재 목록 전체 선택 (${visible.length})`}
               </button>
@@ -245,7 +245,7 @@ export default function MatchesPage() {
                     setPatchFilter("all");
                     setQuery("");
                   }}
-                  className="cursor-pointer rounded-md border border-[var(--line)] bg-[#111214] px-3 py-2 text-[10px] font-bold text-[var(--muted)] hover:text-white"
+                  className="cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-[10px] font-medium text-[var(--muted)] hover:text-white"
                 >
                   필터 초기화
                 </button>
@@ -338,10 +338,10 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-bold transition ${
+      className={`cursor-pointer rounded-md border px-3 py-2 text-[11px] font-medium transition ${
         active
-          ? "border-[rgba(249,158,26,0.45)] bg-[var(--orange-soft)] text-[var(--orange)]"
-          : "border-[var(--line)] bg-[#0d1118] text-[var(--muted)] hover:text-white"
+          ? "border-[#34373d] bg-[#17181b] text-white"
+          : "border-transparent bg-transparent text-[var(--muted)] hover:bg-[#121316] hover:text-white"
       }`}
     >
       {children}
