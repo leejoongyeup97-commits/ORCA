@@ -388,20 +388,18 @@ def _get_rapidocr_korean_engine():
     global _RAPIDOCR_KO_ENGINE
     if _RAPIDOCR_KO_ENGINE is None:
         try:
-            from rapidocr import RapidOCR
+            from rapidocr import EngineType, LangRec, ModelType, OCRVersion, RapidOCR
         except ImportError as exc:
             raise RuntimeError(
                 'RapidOCR is not installed. Run START_OCR.bat to synchronize backend dependencies.'
             ) from exc
-        # Dedicated Korean recognizer only for small Korean-only text regions
-        # such as the Summary map title. Do not replace the globally verified
-        # default OCR engine with this model.
+        # RapidOCR 3.x requires enum values for model-selection parameters.
         _RAPIDOCR_KO_ENGINE=RapidOCR(
             params={
-                'Rec.engine_type':'onnxruntime',
-                'Rec.lang_type':'korean',
-                'Rec.model_type':'mobile',
-                'Rec.ocr_version':'PP-OCRv5',
+                'Rec.engine_type':EngineType.ONNXRUNTIME,
+                'Rec.lang_type':LangRec.KOREAN,
+                'Rec.model_type':ModelType.MOBILE,
+                'Rec.ocr_version':OCRVersion.PPOCRV5,
             }
         )
     return _RAPIDOCR_KO_ENGINE
