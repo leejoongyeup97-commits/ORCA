@@ -1212,7 +1212,7 @@ def extract_personal(img, hero_key=None):
 
         # Juno's label crop can bleed into neighboring cards; use the verified
         # card order as authoritative once Juno is identified.
-        if hero_key in ('juno','kiriko') and name.startswith('metric_'):
+        if hero_key and name.startswith('metric_'):
             try:
                 metric_index=int(name.split('_',1)[1])-1
             except (ValueError,IndexError):
@@ -1252,7 +1252,7 @@ def extract_personal(img, hero_key=None):
             resolved=raw_resolved
             label_conf=max(label_conf,0.88)
 
-        if hero_key in ('juno','kiriko') and name.startswith('metric_'):
+        if hero_key and name.startswith('metric_'):
             try:
                 metric_index=int(name.split('_',1)[1])-1
             except (ValueError,IndexError):
@@ -1403,7 +1403,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.36-dev',
+        'ocr_version':'0.10.37-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
