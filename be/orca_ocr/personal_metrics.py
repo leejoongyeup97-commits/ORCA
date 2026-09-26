@@ -99,6 +99,52 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "pummel_kills": {"aliases": ["응징으로 처치"]},
         "annihilation_kills": {"aliases": ["절멸로 처치"]},
     },
+    "lifeweaver": {
+        "thorn_volley_kills": {"aliases": ["가시 연사로 처치", "가시 면사로 처치"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "life_grip_saves": {"aliases": ["구원의 손길로 선방", "구원의 손길 선방"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률", "무기명중률"]},
+        "tree_of_life_healing": {"aliases": ["생명의 나무로 치유"]},
+    },
+    "reinhardt": {
+        "charge_kills": {"aliases": ["돌진으로 처치"]},
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "fire_strike_kills": {"aliases": ["화염 강타로 처치", "화염 강타로 처 치"]},
+        "earthshatter_hits": {"aliases": ["대지분쇄 명중"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "fire_strike_accuracy": {"aliases": ["화염 강타 명중률"]},
+        "earthshatter_stuns": {"aliases": ["대지분쇄로 기절"]},
+    },
+    "lucio": {
+        "healing_boost_usage": {"aliases": ["치유 증폭 사용"]},
+        "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "speed_boost_usage": {"aliases": ["속도 증폭 사용"]},
+        "environmental_kills": {"aliases": ["환경 요소로 처치"]},
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "players_knocked_back": {"aliases": ["밀쳐낸 플레이어"]},
+        "sound_barriers_provided": {"aliases": ["소리 방벽 제공"]},
+    },
+    "reaper": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "death_blossom_kills": {"aliases": ["죽음의 꽃으로 처치", "죽음의 꽂으로 처지"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "solo_kills": {"aliases": ["단독 처치"]},
+        "self_healing": {"aliases": ["자가 치유", "지가 치유"]},
+    },
+    "mauga": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+        "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
+        "critical_damage": {"aliases": ["치명타로 준 피해", "시멍타로 준 피해"]},
+        "overhealth_generated": {"aliases": ["생성한 추가 생명력"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
+        "overrun_kills": {"aliases": ["돌파로 처치"]},
+        "cage_fight_kills": {"aliases": ["케이지 혈투로 처치"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -111,6 +157,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "dmon": ["D.Mon", "DMon", "디몬"],
     "dva": ["D.VA", "D.Va", "DVA", "디바"],
     "ramattra": ["라마트라", "RAMATTRA"],
+    "lifeweaver": ["라이프위버", "LIFEWEAVER"],
+    "reinhardt": ["라인하르트", "REINHARDT"],
+    "lucio": ["루시우", "LUCIO", "LÚCIO"],
+    "reaper": ["리퍼", "REAPER"],
+    "mauga": ["마우가", "MAUGA"],
 }
 
 
@@ -142,6 +193,26 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
         "weapon_accuracy","ravenous_vortex_kills","objective_contest_time",
         "pummel_accuracy","annihilation_efficiency","players_saved",
         "pummel_kills","annihilation_kills",
+    ],
+    "lifeweaver": [
+        "thorn_volley_kills","self_healing","players_saved",
+        "life_grip_saves","weapon_accuracy","tree_of_life_healing",
+    ],
+    "reinhardt": [
+        "charge_kills","knockback_kills","objective_contest_time","fire_strike_kills",
+        "earthshatter_hits","players_saved","fire_strike_accuracy","earthshatter_stuns",
+    ],
+    "lucio": [
+        "healing_boost_usage","knockback_kills","players_saved","speed_boost_usage",
+        "environmental_kills","weapon_accuracy","players_knocked_back","sound_barriers_provided",
+    ],
+    "reaper": [
+        "weapon_accuracy","death_blossom_kills","final_blows",
+        "critical_hit_accuracy","solo_kills","self_healing",
+    ],
+    "mauga": [
+        "weapon_accuracy","self_healing","objective_contest_time","critical_damage",
+        "overhealth_generated","players_saved","overrun_kills","cage_fight_kills",
     ],
 }
 
