@@ -93,12 +93,7 @@ def _ocr_box(img, box, psm=7, lang='kor+eng', whitelist=None):
 
 
 def _summary_map_reads(img):
-    """Read the map title from the small heading above the Summary image.
-
-    The old crop was much wider than the actual title, which made Tesseract
-    frequently return an empty string. Keep several tight crops around the
-    heading and prefer short text-like candidates.
-    """
+    """Read the map title from the heading above the Summary image."""
     boxes=[
         (0.665,0.160,0.760,0.210),
         (0.655,0.155,0.800,0.215),
@@ -132,12 +127,13 @@ def _summary_map_from_reads(reads):
         candidates.append((score,cleaned))
     if not candidates:
         return None
+    # Canonical map aliases should win over noisy PSM reads.
+    for _,value in candidates:
+        compact=re.sub(r'\s+','',value)
+        if compact in {'사모아','사모아'}:
+            return '사모아'
     candidates.sort(reverse=True,key=lambda item:item[0])
-    best=candidates[0][1]
-    compact=re.sub(r'\s+','',best)
-    if compact=='사모아':
-        return '사모아'
-    return best
+    return candidates[0][1]
 
 
 def _summary_result_reads(img):
@@ -277,7 +273,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.18-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.19-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -571,6 +567,17 @@ def _hero_corr(a,b):
     return max(0.0,min(1.0,float(np.sum(a*b)/denom)))
 
 
+def _hero_color_similarity(a,b):
+    a=cv2.cvtColor(cv2.resize(a,(96,96),interpolation=cv2.INTER_AREA),cv2.COLOR_BGR2HSV)
+    b=cv2.cvtColor(cv2.resize(b,(96,96),interpolation=cv2.INTER_AREA),cv2.COLOR_BGR2HSV)
+    ha=cv2.calcHist([a],[0,1],None,[24,24],[0,180,0,256])
+    hb=cv2.calcHist([b],[0,1],None,[24,24],[0,180,0,256])
+    cv2.normalize(ha,ha)
+    cv2.normalize(hb,hb)
+    corr=cv2.compareHist(ha,hb,cv2.HISTCMP_CORREL)
+    return max(0.0,min(1.0,(float(corr)+1.0)/2.0))
+
+
 def _hero_feature_similarity(a,b):
     a=_hero_norm(a); b=_hero_norm(b)
     if hasattr(cv2,'SIFT_create'):
@@ -592,7 +599,13 @@ def _hero_feature_similarity(a,b):
 
 
 def _hero_similarity(a,b):
-    return _hero_feature_similarity(a,b)*0.82+_hero_corr(a,b)*0.18
+    # Feature structure remains primary; color helps separate visually similar
+    # support portraits such as Wuyang and Juno.
+    return (
+        _hero_feature_similarity(a,b)*0.62
+        + _hero_corr(a,b)*0.18
+        + _hero_color_similarity(a,b)*0.20
+    )
 
 
 def _load_hero_references():
@@ -762,7 +775,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.17-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.18-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -842,7 +855,7 @@ def extract_team(img):
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.17-dev',
+        'ocr_version':'0.9.18-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
