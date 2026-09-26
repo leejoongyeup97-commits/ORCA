@@ -1255,7 +1255,7 @@ function ReviewScreen({
                         : "border-[var(--line)] bg-transparent hover:bg-[#121316]"
                   }`}
                 >
-                  <span className={`block text-[9px] font-medium ${active ? "text-[var(--orange)]" : done ? "text-[#8ee9aa]" : "text-[var(--muted)]"}`}>
+                  <span className={`block text-[9px] font-medium ${active ? "text-[var(--orange)]" : done ? "text-[#9fcaae]" : "text-[var(--muted)]"}`}>
                     경기 {index + 1}
                   </span>
                   <span className="mt-1 block text-[10px] font-medium text-white">
@@ -1328,7 +1328,7 @@ function ReviewScreen({
                   >
                     <FilePreview file={file.file} className="h-full w-full object-cover" />
                     <span className={`absolute left-1 top-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${typeClass(file.type)}`}>{index + 1} · {TYPE_META[file.type].label}</span>
-                    {file.excluded && <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-[10px] font-black text-white">제외됨</span>}
+                    {file.excluded && <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-[10px] font-semibold text-white">제외됨</span>}
                   </button>
                 ))}
               </div>
@@ -1350,9 +1350,9 @@ function ReviewScreen({
 
               <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
                 {match.files.map((file, index) => (
-                  <div key={file.id} className={`border-b border-[var(--line-soft)] py-3 ${file.excluded ? "border-[#2a303b] bg-[#0a0d12] opacity-55" : selected?.id === file.id ? "border-[rgba(249,158,26,0.55)] bg-[rgba(249,158,26,0.05)]" : "border-[var(--line)] bg-[#0d1118]"}`}>
+                  <div key={file.id} className={`border-b border-[var(--line-soft)] py-3 ${file.excluded ? "border-[#2a303b] bg-[#0a0d12] opacity-55" : selected?.id === file.id ? "border-[rgba(249,158,26,0.55)] bg-transparent" : "border-[var(--line)] bg-[#0d1118]"}`}>
                     <button type="button" onClick={() => onSelectFile(file.id)} className="mb-2 flex w-full cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-white">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-[#151619] text-[10px] font-black text-[var(--muted)]">{index + 1}</span>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-[#151619] text-[10px] font-semibold text-[var(--muted)]">{index + 1}</span>
                       <div className="min-w-0 flex-1">
                         <p className={`m-0 truncate text-xs font-bold ${file.excluded ? "line-through text-[var(--muted)]" : "text-white"}`}>{file.file.name}</p>
                         <p className="mt-1 text-[9px] text-[var(--muted)]">score {file.score.toFixed(3)}</p>
@@ -1370,7 +1370,7 @@ function ReviewScreen({
                           <option key={type} value={type}>{TYPE_META[type].label} · {TYPE_META[type].description}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => onToggleExcluded(file.id)} className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-medium ${file.excluded ? "border-[rgba(121,227,156,0.25)] text-[#8ee9aa]" : "border-[#503336] text-[#ff9b9b]"}`}>
+                      <button type="button" onClick={() => onToggleExcluded(file.id)} className={`cursor-pointer rounded-lg border px-3 py-2 text-[10px] font-medium ${file.excluded ? "border-[rgba(121,227,156,0.25)] text-[#9fcaae]" : "border-[#503336] text-[#ff9b9b]"}`}>
                         {file.excluded ? "복원" : "제외"}
                       </button>
                     </div>
@@ -1387,7 +1387,7 @@ function ReviewScreen({
             <section className={`border-t border-[var(--line)] pt-4 ${validation.valid ? "border-[var(--line)] bg-transparent" : "border-[var(--line)] bg-transparent"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className={`m-0 text-sm font-bold ${validation.valid ? "text-[#8ee9aa]" : "text-[var(--orange)]"}`}>{validation.valid ? "검수 조건 충족" : "확인할 항목이 있습니다"}</p>
+                  <p className={`m-0 text-sm font-bold ${validation.valid ? "text-[#9fcaae]" : "text-[var(--orange)]"}`}>{validation.valid ? "검수 조건 충족" : "확인할 항목이 있습니다"}</p>
                   <div className="mt-3 space-y-2 text-xs text-[var(--muted)]">
                     <ValidationRow ok={perType.summary === 1} text={`요약 ${perType.summary}장 · 정확히 1장 필요`} />
                     <ValidationRow ok={perType.team === 1} text={`팀 ${perType.team}장 · 정확히 1장 필요`} />
@@ -1396,7 +1396,7 @@ function ReviewScreen({
                     <ValidationRow ok text={`리플레이 ${perType.replay}장 · 선택`} neutral />
                   </div>
                 </div>
-                <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${match.reviewStatus === "ready_to_upload" ? "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
+                <span className={`rounded-sm px-2 py-1 text-[9px] font-medium ${match.reviewStatus === "ready_to_upload" ? "bg-transparent text-[#9fcaae]" : "bg-[#171e2a] text-[var(--muted)]"}`}>
                   {match.reviewStatus === "confirmed"
                     ? "SAVED"
                     : match.reviewStatus === "pending_ocr"
@@ -1454,7 +1454,7 @@ function ReviewScreen({
                     uploadState.phase === "uploading" ||
                     uploadState.phase === "completing"
                   }
-                  className="mt-2 w-full cursor-pointer rounded-xl border border-[var(--line)] bg-[#0d1118] px-5 py-3 text-[10px] font-medium text-[var(--muted)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                  className="mt-2 w-full cursor-pointer rounded-md border border-[var(--line)] bg-[#0d1118] px-5 py-3 text-[10px] font-medium text-[var(--muted)] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   이 경기만 저장하고 계속 보기
                 </button>
@@ -1468,12 +1468,12 @@ function ReviewScreen({
           <section className="mt-5 space-y-4 border-t border-[var(--line)] pt-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="m-0 text-sm font-bold text-[#9bc6ff]">OCR 결과 검수</p>
+                <p className="m-0 text-sm font-bold text-[#aeb4bf]">OCR 결과 검수</p>
                 <p className="mt-1 text-[10px] text-[var(--muted)]">
                   이미지 분류와 OCR 검수를 이 화면에서 이어서 끝냅니다. 수정한 값이 최종 저장값이 됩니다.
                 </p>
               </div>
-              <span className="rounded-full bg-[rgba(102,169,255,0.14)] px-2.5 py-1 text-[9px] font-medium text-[#9bc6ff]">
+              <span className="rounded-full bg-transparent px-2.5 py-1 text-[9px] font-medium text-[#aeb4bf]">
                 {match.reviewStatus === "confirmed" ? "SAVED" : "OCR REVIEW"}
               </span>
             </div>
@@ -1615,9 +1615,9 @@ function FilePreview({ file, className }: { file: File; className?: string }) {
 }
 
 function typeClass(type: ScreenType) {
-  if (type === "summary") return "bg-[rgba(249,158,26,0.14)] text-[var(--orange)]";
-  if (type === "team") return "bg-[rgba(102,169,255,0.14)] text-[#8fc1ff]";
-  if (type === "personal") return "bg-[rgba(121,227,156,0.12)] text-[#8ee9aa]";
+  if (type === "summary") return "bg-transparent text-[var(--orange)]";
+  if (type === "team") return "bg-transparent text-[#8fc1ff]";
+  if (type === "personal") return "bg-transparent text-[#9fcaae]";
   if (type === "replay") return "bg-[rgba(198,145,255,0.13)] text-[#d0a9ff]";
   return "bg-[rgba(255,113,113,0.12)] text-[#ff9b9b]";
 }
@@ -1628,9 +1628,9 @@ function TypePill({ type, count }: { type: ScreenType; count: number }) {
 
 function MetricCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 ${accent ? "border-[rgba(249,158,26,0.35)] bg-[rgba(249,158,26,0.08)]" : "border-[var(--line)] bg-[var(--panel)]"}`}>
+    <div className={`rounded-md border p-4 ${accent ? "border-[rgba(249,158,26,0.35)] bg-[rgba(249,158,26,0.08)]" : "border-[var(--line)] bg-transparent"}`}>
       <p className="m-0 text-[11px] text-[var(--muted)]">{label}</p>
-      <p className={`mt-1 text-xl font-black ${accent ? "text-[var(--orange)]" : "text-white"}`}>{value}</p>
+      <p className={`mt-1 text-xl font-semibold ${accent ? "text-[var(--orange)]" : "text-white"}`}>{value}</p>
     </div>
   );
 }
@@ -1638,7 +1638,7 @@ function MetricCard({ label, value, accent = false }: { label: string; value: st
 function GuideRow({ number, title, text }: { number: string; title: string; text: string }) {
   return (
     <div className="flex gap-3">
-      <span className="shrink-0 font-black text-[var(--orange)]">{number}</span>
+      <span className="shrink-0 font-semibold text-[var(--orange)]">{number}</span>
       <p className="m-0"><strong className="text-white">{title}</strong> · {text}</p>
     </div>
   );
@@ -1656,7 +1656,7 @@ function StatusRow({ label, value, warning = false }: { label: string; value: st
 function ValidationRow({ ok, text, neutral = false }: { ok: boolean; text: string; neutral?: boolean }) {
   return (
     <div className="flex items-start gap-2">
-      <span className={`mt-[1px] font-black ${neutral ? "text-[#9bbcff]" : ok ? "text-[#8ee9aa]" : "text-[var(--orange)]"}`}>{neutral ? "•" : ok ? "✓" : "!"}</span>
+      <span className={`mt-[1px] font-semibold ${neutral ? "text-[#9bbcff]" : ok ? "text-[#9fcaae]" : "text-[var(--orange)]"}`}>{neutral ? "•" : ok ? "✓" : "!"}</span>
       <span>{text}</span>
     </div>
   );
