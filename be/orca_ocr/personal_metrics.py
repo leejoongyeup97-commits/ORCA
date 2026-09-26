@@ -6,7 +6,7 @@ from typing import Any
 
 COMMON_METRICS: dict[str, dict[str, Any]] = {
     "play_time": {"scope": "common", "aliases": ["플레이 시간", "플레이시간"]},
-    "weapon_accuracy": {"scope": "common", "aliases": ["무기 명중률", "무기명중률"]},
+    "weapon_accuracy": {"scope": "common", "aliases": ["무기 명중률", "무기명중률", "무기 명중몰"]},
     "critical_hit_accuracy": {
         "scope": "common",
         "aliases": ["치명타 명중률", "치명타명중률", "치명타 적중률", "치명타적중률"],
@@ -44,12 +44,21 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "sleep_dart_accuracy": {"aliases": ["수면총 명중률"]},
         "nano_boost_assists": {"aliases": ["나노 강화제 지원"]},
     },
+    "genji": {
+        "ultimates_reflected": {"aliases": ["궁극기 반사"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "swift_strike_resets": {"aliases": ["질풍참 초기화", "질풍참 조기화"]},
+        "dragonblade_kills": {"aliases": ["용검으로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치"]},
+        "reflected_damage": {"aliases": ["반사한 피해", "반사 피해"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
     "roadhog": ["로드호그"],
     "symmetra": ["시메트라"],
     "ana": ["아나"],
+    "genji": ["겐지"],
 }
 
 
