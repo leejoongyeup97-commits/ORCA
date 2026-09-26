@@ -15,6 +15,22 @@ Frontend 관련 작업 내용, 변경사항, 전달사항, 수정 요청을 기�
 
 ## 현재 로그
 
+### 2026-09-26 · Personal hero_key 상속 금지 + metric_key 고정 표시명
+- 상태: DONE
+- 내용:
+  - Personal OCR 결과의 `hero_key`가 비어 있으면 이전 hero_detail의 hero_key를 복사하지 않도록 수정
+  - 빈 hero_key는 그대로 유지하고 검수 UI에서 `hero_key 검수 필요` 표시
+  - Personal metric 화면 표시명을 `label_raw`가 아니라 `metric_key` 기반 고정 한글 라벨로 변경
+  - 최신 BE Personal metric 사전을 기준으로 216개 metric_key 표시명 맵 추가
+  - `label_raw`은 사용자 표시에서 제외하고 디버깅 메타데이터로만 유지
+- 관련:
+  - `fe/src/lib/personal-metric-labels.ts`
+  - `fe/src/lib/ocr-review-mapping.ts`
+  - `fe/src/lib/review-draft.ts`
+  - `fe/src/components/match-review-editor.tsx`
+- 검증: Frontend Check build 성공
+- 완료 커밋: 85cb2cd8a5b95f6ccec9b2cc5bcfe41b0edcde29
+
 ### 2026-09-26 · 대시보드 아이콘 정리
 - 상태: DONE
 - 내용:
