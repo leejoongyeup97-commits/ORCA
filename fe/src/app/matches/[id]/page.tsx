@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import MatchReviewEditor from "@/components/match-review-editor";
 import RoundDetailsEditor from "@/components/round-details-editor";
 import MatchWorkflow from "@/components/match-workflow";
@@ -81,8 +81,7 @@ function referenceGameMode(value: string): "control" | "flashpoint" | null {
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnQuery = searchParams.get("return") ?? "";
+  const [returnQuery, setReturnQuery] = useState("");
   const matchesHref = returnQuery ? `/matches?${returnQuery}` : "/matches";
   const rawId = params?.id;
   const matchId = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -102,6 +101,11 @@ export default function MatchDetailPage() {
   const [submapLoading, setSubmapLoading] = useState(false);
   const [pendingDeleteUntil, setPendingDeleteUntil] = useState<number | null>(null);
   const deleteTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("return") ?? "";
+    setReturnQuery(value);
+  }, []);
 
   useEffect(() => {
     if (!matchId) return;
