@@ -31,6 +31,7 @@ create unique index if not exists patches_patch_label_uidx
 alter table public.matches add column if not exists season_id uuid;
 alter table public.matches add column if not exists patch_id uuid;
 alter table public.matches add column if not exists side text;
+alter table public.matches add column if not exists duration text;
 alter table public.matches add column if not exists played_at_kst timestamp;
 alter table public.matches add column if not exists created_at_kst timestamp;
 
@@ -66,6 +67,79 @@ create index if not exists matches_season_id_idx
   on public.matches (season_id);
 create index if not exists matches_patch_id_idx
   on public.matches (patch_id);
+
+-- Canonical hero role reference used when saving match_players.
+create table if not exists public.hero_roles (
+  hero_key text primary key,
+  role text not null check (role in ('tank','damage','support')),
+  updated_at timestamptz not null default now()
+);
+
+insert into public.hero_roles (hero_key, role) values
+  ('ana','support'),
+  ('anran','damage'),
+  ('ashe','damage'),
+  ('baptiste','support'),
+  ('bastion','damage'),
+  ('brigitte','support'),
+  ('cassidy','damage'),
+  ('dmon','tank'),
+  ('domina','tank'),
+  ('doomfist','tank'),
+  ('dva','tank'),
+  ('echo','damage'),
+  ('emre','damage'),
+  ('freja','damage'),
+  ('genji','damage'),
+  ('hanzo','damage'),
+  ('hazard','tank'),
+  ('illari','support'),
+  ('jetpack-cat','support'),
+  ('junker-queen','tank'),
+  ('junkrat','damage'),
+  ('juno','support'),
+  ('kiriko','support'),
+  ('lifeweaver','support'),
+  ('lucio','support'),
+  ('mauga','tank'),
+  ('mei','damage'),
+  ('mercy','support'),
+  ('mizuki','support'),
+  ('moira','support'),
+  ('orisa','tank'),
+  ('pharah','damage'),
+  ('ramattra','tank'),
+  ('reaper','damage'),
+  ('reinhardt','tank'),
+  ('roadhog','tank'),
+  ('shion','damage'),
+  ('sierra','damage'),
+  ('sigma','tank'),
+  ('sojourn','damage'),
+  ('soldier-76','damage'),
+  ('sombra','damage'),
+  ('symmetra','damage'),
+  ('torbjorn','damage'),
+  ('tracer','damage'),
+  ('vendetta','damage'),
+  ('venture','damage'),
+  ('widowmaker','damage'),
+  ('winston','tank'),
+  ('wrecking-ball','tank'),
+  ('wuyang','support'),
+  ('zarya','tank'),
+  ('zenyatta','support')
+on conflict (hero_key) do update
+set role = excluded.role,
+    updated_at = now();
+
+alter table public.hero_roles enable row level security;
+
+drop policy if exists "hero_roles_authenticated_read" on public.hero_roles;
+create policy "hero_roles_authenticated_read"
+on public.hero_roles for select
+to authenticated
+using (true);
 
 -- Canonical round/set data for Control and Flashpoint.
 create table if not exists public.rounds (
@@ -301,6 +375,29 @@ on public.matches
 for each row
 execute function public.sync_match_kst_columns();
 
+create or replace function public.sync_match_duration_display()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $orca$
+begin
+  new.duration := case
+    when new.duration_seconds is null then null
+    else (new.duration_seconds / 60)::text
+      || ':' || lpad((new.duration_seconds % 60)::text, 2, '0')
+  end;
+  return new;
+end;
+$orca$;
+
+drop trigger if exists matches_sync_duration_display on public.matches;
+create trigger matches_sync_duration_display
+before insert or update of duration_seconds
+on public.matches
+for each row
+execute function public.sync_match_duration_display();
+
 create or replace function public.sync_created_at_kst()
 returns trigger
 language plpgsql
@@ -334,7 +431,12 @@ execute function public.sync_created_at_kst();
 update public.matches
 set
   played_at_kst = case when played_at is null then null else played_at at time zone 'Asia/Seoul' end,
-  created_at_kst = case when created_at is null then null else created_at at time zone 'Asia/Seoul' end;
+  created_at_kst = case when created_at is null then null else created_at at time zone 'Asia/Seoul' end,
+  duration = case
+    when duration_seconds is null then null
+    else (duration_seconds / 60)::text
+      || ':' || lpad((duration_seconds % 60)::text, 2, '0')
+  end;
 
 update public.match_players
 set created_at_kst = created_at at time zone 'Asia/Seoul';
@@ -440,7 +542,12 @@ begin
       nullif(v_player->>'player_name',''),
       nullif(v_player->>'hero',''),
       coalesce((v_player->>'is_me')::boolean, false),
-      nullif(v_player->>'role',''),
+      (
+        select hr.role
+        from public.hero_roles hr
+        where hr.hero_key = nullif(v_player->>'hero_key','')
+        limit 1
+      ),
       nullif(regexp_replace(coalesce(v_player->>'eliminations',''), '[^0-9-]', '', 'g'),'')::integer,
       nullif(regexp_replace(coalesce(v_player->>'assists',''), '[^0-9-]', '', 'g'),'')::integer,
       nullif(regexp_replace(coalesce(v_player->>'deaths',''), '[^0-9-]', '', 'g'),'')::integer,
