@@ -369,7 +369,7 @@ def _list_patchnotes_via_playwright(limit: int) -> list[PatchNoteItem]:
     the normal Windows subprocess/event-loop environment instead.
     """
     completed = subprocess.run(
-        [sys.executable, "-m", "patchnotes.browser_worker", str(limit)],
+        [sys.executable, str(Path(__file__).resolve().with_name("browser_worker.py")), str(limit)],
         cwd=str(Path(__file__).resolve().parents[1]),
         capture_output=True,
         text=True,
