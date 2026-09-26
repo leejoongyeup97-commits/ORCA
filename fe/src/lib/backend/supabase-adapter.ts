@@ -12,6 +12,7 @@ import type {
   MatchListItem,
   MatchManagementAdapter,
   MapSubmapOption,
+  OcrExecutionProgress,
   RoundDetail,
   UploadTarget,
 } from "./contracts";
@@ -322,7 +323,10 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
     await supabaseFetch(`/rest/v1/matches?id=eq.${matchId}`, { method: "DELETE" });
   }
 
-  async runMockOcr(matchId: string) {
+  async runMockOcr(
+    matchId: string,
+    options: { onProgress?: (progress: OcrExecutionProgress) => void } = {},
+  ) {
     await supabaseFetch(`/rest/v1/matches?id=eq.${matchId}`, {
       method: "PATCH",
       body: JSON.stringify({ import_status: "processing_ocr" }),
@@ -330,11 +334,45 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
 
     try {
       const rows = await uploadsFor(matchId);
+      const processableRows = rows.filter((row) =>
+        ["summary", "team", "personal", "replay"].includes(screenTypeFromUpload(row)),
+      );
+      const total = processableRows.length;
+      let successCount = 0;
+      let errorCount = 0;
+      const emit = (
+        progress: Omit<OcrExecutionProgress, "percent" | "success_count" | "error_count">,
+      ) => {
+        options.onProgress?.({
+          ...progress,
+          percent: total === 0 ? 0 : Math.round((progress.current / total) * 100),
+          success_count: successCount,
+          error_count: errorCount,
+        });
+      };
+
+      emit({
+        stage: "starting",
+        current: 0,
+        total,
+        message: total > 0 ? `OCR 재실행을 시작합니다. 총 ${total}개 이미지` : "처리할 이미지가 없습니다.",
+      });
+
       const results: Array<{ upload_id: string; screen_type: string; result: unknown }> = [];
 
-      for (const row of rows) {
+      for (let index = 0; index < processableRows.length; index += 1) {
+        const row = processableRows[index];
         const screenType = screenTypeFromUpload(row);
-        if (!["summary", "team", "personal", "replay"].includes(screenType)) continue;
+        const filename = row.original_name || `${screenType}.jpg`;
+
+        emit({
+          stage: "file_start",
+          current: index,
+          total,
+          message: `[${index + 1}/${total}] ${screenType} OCR 처리 중`,
+          filename,
+          screen_type: screenType as MatchImportView["files"][number]["screen_type"],
+        });
 
         const { config, session } = await configAndSession();
         const objectResponse = await fetch(
@@ -363,11 +401,29 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
           body: form,
         });
         if (!ocrResponse.ok) {
+          errorCount += 1;
+          emit({
+            stage: "file_error",
+            current: index + 1,
+            total,
+            message: `[${index + 1}/${total}] ${screenType} OCR 실패`,
+            filename,
+            screen_type: screenType as MatchImportView["files"][number]["screen_type"],
+          });
           throw new Error(`OCR_FAILED: ${await ocrResponse.text()}`);
         }
 
         const result = (await ocrResponse.json()) as unknown;
         results.push({ upload_id: row.id, screen_type: screenType, result });
+        successCount += 1;
+        emit({
+          stage: "file_success",
+          current: index + 1,
+          total,
+          message: `[${index + 1}/${total}] ${screenType} OCR 완료`,
+          filename,
+          screen_type: screenType as MatchImportView["files"][number]["screen_type"],
+        });
 
         await supabaseFetch(`/rest/v1/uploads?id=eq.${row.id}`, {
           method: "PATCH",
@@ -383,6 +439,13 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       if (results.length === 0) {
         throw new Error("OCR_RERUN_NO_PROCESSABLE_UPLOADS");
       }
+
+      emit({
+        stage: "finalizing",
+        current: total,
+        total,
+        message: "OCR 결과를 검수 데이터로 정리하고 있습니다.",
+      });
 
       const current = await this.getMatchImport(matchId);
       const editable = { ...current.editable };
@@ -424,6 +487,13 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
             message: `OCR 완료: ${results.length}개 이미지 분석`,
           },
         }),
+      });
+
+      emit({
+        stage: "completed",
+        current: total,
+        total,
+        message: `OCR 재실행 완료 · ${successCount}/${total} 성공`,
       });
     } catch (error) {
       await supabaseFetch(`/rest/v1/matches?id=eq.${matchId}`, {
