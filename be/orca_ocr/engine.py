@@ -1080,6 +1080,19 @@ def extract_personal(img, hero_key=None):
                     metric['value']=f"{candidate:,}"
                     card['primary_value']=f"{candidate:,}"
 
+    # Final cleanup for obvious integer OCR artifacts after per-10 recovery.
+    for card,metric in zip(metric_cards[1:],metrics):
+        value=str(metric.get('value') or '')
+        if re.fullmatch(r'0+\d*',value):
+            metric['value']=str(int(value))
+            card['primary_value']=metric['value']
+        if metric.get('metric_key')=='drill_dash_kills' and re.fullmatch(r'\d{7,}',value):
+            label=str(metric.get('label_raw') or '')
+            m=re.search(r'(\d+)0{6}',label)
+            if m:
+                metric['value']=m.group(1)
+                card['primary_value']=m.group(1)
+
     known={}
     m=re.search(r'(\d{1,3})%[^\n]*\n?[^\n]*무기\s*명중률|무기\s*명중률[^\n]*(\d{1,3})%',panel_text)
     if m:known['weapon_accuracy']=(m.group(1) or m.group(2))+'%'
@@ -1090,7 +1103,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.26-dev',
+        'ocr_version':'0.10.27-dev',
         'hero_key':hero_key,
         'hero_name_raw':hero_name_raw,
         'hero_summary_raw':hero_summary_raw,
