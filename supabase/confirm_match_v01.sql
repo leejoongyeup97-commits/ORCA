@@ -28,9 +28,11 @@ create unique index if not exists patches_patch_label_uidx
   on public.patches (patch_label)
   where patch_label is not null;
 
+alter table public.matches drop column if exists attack_defense;
 alter table public.matches add column if not exists season_id uuid;
 alter table public.matches add column if not exists patch_id uuid;
 alter table public.matches add column if not exists side text;
+alter table public.matches add column if not exists duration text;
 alter table public.matches add column if not exists played_at_kst timestamp;
 alter table public.matches add column if not exists created_at_kst timestamp;
 
@@ -67,6 +69,79 @@ create index if not exists matches_season_id_idx
 create index if not exists matches_patch_id_idx
   on public.matches (patch_id);
 
+-- Canonical hero role reference used when saving match_players.
+create table if not exists public.hero_roles (
+  hero_key text primary key,
+  role text not null check (role in ('tank','damage','support')),
+  updated_at timestamptz not null default now()
+);
+
+insert into public.hero_roles (hero_key, role) values
+  ('ana','support'),
+  ('anran','damage'),
+  ('ashe','damage'),
+  ('baptiste','support'),
+  ('bastion','damage'),
+  ('brigitte','support'),
+  ('cassidy','damage'),
+  ('dmon','tank'),
+  ('domina','tank'),
+  ('doomfist','tank'),
+  ('dva','tank'),
+  ('echo','damage'),
+  ('emre','damage'),
+  ('freja','damage'),
+  ('genji','damage'),
+  ('hanzo','damage'),
+  ('hazard','tank'),
+  ('illari','support'),
+  ('jetpack-cat','support'),
+  ('junker-queen','tank'),
+  ('junkrat','damage'),
+  ('juno','support'),
+  ('kiriko','support'),
+  ('lifeweaver','support'),
+  ('lucio','support'),
+  ('mauga','tank'),
+  ('mei','damage'),
+  ('mercy','support'),
+  ('mizuki','support'),
+  ('moira','support'),
+  ('orisa','tank'),
+  ('pharah','damage'),
+  ('ramattra','tank'),
+  ('reaper','damage'),
+  ('reinhardt','tank'),
+  ('roadhog','tank'),
+  ('shion','damage'),
+  ('sierra','damage'),
+  ('sigma','tank'),
+  ('sojourn','damage'),
+  ('soldier-76','damage'),
+  ('sombra','damage'),
+  ('symmetra','damage'),
+  ('torbjorn','damage'),
+  ('tracer','damage'),
+  ('vendetta','damage'),
+  ('venture','damage'),
+  ('widowmaker','damage'),
+  ('winston','tank'),
+  ('wrecking-ball','tank'),
+  ('wuyang','support'),
+  ('zarya','tank'),
+  ('zenyatta','support')
+on conflict (hero_key) do update
+set role = excluded.role,
+    updated_at = now();
+
+alter table public.hero_roles enable row level security;
+
+drop policy if exists "hero_roles_authenticated_read" on public.hero_roles;
+create policy "hero_roles_authenticated_read"
+on public.hero_roles for select
+to authenticated
+using (true);
+
 -- Canonical round/set data for Control and Flashpoint.
 create table if not exists public.rounds (
   id uuid primary key default gen_random_uuid(),
@@ -100,6 +175,64 @@ create table if not exists public.map_submaps (
 
 create index if not exists map_submaps_lookup_idx
   on public.map_submaps (map_name, game_mode, sort_order);
+
+-- Canonical Control / Flashpoint submap reference data.
+-- map_name follows the Korean names used by ORCA OCR/FE.
+insert into public.map_submaps (
+  map_name, game_mode, submap_key, submap_name, sort_order, is_active
+) values
+  -- Control
+  ('남극 반도','control','icebreaker','쇄빙선',1,true),
+  ('남극 반도','control','labs','연구실',2,true),
+  ('남극 반도','control','sublevel','지하층',3,true),
+
+  ('부산','control','downtown','시내',1,true),
+  ('부산','control','sanctuary','사찰',2,true),
+  ('부산','control','meka-base','MEKA 기지',3,true),
+
+  ('일리오스','control','lighthouse','등대',1,true),
+  ('일리오스','control','well','우물',2,true),
+  ('일리오스','control','ruins','폐허',3,true),
+
+  ('리장 타워','control','night-market','야시장',1,true),
+  ('리장 타워','control','garden','정원',2,true),
+  ('리장 타워','control','control-center','관제 센터',3,true),
+
+  ('네팔','control','village','마을',1,true),
+  ('네팔','control','shrine','제단',2,true),
+  ('네팔','control','sanctum','성소',3,true),
+
+  ('오아시스','control','city-center','도심',1,true),
+  ('오아시스','control','gardens','정원',2,true),
+  ('오아시스','control','university','대학',3,true),
+
+  ('사모아','control','beach','해변',1,true),
+  ('사모아','control','downtown','시내',2,true),
+  ('사모아','control','volcano','화산',3,true),
+
+  -- Flashpoint
+  ('뉴 정크 시티','flashpoint','arena','경기장',1,true),
+  ('뉴 정크 시티','flashpoint','the-ducts','배관',2,true),
+  ('뉴 정크 시티','flashpoint','refinery','제련소',3,true),
+  ('뉴 정크 시티','flashpoint','junkyard','고철 처리장',4,true),
+  ('뉴 정크 시티','flashpoint','bomb-flats','폭탄 지대',5,true),
+
+  ('수라바사','flashpoint','market','시장',1,true),
+  ('수라바사','flashpoint','garden','정원',2,true),
+  ('수라바사','flashpoint','palace','궁전',3,true),
+  ('수라바사','flashpoint','temple','사원',4,true),
+  ('수라바사','flashpoint','ruins','폐허',5,true),
+
+  ('아틀리스','flashpoint','station','스테이션',1,true),
+  ('아틀리스','flashpoint','garden','정원',2,true),
+  ('아틀리스','flashpoint','town-center','타운 센터',3,true),
+  ('아틀리스','flashpoint','bazaar','바자르',4,true),
+  ('아틀리스','flashpoint','resort','리조트',5,true)
+on conflict (map_name, submap_key) do update
+set game_mode = excluded.game_mode,
+    submap_name = excluded.submap_name,
+    sort_order = excluded.sort_order,
+    is_active = excluded.is_active;
 
 alter table public.seasons enable row level security;
 alter table public.patches enable row level security;
@@ -301,6 +434,29 @@ on public.matches
 for each row
 execute function public.sync_match_kst_columns();
 
+create or replace function public.sync_match_duration_display()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $orca$
+begin
+  new.duration := case
+    when new.duration_seconds is null then null
+    else (new.duration_seconds / 60)::text
+      || ':' || lpad((new.duration_seconds % 60)::text, 2, '0')
+  end;
+  return new;
+end;
+$orca$;
+
+drop trigger if exists matches_sync_duration_display on public.matches;
+create trigger matches_sync_duration_display
+before insert or update of duration_seconds
+on public.matches
+for each row
+execute function public.sync_match_duration_display();
+
 create or replace function public.sync_created_at_kst()
 returns trigger
 language plpgsql
@@ -334,13 +490,25 @@ execute function public.sync_created_at_kst();
 update public.matches
 set
   played_at_kst = case when played_at is null then null else played_at at time zone 'Asia/Seoul' end,
-  created_at_kst = case when created_at is null then null else created_at at time zone 'Asia/Seoul' end;
+  created_at_kst = case when created_at is null then null else created_at at time zone 'Asia/Seoul' end,
+  duration = case
+    when duration_seconds is null then null
+    else (duration_seconds / 60)::text
+      || ':' || lpad((duration_seconds % 60)::text, 2, '0')
+  end;
 
 update public.match_players
 set created_at_kst = created_at at time zone 'Asia/Seoul';
 
 update public.my_hero_details
 set created_at_kst = created_at at time zone 'Asia/Seoul';
+
+update public.my_hero_details
+set play_time_seconds =
+  split_part(play_time, ':', 1)::integer * 60
+  + split_part(play_time, ':', 2)::integer
+where play_time ~ '^[0-9]{1,3}:[0-9]{2}$'
+  and play_time_seconds is null;
 
 create or replace function public.confirm_orca_match(
   p_match_id uuid,
@@ -433,7 +601,12 @@ begin
       nullif(v_player->>'player_name',''),
       nullif(v_player->>'hero',''),
       coalesce((v_player->>'is_me')::boolean, false),
-      nullif(v_player->>'role',''),
+      (
+        select hr.role
+        from public.hero_roles hr
+        where hr.hero_key = nullif(v_player->>'hero_key','')
+        limit 1
+      ),
       nullif(regexp_replace(coalesce(v_player->>'eliminations',''), '[^0-9-]', '', 'g'),'')::integer,
       nullif(regexp_replace(coalesce(v_player->>'assists',''), '[^0-9-]', '', 'g'),'')::integer,
       nullif(regexp_replace(coalesce(v_player->>'deaths',''), '[^0-9-]', '', 'g'),'')::integer,

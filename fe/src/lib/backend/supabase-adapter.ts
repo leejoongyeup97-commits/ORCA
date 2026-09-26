@@ -389,6 +389,7 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       const summary = results.find((item) => item.screen_type === "summary");
       if (summary) {
         const raw = asRecord(summary.result);
+        if (raw.map_name) editable.map_name = String(raw.map_name);
         if (raw.mode) editable.game_mode = String(raw.mode);
         if (raw.result === "win" || raw.result === "loss" || raw.result === "draw") {
           editable.result = raw.result;
