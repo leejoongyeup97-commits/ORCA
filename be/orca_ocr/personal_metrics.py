@@ -22,7 +22,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
         "chain_hook_kills": {"aliases": ["사슬 갈고리로 처치", "시슬 갈고리로 저치", "시슬갈고리로저치"]},
         "pig_pen_kills": {"aliases": ["돼재앙으로 처치"]},
-        "players_saved": {"aliases": ["보호한 플레이어"]},
+        "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
         "chain_hook_accuracy": {"aliases": ["사슬 갈고리 명중률"]},
     },
     "symmetra": {
