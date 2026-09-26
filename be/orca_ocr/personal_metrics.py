@@ -74,7 +74,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "fusion_repeater_accuracy": {"aliases": ["융합 연발총 명중률"]},
         "limit_break_kills": {"aliases": ["한계 돌파로 처치"]},
         "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
-        "fusion_repeater_kills": {"aliases": ["융합 연발총으로 처치", "융합 연발총로 처치"]},
+        "fusion_repeater_kills": {"aliases": ["융합 연발총으로 처치", "융합 연발총로 처치", "융합 인발종으로 처치"]},
         "damage_amplified": {"aliases": ["공격력 증폭"]},
         "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
         "surging_strike_kills": {"aliases": ["돌진 강타로 처치", "밀쳐내기로 처치"]},
@@ -106,6 +106,10 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     "ana": [
         "biotic_grenade_kills","healing_amplified","players_saved","enemies_slept",
         "healing_prevented","scoped_accuracy","sleep_dart_accuracy","nano_boost_assists",
+    ],
+    "dmon": [
+        "fusion_repeater_accuracy","limit_break_kills","objective_contest_time",
+        "fusion_repeater_kills","damage_amplified","players_saved","surging_strike_kills",
     ],
 }
 
