@@ -7,6 +7,7 @@ import type {
 import { extractScreenshot, type OcrExtractResult, type OcrScreenType } from "@/lib/ocr-client";
 import { loadReviewDraft, saveReviewDraft } from "@/lib/review-draft";
 import { applyPersonalOcrResults, applyTeamOcrResult } from "@/lib/ocr-review-mapping";
+import { normalizeSideForGameMode } from "@/lib/match-rules";
 
 export type OcrSourceFile = {
   screen_type: BackendScreenType;
@@ -99,7 +100,10 @@ function summaryPatch(result: OcrExtractResult): Partial<EditableMatchFields> {
   if (mapName) patch.map_name = mapName;
 
   const mode = asString(result.mode).trim();
-  if (mode) patch.game_mode = mode;
+  if (mode) {
+    patch.game_mode = mode;
+    patch.side = normalizeSideForGameMode(mode, "unknown");
+  }
 
   const duration = secondsToClock(result.duration_seconds);
   if (duration) patch.match_duration = duration;
