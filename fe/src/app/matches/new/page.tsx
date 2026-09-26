@@ -358,7 +358,7 @@ export default function NewMatchPage() {
           summary: event.filename
             ? `${event.filename} 처리 중 오류가 발생했습니다.`
             : "OCR 처리 중 오류가 발생했습니다.",
-          raw: event.error,
+          raw: event.error ?? "OCR 처리 실패",
         },
       );
     }
