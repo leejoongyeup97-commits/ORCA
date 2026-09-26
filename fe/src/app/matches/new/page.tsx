@@ -1133,7 +1133,7 @@ export default function NewMatchPage() {
             <p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">지정한 스크린샷 폴더에서 새 이미지만 찾아 경기 단위로 묶습니다.</p>
           </div>
           <button type="button" disabled={status === "scanning"} onClick={() => void autoClassify("manual")}
-            className="app-orange-button w-fit rounded-md px-4 py-2.5 text-[12px] font-semibold disabled:cursor-wait disabled:opacity-60">
+            className="app-orange-button w-fit disabled:cursor-wait">
             {status === "scanning" ? "분류 중..." : "새 경기 찾기"}
           </button>
         </header>
