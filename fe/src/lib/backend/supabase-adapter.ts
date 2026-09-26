@@ -1,5 +1,7 @@
 import { getValidSession, getSupabaseConfig } from "../auth";
 import { createDefaultReviewDraft, saveReviewDraft } from "../review-draft";
+import { applyPersonalOcrResults, applyTeamOcrResult } from "../ocr-review-mapping";
+import type { OcrExtractResult } from "../ocr-client";
 import type {
   CompleteMatchUploadInput,
   ConfirmMatchInput,
@@ -395,54 +397,16 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
         if (playedAt) editable.played_at = playedAt;
       }
 
-      const draft = createDefaultReviewDraft(editable.my_hero);
+      let draft = createDefaultReviewDraft(editable.my_hero);
       const team = results.find((item) => item.screen_type === "team");
       if (team) {
-        // Team OCR identifies the user's highlighted friendly row.
-        // Clear the legacy "ally slot 1 = me" default before applying OCR.
-        for (const p of draft.players) {
-          if (p.team === "ally") {
-            p.is_me = false;
-            if (p.player_name === "나") p.player_name = "";
-            if (p.hero === editable.my_hero) p.hero = "";
-          }
-        }
-
-        const raw = asRecord(team.result);
-        const players = Array.isArray(raw.players) ? raw.players : [];
-        for (const value of players) {
-          const player = asRecord(value);
-          const teamName = player.team === "blue" ? "ally" : player.team === "red" ? "enemy" : null;
-          const slot = Number(player.slot);
-          if (!teamName || !Number.isInteger(slot)) continue;
-          const target = draft.players.find((p) => p.team === teamName && p.slot === slot);
-          if (!target) continue;
-
-          if (teamName === "ally" && player.is_me === true) {
-            target.is_me = true;
-            target.player_name = "나";
-            target.hero = editable.my_hero;
-          }
-
-          target.eliminations = player.elims == null ? "" : String(player.elims);
-          target.assists = player.assists == null ? "" : String(player.assists);
-          target.deaths = player.deaths == null ? "" : String(player.deaths);
-          target.damage = player.damage == null ? "" : String(player.damage);
-          target.healing = player.healing == null ? "" : String(player.healing);
-          target.mitigation = player.mitigation == null ? "" : String(player.mitigation);
-        }
+        draft = applyTeamOcrResult(draft, team.result as OcrExtractResult);
       }
 
-      const personal = results.find((item) => item.screen_type === "personal");
-      if (personal) {
-        const raw = asRecord(personal.result);
-        const known = asRecord(raw.known_metrics);
-        const hero = draft.hero_details[0];
-        if (hero) {
-          hero.play_time = raw.play_time == null ? "" : String(raw.play_time);
-          hero.accuracy = known.weapon_accuracy == null ? "" : String(known.weapon_accuracy);
-        }
-      }
+      const personalResults = results
+        .filter((item) => item.screen_type === "personal")
+        .map((item) => item.result as OcrExtractResult);
+      draft = applyPersonalOcrResults(draft, personalResults);
       saveReviewDraft(matchId, draft);
 
       await supabaseFetch(`/rest/v1/matches?id=eq.${matchId}`, {
@@ -501,9 +465,15 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
   }
 
   async confirmMatch(input: ConfirmMatchInput) {
-    await supabaseFetch(`/rest/v1/matches?id=eq.${input.match_id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ import_status: "confirmed" }),
+    await supabaseFetch("/rest/v1/rpc/confirm_orca_match", {
+      method: "POST",
+      body: JSON.stringify({
+        p_match_id: input.match_id,
+        p_match: input.match,
+        p_players: input.players,
+        p_my_hero_details: input.my_hero_details,
+        p_manual_fields: input.manual_fields,
+      }),
     });
     return { matchId: input.match_id, status: "confirmed" as const };
   }

@@ -23,7 +23,7 @@ export default function MatchReviewEditor({
 }) {
   const [draft, setDraft] = useState<MatchReviewDraft | null>(null);
   const [tab, setTab] = useState<TabKey>("scoreboard");
-  const [savedAt, setSavedAt] = useState<string>("");
+  const [savedAt, setSavedAt] = useState("");
 
   useEffect(() => {
     const loaded = loadReviewDraft(matchId, defaultHero);
@@ -34,7 +34,12 @@ export default function MatchReviewEditor({
   function commit(next: MatchReviewDraft) {
     const saved = saveReviewDraft(matchId, next);
     setDraft(saved);
-    setSavedAt(new Date(saved.updated_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+    setSavedAt(
+      new Date(saved.updated_at).toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    );
     onChange?.(saved);
   }
 
@@ -42,7 +47,9 @@ export default function MatchReviewEditor({
     if (!draft) return;
     commit({
       ...draft,
-      players: draft.players.map((player) => (player.id === id ? { ...player, ...patch } : player)),
+      players: draft.players.map((player) =>
+        player.id === id ? { ...player, ...patch } : player,
+      ),
     });
   }
 
@@ -53,7 +60,7 @@ export default function MatchReviewEditor({
       players: draft.players.map((player) => ({
         ...player,
         is_me: player.id === id,
-        player_name: player.id === id && !player.player_name ? "나" : player.player_name,
+        player_name: player.id === id ? "나" : "",
       })),
     });
   }
@@ -62,7 +69,28 @@ export default function MatchReviewEditor({
     if (!draft) return;
     commit({
       ...draft,
-      hero_details: draft.hero_details.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      hero_details: draft.hero_details.map((item) =>
+        item.id === id ? { ...item, ...patch } : item,
+      ),
+    });
+  }
+
+  function updateMetricValue(detailId: string, metricKey: string, value: string) {
+    if (!draft) return;
+    commit({
+      ...draft,
+      hero_details: draft.hero_details.map((item) =>
+        item.id !== detailId
+          ? item
+          : {
+              ...item,
+              metrics: item.metrics.map((metric) =>
+                metric.metric_key === metricKey
+                  ? { ...metric, value, needs_review: false }
+                  : metric,
+              ),
+            },
+      ),
     });
   }
 
@@ -75,11 +103,9 @@ export default function MatchReviewEditor({
         {
           id: crypto.randomUUID(),
           hero: "",
+          hero_key: "",
           play_time: "",
-          accuracy: "",
-          critical: "",
-          custom_label: "",
-          custom_value: "",
+          metrics: [],
         },
       ],
     });
@@ -101,8 +127,10 @@ export default function MatchReviewEditor({
 
   const completion = useMemo(() => {
     if (!draft) return { players: 0, hero: 0 };
+
     const playerFields = draft.players.flatMap((player) => [
       player.hero,
+      player.hero_key,
       player.eliminations,
       player.assists,
       player.deaths,
@@ -111,13 +139,13 @@ export default function MatchReviewEditor({
       player.mitigation,
     ]);
     const playerDone = playerFields.filter((value) => value.trim()).length;
-    const playerTotal = playerFields.length;
+    const playerTotal = Math.max(1, playerFields.length);
 
     const heroFields = draft.hero_details.flatMap((item) => [
       item.hero,
+      item.hero_key,
       item.play_time,
-      item.accuracy,
-      item.critical,
+      ...item.metrics.map((metric) => metric.value),
     ]);
     const heroDone = heroFields.filter((value) => value.trim()).length;
     const heroTotal = Math.max(1, heroFields.length);
@@ -142,11 +170,15 @@ export default function MatchReviewEditor({
         <div>
           <p className="m-0 text-sm font-bold">OCR 구조화 데이터 검수</p>
           <p className="mt-1 text-[10px] text-[var(--muted)]">
-            실제 OCR이 붙으면 이 표에 자동으로 값이 들어오고, 사용자가 틀린 값만 고칩니다.
+            OCR 값을 확인하고 수정한 최종값이 경기 확정 시 DB에 저장됩니다.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {savedAt && <span className="text-[9px] text-[var(--muted)]">자동 저장 {savedAt}</span>}
+          {savedAt && (
+            <span className="text-[9px] text-[var(--muted)]">
+              자동 저장 {savedAt}
+            </span>
+          )}
           <button
             type="button"
             onClick={resetDraft}
@@ -158,16 +190,31 @@ export default function MatchReviewEditor({
       </div>
 
       <div className="flex gap-2 border-b border-[var(--line)] bg-[#0d1118] px-4 py-3">
-        <TabButton active={tab === "scoreboard"} onClick={() => setTab("scoreboard")} label="10인 스코어보드" progress={completion.players} />
-        <TabButton active={tab === "hero"} onClick={() => setTab("hero")} label="내 영웅 상세" progress={completion.hero} />
+        <TabButton
+          active={tab === "scoreboard"}
+          onClick={() => setTab("scoreboard")}
+          label="10인 스코어보드"
+          progress={completion.players}
+        />
+        <TabButton
+          active={tab === "hero"}
+          onClick={() => setTab("hero")}
+          label="내 영웅 상세"
+          progress={completion.hero}
+        />
       </div>
 
       {tab === "scoreboard" ? (
-        <ScoreboardEditor players={draft.players} onUpdate={updatePlayer} onSetMe={setMe} />
+        <ScoreboardEditor
+          players={draft.players}
+          onUpdate={updatePlayer}
+          onSetMe={setMe}
+        />
       ) : (
         <HeroDetailEditor
           items={draft.hero_details}
           onUpdate={updateHeroDetail}
+          onUpdateMetric={updateMetricValue}
           onAdd={addHeroDetail}
           onRemove={removeHeroDetail}
         />
@@ -216,9 +263,19 @@ function ScoreboardEditor({
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[1100px]">
-        <ScoreboardTable title="우리 팀" rows={ally} onUpdate={onUpdate} onSetMe={onSetMe} />
-        <ScoreboardTable title="상대 팀" rows={enemy} onUpdate={onUpdate} onSetMe={onSetMe} />
+      <div className="min-w-[1040px]">
+        <ScoreboardTable
+          title="우리 팀"
+          rows={ally}
+          onUpdate={onUpdate}
+          onSetMe={onSetMe}
+        />
+        <ScoreboardTable
+          title="상대 팀"
+          rows={enemy}
+          onUpdate={onUpdate}
+          onSetMe={onSetMe}
+        />
       </div>
     </div>
   );
@@ -242,10 +299,10 @@ function ScoreboardTable({
         <span className="text-[9px] text-[var(--muted)]">5명</span>
       </div>
 
-      <div className="grid grid-cols-[46px_120px_110px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 text-[9px] font-black text-[var(--muted)]">
+      <div className="grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 text-[9px] font-black text-[var(--muted)]">
         <span>나</span>
-        <span>닉네임</span>
-        <span>영웅</span>
+        <span>영웅 표시명</span>
+        <span>hero_key</span>
         <span>처치</span>
         <span>도움</span>
         <span>죽음</span>
@@ -257,7 +314,7 @@ function ScoreboardTable({
       {rows.map((player) => (
         <div
           key={player.id}
-          className={`grid grid-cols-[46px_120px_110px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 last:border-b-0 ${
+          className={`grid grid-cols-[46px_140px_130px_repeat(6,90px)] gap-2 border-b border-[var(--line)] px-4 py-2 last:border-b-0 ${
             player.is_me ? "bg-[rgba(249,158,26,0.05)]" : "bg-[var(--panel)]"
           }`}
         >
@@ -273,8 +330,16 @@ function ScoreboardTable({
             {player.is_me ? "ME" : player.slot}
           </button>
 
-          <CellInput value={player.player_name} onChange={(value) => onUpdate(player.id, { player_name: value })} placeholder="닉네임" />
-          <CellInput value={player.hero} onChange={(value) => onUpdate(player.id, { hero: value })} placeholder="영웅" />
+          <CellInput
+            value={player.hero}
+            onChange={(value) => onUpdate(player.id, { hero: value })}
+            placeholder="라인하르트"
+          />
+          <CellInput
+            value={player.hero_key}
+            onChange={(value) => onUpdate(player.id, { hero_key: value })}
+            placeholder="reinhardt"
+          />
           <CellInput value={player.eliminations} onChange={(value) => onUpdate(player.id, { eliminations: value })} placeholder="0" numeric />
           <CellInput value={player.assists} onChange={(value) => onUpdate(player.id, { assists: value })} placeholder="0" numeric />
           <CellInput value={player.deaths} onChange={(value) => onUpdate(player.id, { deaths: value })} placeholder="0" numeric />
@@ -312,11 +377,13 @@ function CellInput({
 function HeroDetailEditor({
   items,
   onUpdate,
+  onUpdateMetric,
   onAdd,
   onRemove,
 }: {
   items: ReviewHeroDetail[];
   onUpdate: (id: string, patch: Partial<ReviewHeroDetail>) => void;
+  onUpdateMetric: (detailId: string, metricKey: string, value: string) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
 }) {
@@ -324,11 +391,16 @@ function HeroDetailEditor({
     <div className="p-5">
       <div className="space-y-4">
         {items.map((item, index) => (
-          <div key={item.id} className="rounded-xl border border-[var(--line)] bg-[#0d1118] p-4">
+          <div
+            key={item.id}
+            className="rounded-xl border border-[var(--line)] bg-[#0d1118] p-4"
+          >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="m-0 text-xs font-bold text-white">영웅 #{index + 1}</p>
-                <p className="mt-1 text-[9px] text-[var(--muted)]">한 경기에서 여러 영웅을 플레이한 경우 추가합니다.</p>
+                <p className="mt-1 text-[9px] text-[var(--muted)]">
+                  OCR metrics[]를 그대로 검수합니다. metric_key는 저장용 고정 key입니다.
+                </p>
               </div>
               {items.length > 1 && (
                 <button
@@ -341,25 +413,88 @@ function HeroDetailEditor({
               )}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <HeroField label="영웅">
-                <input className="field-input" value={item.hero} onChange={(event) => onUpdate(item.id, { hero: event.target.value })} placeholder="예: 리퍼" />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <HeroField label="영웅 표시명">
+                <input
+                  className="field-input"
+                  value={item.hero}
+                  onChange={(event) => onUpdate(item.id, { hero: event.target.value })}
+                  placeholder="예: 아나"
+                />
+              </HeroField>
+              <HeroField label="hero_key">
+                <input
+                  className="field-input"
+                  value={item.hero_key}
+                  onChange={(event) => onUpdate(item.id, { hero_key: event.target.value })}
+                  placeholder="예: ana"
+                />
               </HeroField>
               <HeroField label="플레이 시간">
-                <input className="field-input" value={item.play_time} onChange={(event) => onUpdate(item.id, { play_time: event.target.value })} placeholder="예: 08:42" />
+                <input
+                  className="field-input"
+                  value={item.play_time}
+                  onChange={(event) => onUpdate(item.id, { play_time: event.target.value })}
+                  placeholder="예: 05:11"
+                />
               </HeroField>
-              <HeroField label="명중률">
-                <input className="field-input" value={item.accuracy} onChange={(event) => onUpdate(item.id, { accuracy: event.target.value })} placeholder="예: 37%" />
-              </HeroField>
-              <HeroField label="치명타">
-                <input className="field-input" value={item.critical} onChange={(event) => onUpdate(item.id, { critical: event.target.value })} placeholder="예: 12%" />
-              </HeroField>
-              <HeroField label="영웅 고유 지표 이름">
-                <input className="field-input" value={item.custom_label} onChange={(event) => onUpdate(item.id, { custom_label: event.target.value })} placeholder="예: 생명력 흡수" />
-              </HeroField>
-              <HeroField label="영웅 고유 지표 값">
-                <input className="field-input" value={item.custom_value} onChange={(event) => onUpdate(item.id, { custom_value: event.target.value })} placeholder="값" />
-              </HeroField>
+            </div>
+
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="m-0 text-[11px] font-bold text-white">
+                  Personal metrics
+                </p>
+                <span className="text-[9px] text-[var(--muted)]">
+                  {item.metrics.length}개
+                </span>
+              </div>
+
+              {item.metrics.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--line)] px-4 py-5 text-center text-[10px] text-[var(--muted)]">
+                  OCR에서 전달된 metrics가 없습니다.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {item.metrics.map((metric) => (
+                    <div
+                      key={metric.metric_key}
+                      className={`grid gap-3 rounded-lg border px-3 py-3 sm:grid-cols-[1fr_180px] sm:items-center ${
+                        metric.needs_review
+                          ? "border-[rgba(255,184,92,0.45)] bg-[rgba(255,184,92,0.05)]"
+                          : "border-[var(--line)] bg-[#101722]"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-bold text-white">
+                            {metric.label || metric.metric_key}
+                          </span>
+                          {metric.needs_review && (
+                            <span className="rounded-md bg-[rgba(255,184,92,0.14)] px-1.5 py-0.5 text-[8px] font-bold text-[#ffc779]">
+                              검수 필요
+                            </span>
+                          )}
+                        </div>
+                        <p className="mb-0 mt-1 break-all text-[9px] text-[var(--muted)]">
+                          {metric.metric_key} · {metric.scope}
+                          {metric.confidence !== null
+                            ? ` · confidence ${Math.round(metric.confidence * 100)}%`
+                            : ""}
+                        </p>
+                      </div>
+                      <input
+                        className="field-input"
+                        value={metric.value}
+                        onChange={(event) =>
+                          onUpdateMetric(item.id, metric.metric_key, event.target.value)
+                        }
+                        placeholder="값"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -376,10 +511,18 @@ function HeroDetailEditor({
   );
 }
 
-function HeroField({ label, children }: { label: string; children: React.ReactNode }) {
+function HeroField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label>
-      <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">{label}</span>
+      <span className="mb-2 block text-[10px] font-bold text-[var(--muted)]">
+        {label}
+      </span>
       {children}
     </label>
   );

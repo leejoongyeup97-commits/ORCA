@@ -5,11 +5,8 @@ import type {
   MatchResult,
 } from "@/lib/backend";
 import { extractScreenshot, type OcrExtractResult, type OcrScreenType } from "@/lib/ocr-client";
-import {
-  loadReviewDraft,
-  saveReviewDraft,
-  type MatchReviewDraft,
-} from "@/lib/review-draft";
+import { loadReviewDraft, saveReviewDraft } from "@/lib/review-draft";
+import { applyPersonalOcrResults, applyTeamOcrResult } from "@/lib/ocr-review-mapping";
 
 export type OcrSourceFile = {
   screen_type: BackendScreenType;
@@ -32,18 +29,8 @@ export type StoredOcrBundle = {
 
 const STORAGE_PREFIX = "ow-insight-ocr-results:";
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
 function asString(value: unknown) {
   return typeof value === "string" ? value : "";
-}
-
-function asNumberString(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? String(value) : "";
 }
 
 function secondsToClock(value: unknown) {
@@ -92,70 +79,6 @@ function summaryPatch(result: OcrExtractResult): Partial<EditableMatchFields> {
   if (duration) patch.match_duration = duration;
 
   return patch;
-}
-
-function applyTeamResult(draft: MatchReviewDraft, result: OcrExtractResult) {
-  const rows = Array.isArray(result.players) ? result.players : [];
-  if (rows.length === 0) return draft;
-
-  return {
-    ...draft,
-    players: draft.players.map((player) => {
-      const target = rows.find((row) => {
-        const record = asRecord(row);
-        if (!record) return false;
-        const team = record.team === "blue" ? "ally" : record.team === "red" ? "enemy" : null;
-        return team === player.team && Number(record.slot) === player.slot;
-      });
-      const record = asRecord(target);
-      if (!record) return player;
-
-      const isMe = player.team === "ally" && record.is_me === true;
-      const nextName =
-        player.team === "ally"
-          ? isMe
-            ? "나"
-            : player.player_name === "나"
-              ? ""
-              : player.player_name
-          : player.player_name;
-
-      return {
-        ...player,
-        is_me: isMe,
-        player_name: nextName,
-        hero: asString(record.hero_id) || player.hero,
-        eliminations: asNumberString(record.elims) || player.eliminations,
-        assists: asNumberString(record.assists) || player.assists,
-        deaths: asNumberString(record.deaths) || player.deaths,
-        damage: asNumberString(record.damage) || player.damage,
-        healing: asNumberString(record.healing) || player.healing,
-        mitigation: asNumberString(record.mitigation) || player.mitigation,
-      };
-    }),
-  };
-}
-
-function applyPersonalResults(draft: MatchReviewDraft, results: OcrExtractResult[]) {
-  if (results.length === 0) return draft;
-
-  const heroDetails = results.map((result, index) => {
-    const current = draft.hero_details[index] ?? draft.hero_details[0];
-    const known = asRecord(result.known_metrics);
-    const per10 = known ? asString(known.per_10_min_average) : "";
-
-    return {
-      id: current?.id || crypto.randomUUID(),
-      hero: current?.hero || "",
-      play_time: asString(result.play_time) || current?.play_time || "",
-      accuracy: (known ? asString(known.weapon_accuracy) : "") || current?.accuracy || "",
-      critical: current?.critical || "",
-      custom_label: per10 ? "10분당 평균" : current?.custom_label || "",
-      custom_value: per10 || current?.custom_value || "",
-    };
-  });
-
-  return { ...draft, hero_details: heroDetails };
 }
 
 export function getStoredOcrBundle(matchId: string): StoredOcrBundle | null {
@@ -231,12 +154,12 @@ export async function runRealOcrForMatch(
   const team = results.find(
     (item) => item.ok && item.screen_type === "team" && item.result,
   )?.result;
-  if (team) reviewDraft = applyTeamResult(reviewDraft, team);
+  if (team) reviewDraft = applyTeamOcrResult(reviewDraft, team);
 
   const personal = results
     .filter((item) => item.ok && item.screen_type === "personal" && item.result)
     .map((item) => item.result as OcrExtractResult);
-  reviewDraft = applyPersonalResults(reviewDraft, personal);
+  reviewDraft = applyPersonalOcrResults(reviewDraft, personal);
   saveReviewDraft(matchId, reviewDraft);
 
   const successCount = results.filter((item) => item.ok).length;
