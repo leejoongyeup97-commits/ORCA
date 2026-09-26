@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import EmptyState from "@/components/empty-state";
 import { useEffect, useMemo, useState } from "react";
 import { getMatchBackendAdapter, type MatchListItem } from "@/lib/backend";
 import {
@@ -159,6 +160,13 @@ export default function InsightsPage() {
           <div className="rounded-md border border-[var(--line)] bg-transparent px-6 py-16 text-center text-sm text-[var(--muted)]">
             인사이트를 계산하는 중...
           </div>
+        ) : confirmed.length === 0 ? (
+          <EmptyState
+            title="아직 계산할 인사이트가 없습니다"
+            description="확정 경기가 쌓이면 최근 승률 변화, 맵별 관찰값, 데이터 완성도를 자동으로 계산합니다."
+            href="/matches"
+            action="경기 검수하기"
+          />
         ) : (
           <>
             <section className="mb-8 grid grid-cols-2 border-b border-[var(--line)] lg:grid-cols-4">

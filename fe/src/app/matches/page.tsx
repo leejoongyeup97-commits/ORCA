@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import EmptyState from "@/components/empty-state";
 import {
   getMatchBackendAdapter,
   type MatchImportStatus,
@@ -9,6 +11,7 @@ import {
   type MatchResult,
 } from "@/lib/backend";
 import { removeReviewDraft } from "@/lib/review-draft";
+import { basicReviewReady } from "@/lib/match-review-readiness";
 
 const STATUS_META: Record<MatchImportStatus, { label: string; className: string }> = {
   awaiting_upload: { label: "업로드 대기", className: "bg-[rgba(249,158,26,0.12)] text-[var(--orange)]" },
@@ -43,18 +46,30 @@ function countType(match: MatchListItem, type: string) {
   return match.files.filter((file) => file.screen_type === type).length;
 }
 
-function MatchStatus({ status }: { status: MatchImportStatus }) {
+function MatchStatus({ status, ready = false }: { status: MatchImportStatus; ready?: boolean }) {
   const meta = STATUS_META[status];
-  return <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${meta.className}`}>{meta.label}</span>;
+  return (
+    <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${ready ? "bg-transparent text-[#9fcaae]" : meta.className}`}>
+      {ready ? "확정 가능" : meta.label}
+    </span>
+  );
 }
 
 export default function MatchesPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get("status") as FilterKey | null;
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [query, setQuery] = useState("");
-  const [seasonFilter, setSeasonFilter] = useState("all");
-  const [patchFilter, setPatchFilter] = useState("all");
+  const [filter, setFilter] = useState<FilterKey>(
+    initialFilter && ["all", "action", "awaiting_upload", "pending_ocr", "processing_ocr", "needs_review", "confirmed", "failed"].includes(initialFilter)
+      ? initialFilter
+      : "all",
+  );
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [seasonFilter, setSeasonFilter] = useState(searchParams.get("season") ?? "all");
+  const [patchFilter, setPatchFilter] = useState(searchParams.get("patch") ?? "all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
 
@@ -72,6 +87,16 @@ export default function MatchesPage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter !== "all") params.set("status", filter);
+    if (query.trim()) params.set("q", query.trim());
+    if (seasonFilter !== "all") params.set("season", seasonFilter);
+    if (patchFilter !== "all") params.set("patch", patchFilter);
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [filter, patchFilter, pathname, query, router, seasonFilter]);
 
   const actionCount = matches.filter((match) => match.status === "needs_review" || match.status === "failed").length;
 
@@ -256,12 +281,19 @@ export default function MatchesPage() {
           {loading ? (
             <div className="px-6 py-16 text-center text-sm text-[var(--muted)]">경기 목록을 불러오는 중...</div>
           ) : visible.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="m-0 text-sm font-bold text-white">표시할 경기가 없습니다</p>
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                경기 등록에서 검수 완료 후 Mock 업로드까지 진행하면 여기에 나타납니다.
-              </p>
-            </div>
+            matches.length === 0 ? (
+              <EmptyState
+                title="아직 등록된 경기가 없습니다"
+                description="경기를 등록하면 OCR, 검수, 확정 상태를 이 화면에서 이어서 관리할 수 있습니다."
+                href="/matches/new"
+                action="경기 등록"
+              />
+            ) : (
+              <EmptyState
+                title="조건에 맞는 경기가 없습니다"
+                description="현재 검색어나 필터 조건을 바꾸거나 초기화해 주세요."
+              />
+            )
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {visible.map((match) => {
@@ -270,6 +302,7 @@ export default function MatchesPage() {
                 const personal = countType(match, "personal");
                 const replay = countType(match, "replay");
                 const result = RESULT_META[match.editable.result];
+                const readyToConfirm = match.status === "needs_review" && basicReviewReady(match);
 
                 return (
                   <article key={match.match_id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#101114] xl:grid-cols-[34px_150px_110px_1fr_200px_auto] xl:items-center ${selectedIds.has(match.match_id) ? "bg-[rgba(242,140,40,0.04)]" : ""}`}>
@@ -289,7 +322,7 @@ export default function MatchesPage() {
                     </div>
 
                     <div>
-                      <MatchStatus status={match.status} />
+                      <MatchStatus status={match.status} ready={readyToConfirm} />
                     </div>
 
                     <div className="min-w-0">
@@ -317,7 +350,7 @@ export default function MatchesPage() {
                     </div>
 
                     <Link
-                      href={`/matches/${match.match_id}`}
+                      href={`/matches/${match.match_id}?return=${encodeURIComponent(searchParams.toString())}`}
                       className="rounded-md border border-[var(--line)] bg-[#0d0e11] px-3 py-2 text-center text-xs font-bold text-white no-underline transition hover:border-[#4b5668] hover:bg-[#19202d]"
                     >
                       상세 / 수정

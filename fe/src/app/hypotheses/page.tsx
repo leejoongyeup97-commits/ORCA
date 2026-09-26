@@ -1,5 +1,6 @@
 "use client";
 
+import EmptyState from "@/components/empty-state";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   getMatchBackendAdapter,
@@ -198,9 +199,10 @@ export default function HypothesesPage() {
             가설 준비 상태를 계산하는 중...
           </div>
         ) : visible.length === 0 ? (
-          <div className="rounded-md border border-[var(--line)] bg-transparent px-6 py-16 text-center text-sm text-[var(--muted)]">
-            조건에 맞는 가설이 없습니다.
-          </div>
+          <EmptyState
+            title="조건에 맞는 가설이 없습니다"
+            description="검색어나 우선순위, 준비 상태 필터를 조정해 주세요."
+          />
         ) : (
           <div className="border-t border-[var(--line)]">
             {visible.map((item) => {
