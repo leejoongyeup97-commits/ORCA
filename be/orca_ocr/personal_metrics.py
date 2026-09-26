@@ -314,6 +314,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "average_energy": {"aliases": ["평균 에너지", "균 에너지"]},
         "objective_contest_time": {"aliases": ["거점 격돌 시간"]},
         "secondary_fire_accuracy": {"aliases": ["보조 발사 명중률", "보조발사명중률"]},
+        "projected_barriers_applied": {"aliases": ["방벽 씌운 플레이어", "투사 방벽 적용"]},
         "players_saved": {"aliases": ["보호한 플레이어", "보호한 플러이어"]},
         "high_energy_kills": {"aliases": ["고에너지로 처치", "고에너지로 저치"]},
     },
@@ -329,8 +330,9 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     },
     "jetpackcat": {
         "knockback_kills": {"aliases": ["밀쳐내기로 처치"]},
+        "purr_support": {"aliases": ["골골송 지원", "지원"]},
         "players_saved": {"aliases": ["구한 플레이어"]},
-        "lifeline_healing": {"aliases": ["생명줄 치유"]},
+        "lifeline_healing": {"aliases": ["생명줄 치유", "생명줄 지유"]},
         "abduction_kills": {"aliases": ["납치한다냥으로 처치"]},
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
         "lifeline_usage": {"aliases": ["생명줄 사용"]},
@@ -502,14 +504,14 @@ HERO_METRIC_ORDER: dict[str, list[str]] = {
     ],
     "zarya": [
         "primary_fire_accuracy","average_energy","objective_contest_time",
-        "secondary_fire_accuracy","players_saved","high_energy_kills",
+        "secondary_fire_accuracy","projected_barriers_applied","players_saved","high_energy_kills",
     ],
     "junkerqueen": [
         "weapon_accuracy","carnage_kills","objective_contest_time","jagged_blade_kills",
         "wound_uptime","players_saved","jagged_blade_accuracy","self_healing",
     ],
     "jetpackcat": [
-        "knockback_kills","players_saved","lifeline_healing",
+        "knockback_kills","purr_support","players_saved","lifeline_healing",
         "abduction_kills","weapon_accuracy","lifeline_usage",
     ],
 }
