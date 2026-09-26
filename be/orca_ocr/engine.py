@@ -1,59 +1,20 @@
 from __future__ import annotations
-import re, os, shutil
+import re
 from pathlib import Path
 from typing import Any
 import cv2
 import numpy as np
-import pytesseract
 from orca_ocr.personal_metrics import infer_hero_from_metric_labels, metric_from_verified_order, resolve_hero_key, resolve_metric_label
 
 
-def _configure_tesseract() -> str:
-    candidates=[]
-
-    env_cmd=os.environ.get('TESSERACT_CMD')
-    if env_cmd:
-        candidates.append(env_cmd)
-
-    p=shutil.which('tesseract')
-    if p:
-        candidates.append(p)
-
-    for env in ('ProgramFiles','ProgramFiles(x86)','LOCALAPPDATA'):
-        root=os.environ.get(env)
-        if root:
-            candidates += [
-                str(Path(root)/'Tesseract-OCR'/'tesseract.exe'),
-                str(Path(root)/'Programs'/'Tesseract-OCR'/'tesseract.exe'),
-            ]
-
-    candidates += [
-        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
-        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-        r'D:\Tesseract-OCR\tesseract.exe',
-        r'D:\Program Files\Tesseract-OCR\tesseract.exe',
-        r'D:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-    ]
-
-    checked=[]
-    for c in dict.fromkeys(candidates):
-        if not c:
-            continue
-        checked.append(c)
-        if Path(c).is_file():
-            pytesseract.pytesseract.tesseract_cmd=c
-            return c
-
-    raise RuntimeError(
-        'Tesseract OCR executable was not found. Checked: ' + ' | '.join(checked)
-    )
+def get_rapidocr_status()->dict[str,Any]:
+    engine=_get_rapidocr_engine()
+    return {
+        'engine':'rapidocr',
+        'ready':engine is not None,
+    }
 
 
-def get_tesseract_status()->dict[str,Any]:
-    exe=_configure_tesseract(); langs=set(pytesseract.get_languages(config=''))
-    return {'executable':exe,'languages':sorted(langs),'has_eng':'eng' in langs,'has_kor':'kor' in langs}
-
-TESSERACT_EXE=_configure_tesseract()
 ROI={
  'summary_result':(0.675,0.565,0.940,0.735), 'team_board':(0.278,0.180,0.724,0.925),
  'personal_panel':(0.200,0.175,0.965,0.805), 'replay_events':(0.000,0.175,0.215,0.800),
@@ -71,8 +32,32 @@ def _prep(img,scale=2.0,invert=False):
     return cv2.threshold(gray,0,255,typ+cv2.THRESH_OTSU)[1]
 
 def _ocr(img,psm=6,lang='kor+eng',whitelist=None):
-    cfg=f'--psm {psm}' + (f' -c tessedit_char_whitelist={whitelist}' if whitelist else '')
-    return pytesseract.image_to_string(_prep(img),lang=lang,config=cfg).strip()
+    """RapidOCR-only text OCR.
+
+    Keep the historical arguments for call-site compatibility; RapidOCR does
+    not use Tesseract PSM/lang/whitelist settings.
+    """
+    engine=_get_rapidocr_engine()
+    images=[img,_prep(img,2.5,False),_prep(img,2.5,True)]
+    reads=[]
+    for image in images:
+        for use_det in (True,False):
+            try:
+                result=engine(image,use_det=use_det,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                if txts:
+                    text='\n'.join(str(v).strip() for v in txts if str(v).strip()).strip()
+                    if text:
+                        reads.append(text)
+            except Exception:
+                continue
+    if not reads:
+        return ''
+    # Prefer the read with the most meaningful characters, then length.
+    def score(text):
+        meaningful=len(re.findall(r'[0-9A-Za-z가-힣]',text))
+        return (meaningful,len(text))
+    return max(reads,key=score)
 
 def _time_to_seconds(s):
     m=re.fullmatch(r'(\d{1,2}):(\d{2})(?::(\d{2}))?',s)
@@ -109,17 +94,6 @@ def _summary_map_reads(img):
                     reads.extend(line.strip() for line in txt.splitlines() if line.strip())
             except Exception:
                 pass
-        try:
-            rapid=_get_rapidocr_engine()
-            for image in (crop, _prep(crop,3.0,False), _prep(crop,3.0,True)):
-                result=rapid(image,use_det=False,use_cls=False,use_rec=True)
-                txts=getattr(result,'txts',None) or ()
-                for txt in txts:
-                    value=str(txt).strip()
-                    if value:
-                        reads.append(value)
-        except Exception:
-            pass
     return reads
 
 
@@ -284,7 +258,7 @@ def extract_summary(img):
         played_at_raw = m.group(1)
 
     return {
-        'screen_type':'summary','ocr_version':'0.9.20-dev','result':result,'result_source':result_source,
+        'screen_type':'summary','ocr_version':'0.9.21-dev','result':result,'result_source':result_source,
         'duration_seconds':duration,'final_score':score,'mode':mode,
         'map_name':map_name,'played_at_raw':played_at_raw,
         'confidence':{
@@ -809,7 +783,7 @@ def extract_team(img):
 
     if not blue_rows or not red_rows:
         return {
-            'screen_type':'team','ocr_version':'0.9.19-dev','players':[],
+            'screen_type':'team','ocr_version':'0.9.20-dev','players':[],
             'layout_detection':row_detection,'stat_reading':'rapidocr_variable_rows_v1',
             'me_detection_method':'row_highlight','me_detection_confidence':0.0,
             'me_detection_margin_pct':0.0,
@@ -889,7 +863,7 @@ def extract_team(img):
 
     return {
         'screen_type':'team',
-        'ocr_version':'0.9.19-dev',
+        'ocr_version':'0.9.20-dev',
         'players':rows,
         'layout_detection':row_detection,
         'stat_reading':'rapidocr_variable_rows_v1',
@@ -956,26 +930,35 @@ def _card_text(img, box):
     return _ocr(_crop(img, box), 6)
 
 def _personal_card_value(img,box):
-    """Read the value area separately from label area to avoid mixing neighboring numbers."""
+    """Read Personal-card values with a RapidOCR-only ensemble."""
     x1,y1,x2,y2=box
-    # Main values sit to the right of the large stat icon. Cropping the icon out
-    # prevents shapes from being recognized as digits (e.g. Ana 3 -> 104).
     value_box=(x1+(x2-x1)*0.34,y1,x2,y1+(y2-y1)*0.58)
     crop=_crop(img,value_box)
+    engine=_get_rapidocr_engine()
     variants=[]
-    for inv in (False,True):
-        prep=_prep(crop,3.0,invert=inv)
-        txt=pytesseract.image_to_string(
-            prep,lang='eng',
-            config='--psm 6 -c tessedit_char_whitelist=0123456789:%.,'
-        ).strip()
-        vals=re.findall(r'\d{1,2}:\d{2}|\d+(?:\.\d+)?%?',txt)
-        variants.extend(vals)
-    if not variants:return None,[],0.0
+    for scale in (3.0,4.0):
+        gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY) if len(crop.shape)==3 else crop
+        up=cv2.resize(gray,None,fx=scale,fy=scale,interpolation=cv2.INTER_CUBIC)
+        images=[up]
+        for threshold in (130,150,170,190,210):
+            images.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY)[1])
+            images.append(cv2.threshold(up,threshold,255,cv2.THRESH_BINARY_INV)[1])
+        for image in images:
+            try:
+                result=engine(image,use_det=False,use_cls=False,use_rec=True)
+                txts=getattr(result,'txts',None) or ()
+                for txt in txts:
+                    vals=re.findall(r'\d{1,2}:\d{2}|\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?%?',str(txt))
+                    variants.extend(vals)
+            except Exception:
+                continue
+    if not variants:
+        return None,[],0.0
     counts={v:variants.count(v) for v in set(variants)}
-    def rank(v):return (counts[v], ':' in v or '%' in v or '.' in v, len(v))
+    def rank(v):
+        return (counts[v], ':' in v or '%' in v or ',' in v or '.' in v, len(v))
     best=max(counts,key=rank)
-    return best,variants,0.92 if counts[best]>=2 else 0.72
+    return best,variants,min(0.99,0.68+0.04*counts[best])
 
 
 def _personal_card_label(img,box):
@@ -1307,7 +1290,7 @@ def extract_personal(img, hero_key=None):
 
     return {
         'screen_type':'personal',
-        'ocr_version':'0.10.31-dev',
+        'ocr_version':'0.10.32-dev',
         'hero_key':hero_key,
         'hero_id':_hero_name_ko(hero_key),
         'hero_name_raw':hero_name_raw,
