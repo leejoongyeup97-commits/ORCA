@@ -244,6 +244,53 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
         "critical_hit_damage": {"aliases": ["치명타로 준 피해"]},
         "ultimate_kills": {"aliases": ["궁극기로 처치"]},
     },
+    "ashe": {
+        "scoped_accuracy": {"aliases": ["저격 명중률", "명중률"]},
+        "dynamite_kills": {"aliases": ["다이너마이트로 처치"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "scoped_critical_hit_accuracy": {"aliases": ["저격 치명타 명중률"]},
+        "bob_kills": {"aliases": ["B.O.B.으로 처치", "B.O.B. 처치", "밥으로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지"]},
+        "long_range_final_blows": {"aliases": ["장거리 결정타"]},
+    },
+    "echo": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "sticky_bomb_accuracy": {"aliases": ["점착 폭탄 적중률"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "focusing_beam_accuracy": {"aliases": ["광선 집중 명중률"]},
+        "sticky_bomb_kills": {"aliases": ["점착 폭탄으로 처치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지"]},
+        "focusing_beam_kills": {"aliases": ["광선 집중으로 처치"]},
+        "duplicate_kills": {"aliases": ["복제로 처치"]},
+    },
+    "emre": {
+        "weapon_accuracy": {"aliases": ["무기 명중률"]},
+        "siphon_blaster_damage": {"aliases": ["사이펀 블라스터로 준 피해"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "scoped_accuracy": {"aliases": ["저격 명중률"]},
+        "cyber_fragment_grenade_damage": {"aliases": ["사이버 파편 수류탄으로 준 피해"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+        "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
+        "override_protocol_kills": {"aliases": ["오버라이드 프로토콜로 처치"]},
+    },
+    "widowmaker": {
+        "scoped_accuracy": {"aliases": ["저격 명중률"]},
+        "recon_assists": {"aliases": ["처치 시야 지원"]},
+        "final_blows": {"aliases": ["결정타"]},
+        "scoped_critical_hit_accuracy": {"aliases": ["저격 치명타 명중률"]},
+        "venom_mine_kills": {"aliases": ["맹독 지뢰로 처치", "맹독 지뢰로저치"]},
+        "solo_kills": {"aliases": ["단독 처치", "단독 저지"]},
+        "scoped_critical_hit_kills": {"aliases": ["저격 치명타 처치", "저격치명타처치"]},
+    },
+    "wuyang": {
+        "accuracy": {"aliases": ["적중률"]},
+        "guardian_wave_kills": {"aliases": ["수호의 파도로 처치"]},
+        "players_saved": {"aliases": ["구한 플레이어"]},
+        "healing_amplified": {"aliases": ["치유 증폭", "회복의 물결 치유 강화"]},
+        "tidal_blast_kills": {"aliases": ["해일 폭발로 처치", "하일 폭발로 처치"]},
+        "healing_wave_usage": {"aliases": ["회복의 물결 사용"]},
+        "self_healing": {"aliases": ["자가 치유"]},
+    },
 }
 
 HERO_NAME_ALIASES: dict[str, list[str]] = {
@@ -271,6 +318,11 @@ HERO_NAME_ALIASES: dict[str, list[str]] = {
     "sigma": ["시그마", "SIGMA"],
     "shion": ["시온", "SHION"],
     "anran": ["안란", "ANRAN"],
+    "ashe": ["애쉬", "ASHE"],
+    "echo": ["에코", "ECHO"],
+    "emre": ["엠레", "EMRE"],
+    "widowmaker": ["위도우메이커", "WIDOWMAKER"],
+    "wuyang": ["우양", "WUYANG"],
 }
 
 
