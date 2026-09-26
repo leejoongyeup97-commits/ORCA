@@ -349,7 +349,7 @@ HERO_METRICS: dict[str, dict[str, dict[str, Any]]] = {
     },
     "tracer": {
         "weapon_accuracy": {"aliases": ["무기 명중률"]},
-        "low_health_recalls": {"aliases": ["낮은 생명력 회상", "낮은 생명력에서 시간 역행"]},
+        "low_health_recalls": {"aliases": ["낮은 생명력 회상", "낮은 생명력에서 시간 역행", "낮은 생명력일 때 시간 역행"]},
         "final_blows": {"aliases": ["결정타"]},
         "critical_hit_accuracy": {"aliases": ["치명타 명중률"]},
         "pulse_bomb_attach_rate": {"aliases": ["폭탄 부착률", "펄스 폭탄 부착률", "aA 폭탄 부착률"]},
