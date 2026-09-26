@@ -10,17 +10,44 @@ from orca_ocr.personal_metrics import infer_hero_from_metric_labels, metric_from
 
 def _configure_tesseract() -> str:
     candidates=[]
+
+    # Explicit override is useful when Tesseract is installed outside C:.
+    env_cmd=os.environ.get('TESSERACT_CMD')
+    if env_cmd:
+        candidates.append(env_cmd)
+
     p=shutil.which('tesseract')
-    if p: candidates.append(p)
+    if p:
+        candidates.append(p)
+
     for env in ('ProgramFiles','ProgramFiles(x86)','LOCALAPPDATA'):
         root=os.environ.get(env)
         if root:
-            candidates += [str(Path(root)/'Tesseract-OCR'/'tesseract.exe'), str(Path(root)/'Programs'/'Tesseract-OCR'/'tesseract.exe')]
-    candidates += [r'C:\Program Files\Tesseract-OCR\tesseract.exe',r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe']
+            candidates += [
+                str(Path(root)/'Tesseract-OCR'/'tesseract.exe'),
+                str(Path(root)/'Programs'/'Tesseract-OCR'/'tesseract.exe'),
+            ]
+
+    candidates += [
+        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+        r'D:\Tesseract-OCR\tesseract.exe',
+        r'D:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'D:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+    ]
+
+    checked=[]
     for c in dict.fromkeys(candidates):
-        if c and Path(c).is_file():
-            pytesseract.pytesseract.tesseract_cmd=c; return c
-    raise RuntimeError('Tesseract OCR executable was not found.')
+        if not c:
+            continue
+        checked.append(c)
+        if Path(c).is_file():
+            pytesseract.pytesseract.tesseract_cmd=c
+            return c
+
+    raise RuntimeError(
+        'Tesseract OCR executable was not found. Checked: ' + ' | '.join(checked)
+    )
 
 
 def get_tesseract_status()->dict[str,Any]:
