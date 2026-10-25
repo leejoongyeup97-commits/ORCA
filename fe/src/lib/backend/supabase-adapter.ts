@@ -177,7 +177,7 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
         uploads: rows.map((u) => ({
           client_file_id: u.client_file_id ?? u.id,
           upload_id: u.id,
-          storage_bucket: "match-uploads",
+          storage_bucket: "MATCH-UPLOADS",
           storage_path: u.file_path,
         })),
       };
@@ -248,7 +248,7 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       uploads: uploadRows.map((u) => ({
         client_file_id: u.client_file_id,
         upload_id: u.id,
-        storage_bucket: "match-uploads",
+        storage_bucket: "MATCH-UPLOADS",
         storage_path: u.file_path,
       })),
     };
@@ -312,7 +312,7 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
     for (const row of rows) {
       const { config, session } = await configAndSession();
       await fetch(
-        `${config.url}/storage/v1/object/match-uploads/${row.file_path.split("/").map(encodeURIComponent).join("/")}`,
+        `${config.url}/storage/v1/object/MATCH-UPLOADS/${row.file_path.split("/").map(encodeURIComponent).join("/")}`,
         {
           method: "DELETE",
           headers: { apikey: config.publishableKey, Authorization: `Bearer ${session.access_token}` },
