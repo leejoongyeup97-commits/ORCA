@@ -269,10 +269,28 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
       },
     );
     // Deterministic storage paths make retries hit the same object.
-    // Treat an existing object as success so a previous partial upload does not
-    // block OCR retry/review completion.
-    if (response.status === 409) return;
-    if (!response.ok) throw new Error(`STORAGE_UPLOAD_FAILED: ${await response.text()}`);
+    // Supabase Storage can surface duplicate-object errors with a JSON body whose
+    // internal statusCode is 409 even when the HTTP status is not exactly 409.
+    if (!response.ok) {
+      const errorText = await response.text();
+      let duplicate = response.status === 409;
+      try {
+        const payload = JSON.parse(errorText) as {
+          statusCode?: number | string;
+          code?: string;
+          error?: string;
+        };
+        duplicate =
+          duplicate ||
+          Number(payload.statusCode) === 409 ||
+          payload.code === "KeyAlreadyExists" ||
+          payload.error === "Duplicate";
+      } catch {
+        // Keep the original error below if the response body is not JSON.
+      }
+      if (duplicate) return;
+      throw new Error(`STORAGE_UPLOAD_FAILED: ${errorText}`);
+    }
   }
 
   async completeMatchUpload(input: CompleteMatchUploadInput) {
