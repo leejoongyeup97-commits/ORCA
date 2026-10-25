@@ -268,6 +268,10 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
         body: file,
       },
     );
+    // Deterministic storage paths make retries hit the same object.
+    // Treat an existing object as success so a previous partial upload does not
+    // block OCR retry/review completion.
+    if (response.status === 409) return;
     if (!response.ok) throw new Error(`STORAGE_UPLOAD_FAILED: ${await response.text()}`);
   }
 
