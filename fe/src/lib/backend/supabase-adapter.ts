@@ -264,7 +264,6 @@ export class SupabaseMatchBackendAdapter implements MatchManagementAdapter {
           apikey: config.publishableKey,
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": file.type || "application/octet-stream",
-          "x-upsert": "true",
         },
         body: file,
       },
